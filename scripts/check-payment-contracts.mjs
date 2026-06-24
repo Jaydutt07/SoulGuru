@@ -15,6 +15,8 @@ await checkCheckoutSignatureContract();
 await checkCheckoutVerificationContract();
 await checkWebhookSignatureContract();
 await checkWebhookProcessingContract();
+await checkWebhookDuplicateActivationRecoveryContract();
+await checkSubscriptionWebhookIdempotencyContract();
 checkRazorpayReadinessContract();
 
 const failed = checks.filter((check) => !check.passed);
@@ -246,6 +248,75 @@ async function checkWebhookProcessingContract() {
   ].every(Boolean));
 }
 
+async function checkWebhookDuplicateActivationRecoveryContract() {
+  const rawBody = JSON.stringify(webhookPayload());
+  const supabase = createFakePaymentSupabase({ failSubscriptionInsert: true });
+
+  await expectRejects(
+    "Webhook activation failure surfaces after event storage",
+    () => processRazorpayWebhook(rawBody, {}, { supabase }),
+    /Unable to activate subscription/i
+  );
+
+  pushCheck("Webhook stores payment event before failed activation", [
+    supabase.state.paymentEvents.size === 1,
+    supabase.state.subscriptions.size === 0
+  ].every(Boolean));
+
+  supabase.state.failSubscriptionInsert = false;
+  const replay = await processRazorpayWebhook(rawBody, {}, { supabase });
+  const secondReplay = await processRazorpayWebhook(rawBody, {}, { supabase });
+
+  pushCheck("Duplicate activation webhook repairs missing subscription", [
+    replay.ok === true,
+    replay.stored === true,
+    replay.duplicate === true,
+    replay.activated === true,
+    replay.subscription?.active === true,
+    replay.subscription?.providerPaymentId === "pay_contract_123",
+    supabase.state.subscriptions.size === 1
+  ].every(Boolean));
+
+  pushCheck("Duplicate activation webhook stays idempotent after repair", [
+    secondReplay.ok === true,
+    secondReplay.stored === true,
+    secondReplay.duplicate === true,
+    secondReplay.activated === false,
+    secondReplay.subscription?.active === true,
+    supabase.state.subscriptions.size === 1
+  ].every(Boolean));
+}
+
+async function checkSubscriptionWebhookIdempotencyContract() {
+  const supabase = createFakePaymentSupabase();
+  const first = await processRazorpayWebhook(JSON.stringify(subscriptionWebhookPayload({
+    id: "evt_subscription_activated",
+    event: "subscription.activated"
+  })), {}, { supabase });
+  const secondLifecycleEvent = await processRazorpayWebhook(JSON.stringify(subscriptionWebhookPayload({
+    id: "evt_subscription_charged",
+    event: "subscription.charged"
+  })), {}, { supabase });
+  const duplicate = await processRazorpayWebhook(JSON.stringify(subscriptionWebhookPayload({
+    id: "evt_subscription_charged",
+    event: "subscription.charged"
+  })), {}, { supabase });
+
+  pushCheck("Subscription webhook activates one membership by provider subscription id", [
+    first.ok === true,
+    first.activated === true,
+    first.subscription?.providerSubscriptionId === "sub_contract_123",
+    secondLifecycleEvent.ok === true,
+    secondLifecycleEvent.duplicate === false,
+    secondLifecycleEvent.activated === false,
+    duplicate.ok === true,
+    duplicate.duplicate === true,
+    duplicate.activated === false,
+    supabase.state.paymentEvents.size === 2,
+    supabase.state.subscriptions.size === 1
+  ].every(Boolean));
+}
+
 function checkRazorpayReadinessContract() {
   const readyReport = buildDeploymentReadiness({
     OPENAI_API_KEY: "sk-contract",
@@ -304,6 +375,144 @@ function webhookPayload() {
       }
     }
   };
+}
+
+function subscriptionWebhookPayload({ id = "evt_subscription_123", event = "subscription.activated" } = {}) {
+  return {
+    id,
+    event,
+    payload: {
+      subscription: {
+        entity: {
+          id: "sub_contract_123",
+          notes: {
+            soulguru_plan: "more_guidance_3m",
+            user_key: "subscription-user",
+            name: "Subscription User",
+            email: "subscription@soulguru.local",
+            phone: "+15550000001"
+          }
+        }
+      }
+    }
+  };
+}
+
+function createFakePaymentSupabase(options = {}) {
+  const state = {
+    paymentEvents: new Map(),
+    subscriptions: new Map(),
+    calls: [],
+    failSubscriptionInsert: Boolean(options.failSubscriptionInsert),
+    nextSubscriptionId: 1
+  };
+
+  return {
+    state,
+    from(table) {
+      return createFakePaymentQuery(state, table);
+    }
+  };
+}
+
+function createFakePaymentQuery(state, table) {
+  const query = {
+    filters: {},
+    result: { data: null, error: null },
+    select() {
+      return query;
+    },
+    eq(column, value) {
+      query.filters[column] = value;
+      return query;
+    },
+    insert(payload) {
+      state.calls.push({
+        table,
+        operation: "insert",
+        payload: clone(payload)
+      });
+
+      if (table === "payment_events") {
+        const key = payload.provider_event_id;
+        if (state.paymentEvents.has(key)) {
+          query.result = {
+            data: null,
+            error: {
+              code: "23505",
+              message: "duplicate provider_event_id"
+            }
+          };
+          return query;
+        }
+
+        const event = clone(payload);
+        state.paymentEvents.set(key, event);
+        query.result = { data: event, error: null };
+        return query;
+      }
+
+      if (table === "more_guidance_subscriptions") {
+        if (state.failSubscriptionInsert) {
+          query.result = {
+            data: null,
+            error: { message: "contract subscription insert failure" }
+          };
+          return query;
+        }
+
+        const subscription = {
+          ...clone(payload),
+          id: `subscription-${state.nextSubscriptionId++}`,
+          created_at: "2026-06-24T00:00:00.000Z"
+        };
+        state.subscriptions.set(subscription.id, subscription);
+        query.result = { data: subscription, error: null };
+        return query;
+      }
+
+      return query;
+    },
+    async maybeSingle() {
+      if (table === "payment_events") {
+        return {
+          data: clone(state.paymentEvents.get(query.filters.provider_event_id)) || null,
+          error: null
+        };
+      }
+
+      if (table === "more_guidance_subscriptions") {
+        return {
+          data: clone(findSubscription(state.subscriptions, query.filters)) || null,
+          error: null
+        };
+      }
+
+      return query.result;
+    },
+    async single() {
+      return query.result;
+    },
+    then(resolve, reject) {
+      return Promise.resolve(query.result).then(resolve, reject);
+    }
+  };
+
+  return query;
+}
+
+function findSubscription(subscriptions, filters) {
+  return Array.from(subscriptions.values()).find((subscription) => {
+    if (filters.provider && subscription.provider !== filters.provider) return false;
+    if (filters.provider_payment_id && subscription.provider_payment_id !== filters.provider_payment_id) return false;
+    if (filters.provider_subscription_id && subscription.provider_subscription_id !== filters.provider_subscription_id) return false;
+    if (filters.user_key && subscription.user_key !== filters.user_key) return false;
+    return true;
+  });
+}
+
+function clone(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
 function hmac(value, secret) {

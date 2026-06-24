@@ -275,7 +275,7 @@ Run the migrations in `supabase/migrations/` inside your Supabase project SQL ed
 - `auth_otp_challenges`
 - `more_guidance_readings`
 
-`002_payment_events.sql` adds payment event storage and subscription provider metadata for Razorpay webhook idempotency.
+`002_payment_events.sql` adds payment event storage and subscription provider metadata for Razorpay webhook idempotency. The later provider indexes keep both Razorpay payment ids and subscription ids idempotent, so webhook replays cannot create duplicate More Guidance memberships.
 
 The server uses `SUPABASE_SERVICE_ROLE_KEY` only in backend code. Do not expose it to the browser or APK.
 
@@ -358,7 +358,7 @@ OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps. `009_unique_subscription_provider_ids.sql` keeps Razorpay subscription lifecycle events idempotent.
 
 Then run:
 

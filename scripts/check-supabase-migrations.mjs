@@ -10,7 +10,8 @@ const requiredMigrationFiles = [
   "005_auth_otp_challenges.sql",
   "006_unique_subscription_payments.sql",
   "007_birth_place_resolution.sql",
-  "008_more_guidance_readings.sql"
+  "008_more_guidance_readings.sql",
+  "009_unique_subscription_provider_ids.sql"
 ];
 
 const schemaContract = [
@@ -151,6 +152,7 @@ const requiredIndexes = [
   "auth_otp_phone_created_idx",
   "auth_otp_expires_idx",
   "subscriptions_provider_payment_unique_idx",
+  "subscriptions_provider_subscription_unique_idx",
   "more_guidance_readings_user_date_idx"
 ];
 
@@ -224,6 +226,10 @@ function checkIndexesAndIdempotency() {
   pushCheck("Razorpay payment activation is idempotent", [
     contains("create unique index if not exists subscriptions_provider_payment_unique_idx"),
     contains("where provider_payment_id is not null")
+  ].every(Boolean));
+  pushCheck("Razorpay subscription activation is idempotent", [
+    contains("create unique index if not exists subscriptions_provider_subscription_unique_idx"),
+    contains("where provider_subscription_id is not null")
   ].every(Boolean));
   pushCheck("Payment webhook events are idempotent by provider event id", /\bprovider_event_id\s+text\s+primary\s+key\b/i.test(combinedSql));
 }

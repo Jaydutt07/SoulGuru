@@ -74,7 +74,7 @@ export function verifyRazorpayPaymentSignature({ orderId, paymentId, signature }
   return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
 }
 
-export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymentId, signature, amount, currency = "INR", orderToken }, env = process.env) {
+export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymentId, signature, amount, currency = "INR", orderToken }, env = process.env, deps = {}) {
   const verified = verifyRazorpayPaymentSignature({
     orderId,
     paymentId,
@@ -102,7 +102,7 @@ export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymen
 
   const startsAt = new Date();
   const endsAt = addMonths(startsAt, 3);
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
 
   if (!supabase) {
     if (!isLocalPaymentActivationAllowed(env)) {
@@ -152,14 +152,19 @@ export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymen
   };
 }
 
-export async function processRazorpayWebhook(rawBody, env = process.env) {
+export async function processRazorpayWebhook(rawBody, env = process.env, deps = {}) {
   const payload = JSON.parse(rawBody || "{}");
   const eventName = payload.event || "unknown";
   const payment = payload.payload?.payment?.entity;
   const subscription = payload.payload?.subscription?.entity;
   const notes = payment?.notes || subscription?.notes || {};
   const providerEventId = payload.id || payment?.id || subscription?.id || hashPayload(rawBody);
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+  const shouldActivate = ["payment.captured", "subscription.activated", "subscription.charged"].includes(eventName)
+    && notes.soulguru_plan === "more_guidance_3m";
+  const activationRequest = shouldActivate
+    ? buildWebhookActivationRequest({ notes, payment, subscription })
+    : null;
 
   if (!supabase) {
     if (!isLocalPaymentActivationAllowed(env)) {
@@ -185,37 +190,39 @@ export async function processRazorpayWebhook(rawBody, env = process.env) {
   });
 
   if (!inserted) {
-    return { ok: true, stored: true, duplicate: true, activated: false, eventName };
+    if (!activationRequest) {
+      return { ok: true, stored: true, duplicate: true, activated: false, eventName };
+    }
+
+    const activation = await activateMoreGuidanceSubscription(supabase, activationRequest);
+    const emailResult = activation.created
+      ? await sendMembershipConfirmation(activationRequest.user.email, {
+        name: activationRequest.user.name,
+        endsAt: activation.subscription.endsAt
+      }, env)
+      : { sent: false, skipped: true, reason: "Duplicate event" };
+
+    return {
+      ok: true,
+      stored: true,
+      duplicate: true,
+      activated: activation.created,
+      eventName,
+      userKey: activationRequest.userKey,
+      subscription: activation.subscription,
+      email: emailResult
+    };
   }
 
-  const shouldActivate = ["payment.captured", "subscription.activated", "subscription.charged"].includes(eventName)
-    && notes.soulguru_plan === "more_guidance_3m";
-
-  if (!shouldActivate) {
+  if (!activationRequest) {
     return { ok: true, stored: true, duplicate: false, activated: false, eventName };
   }
 
-  const userKey = notes.user_key || buildPaymentUserKey(notes);
-  const startsAt = new Date();
-  const endsAt = addMonths(startsAt, 3);
-  const activation = await activateMoreGuidanceSubscription(supabase, {
-    user: {
-      ...notes,
-      email: notes.email || payment?.email,
-      phone: notes.phone || payment?.contact
-    },
-    userKey,
-    paymentId: payment?.id || null,
-    orderId: payment?.order_id || null,
-    providerSubscriptionId: subscription?.id || null,
-    startsAt,
-    endsAt
-  });
+  const activation = await activateMoreGuidanceSubscription(supabase, activationRequest);
 
-  const email = notes.email || payment?.email;
   const emailResult = activation.created
-    ? await sendMembershipConfirmation(email, {
-      name: notes.name,
+    ? await sendMembershipConfirmation(activationRequest.user.email, {
+      name: activationRequest.user.name,
       endsAt: activation.subscription.endsAt
     }, env)
     : { sent: false, skipped: true, reason: "Subscription already active" };
@@ -226,7 +233,7 @@ export async function processRazorpayWebhook(rawBody, env = process.env) {
     duplicate: false,
     activated: activation.created,
     eventName,
-    userKey,
+    userKey: activationRequest.userKey,
     subscription: activation.subscription,
     email: emailResult
   };
@@ -247,6 +254,25 @@ async function activateMoreGuidanceSubscription(supabase, {
       .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
       .eq("provider", "razorpay")
       .eq("provider_payment_id", paymentId)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error(`Unable to check existing subscription: ${readError.message}`);
+    }
+    if (existing) {
+      return {
+        created: false,
+        subscription: mapSubscription(existing)
+      };
+    }
+  }
+
+  if (providerSubscriptionId) {
+    const { data: existing, error: readError } = await supabase
+      .from("more_guidance_subscriptions")
+      .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
+      .eq("provider", "razorpay")
+      .eq("provider_subscription_id", providerSubscriptionId)
       .maybeSingle();
 
     if (readError) {
@@ -353,6 +379,27 @@ async function insertPaymentEvent(supabase, { providerEventId, eventName, payloa
   return true;
 }
 
+function buildWebhookActivationRequest({ notes, payment, subscription }) {
+  const userKey = notes.user_key || buildPaymentUserKey(notes);
+  const startsAt = new Date();
+  const endsAt = addMonths(startsAt, 3);
+
+  return {
+    user: {
+      ...notes,
+      email: notes.email || payment?.email || "",
+      phone: notes.phone || payment?.contact || "",
+      name: notes.name || ""
+    },
+    userKey,
+    paymentId: payment?.id || null,
+    orderId: payment?.order_id || null,
+    providerSubscriptionId: subscription?.id || null,
+    startsAt,
+    endsAt
+  };
+}
+
 async function sendMembershipConfirmation(to, details, env) {
   try {
     const email = buildMembershipEmail(details);
@@ -375,6 +422,10 @@ function buildPaymentUserKey(user) {
 
 function isLocalPaymentActivationAllowed(env) {
   return String(env.PAYMENTS_ALLOW_LOCAL_ACTIVATION || "false").toLowerCase() === "true";
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
 
 function signRazorpayOrder({ orderId, userKey, amount, currency }, secret) {
