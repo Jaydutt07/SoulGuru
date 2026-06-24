@@ -12,7 +12,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v6";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v7";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};

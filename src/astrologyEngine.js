@@ -89,7 +89,7 @@ const OPENING_SCENES = [
   "the water glass beside the bed before the first decision",
   "a calendar square that needs one honest appointment",
   "a notebook page with one unfinished line",
-  "the kitchen counter before the first call",
+  "the kitchen counter before the first practical task",
   "the wallet, receipt, or small payment decision",
   "the chair where the same worry keeps returning",
   "the shoes near the door before a necessary errand",

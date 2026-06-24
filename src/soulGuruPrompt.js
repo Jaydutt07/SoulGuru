@@ -30,7 +30,7 @@ Wisdom paragraph rules:
 - The first 12 words must contain a concrete object, action, body cue, or daily situation from that opening seed.
 - Do not open with the user's name unless the blueprint absolutely requires it.
 - The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
-- Do not open with phone, message, text, unread, inbox, notification, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead.
+- Do not open with phone, message, text, unread, inbox, notification, call, reply, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead.
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
