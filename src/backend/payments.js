@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
 const MEMBERSHIP_PLAN_NAME = "Soul Guru + Astro Solve";
+const SUBSCRIPTION_SELECT = "id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata";
 
 export async function createRazorpayOrder({ user = {}, amount, currency = "INR" }, env = process.env) {
   const keyId = env.RAZORPAY_KEY_ID;
@@ -248,42 +249,12 @@ async function activateMoreGuidanceSubscription(supabase, {
   startsAt = new Date(),
   endsAt = addMonths(startsAt, 3)
 }) {
-  if (paymentId) {
-    const { data: existing, error: readError } = await supabase
-      .from("more_guidance_subscriptions")
-      .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
-      .eq("provider", "razorpay")
-      .eq("provider_payment_id", paymentId)
-      .maybeSingle();
-
-    if (readError) {
-      throw new Error(`Unable to check existing subscription: ${readError.message}`);
-    }
-    if (existing) {
-      return {
-        created: false,
-        subscription: mapSubscription(existing)
-      };
-    }
-  }
-
-  if (providerSubscriptionId) {
-    const { data: existing, error: readError } = await supabase
-      .from("more_guidance_subscriptions")
-      .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
-      .eq("provider", "razorpay")
-      .eq("provider_subscription_id", providerSubscriptionId)
-      .maybeSingle();
-
-    if (readError) {
-      throw new Error(`Unable to check existing subscription: ${readError.message}`);
-    }
-    if (existing) {
-      return {
-        created: false,
-        subscription: mapSubscription(existing)
-      };
-    }
+  const existing = await findExistingRazorpaySubscription(supabase, { paymentId, providerSubscriptionId });
+  if (existing) {
+    return {
+      created: false,
+      subscription: mapSubscription(existing)
+    };
   }
 
   const { data, error } = await supabase
@@ -304,10 +275,20 @@ async function activateMoreGuidanceSubscription(supabase, {
         phone: user.phone || null
       }
     })
-    .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
+    .select(SUBSCRIPTION_SELECT)
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      const racedExisting = await findExistingRazorpaySubscription(supabase, { paymentId, providerSubscriptionId });
+      if (racedExisting) {
+        return {
+          created: false,
+          subscription: mapSubscription(racedExisting)
+        };
+      }
+    }
+
     throw new Error(`Unable to activate subscription: ${error.message}`);
   }
 
@@ -315,6 +296,38 @@ async function activateMoreGuidanceSubscription(supabase, {
     created: true,
     subscription: mapSubscription(data)
   };
+}
+
+async function findExistingRazorpaySubscription(supabase, { paymentId, providerSubscriptionId }) {
+  if (paymentId) {
+    const { data, error } = await supabase
+      .from("more_guidance_subscriptions")
+      .select(SUBSCRIPTION_SELECT)
+      .eq("provider", "razorpay")
+      .eq("provider_payment_id", paymentId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Unable to check existing subscription: ${error.message}`);
+    }
+    if (data) return data;
+  }
+
+  if (providerSubscriptionId) {
+    const { data, error } = await supabase
+      .from("more_guidance_subscriptions")
+      .select(SUBSCRIPTION_SELECT)
+      .eq("provider", "razorpay")
+      .eq("provider_subscription_id", providerSubscriptionId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Unable to check existing subscription: ${error.message}`);
+    }
+    if (data) return data;
+  }
+
+  return null;
 }
 
 function buildSubscriptionPayload({ startsAt, endsAt, userKey, paymentId, orderId }) {

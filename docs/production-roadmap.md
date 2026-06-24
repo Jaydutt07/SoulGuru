@@ -79,6 +79,7 @@ This project is being built toward the stack shown in the product planning image
 - Fail-closed Razorpay webhook processing unless local payment activation is explicitly enabled
 - OTP challenge storage before delivery so users are not sent unverifiable codes
 - Razorpay webhook replay repair for stored activation events and idempotent provider subscription lifecycle events
+- Race-safe Razorpay subscription activation so unique database conflicts re-read the existing paid membership
 
 ## Next Implementation Steps
 

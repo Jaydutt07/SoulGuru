@@ -13,9 +13,11 @@ const checks = [];
 await checkOrderCreationContract();
 await checkCheckoutSignatureContract();
 await checkCheckoutVerificationContract();
+await checkCheckoutSubscriptionRaceContract();
 await checkWebhookSignatureContract();
 await checkWebhookProcessingContract();
 await checkWebhookDuplicateActivationRecoveryContract();
+await checkWebhookSubscriptionRaceContract();
 await checkSubscriptionWebhookIdempotencyContract();
 checkRazorpayReadinessContract();
 
@@ -216,6 +218,43 @@ async function checkCheckoutVerificationContract() {
   );
 }
 
+async function checkCheckoutSubscriptionRaceContract() {
+  const secret = "checkout-secret";
+  const orderId = "order_contract_race";
+  const paymentId = "pay_contract_race";
+  const amount = 49900;
+  const currency = "INR";
+  const signature = hmac(`${orderId}|${paymentId}`, secret);
+  const orderToken = hmac(`${orderId}|race-user|${amount}|${currency}`, secret);
+  const supabase = createFakePaymentSupabase({ raceSubscriptionInsert: true });
+
+  const result = await verifyRazorpayCheckoutPayment({
+    user: {
+      id: "race-user",
+      phone: "+15550000002"
+    },
+    orderId,
+    amount,
+    currency,
+    orderToken,
+    paymentId,
+    signature
+  }, {
+    RAZORPAY_KEY_SECRET: secret
+  }, { supabase });
+
+  pushCheck("Checkout activation treats unique subscription race as existing membership", [
+    result.verified === true,
+    result.stored === true,
+    result.activated === false,
+    result.subscription?.active === true,
+    result.subscription?.providerPaymentId === paymentId,
+    supabase.state.paymentEvents.size === 1,
+    supabase.state.subscriptions.size === 1,
+    supabase.state.racedSubscriptionInsertCount === 1
+  ].every(Boolean));
+}
+
 async function checkWebhookSignatureContract() {
   const secret = "webhook-secret";
   const rawBody = JSON.stringify(webhookPayload());
@@ -287,6 +326,27 @@ async function checkWebhookDuplicateActivationRecoveryContract() {
   ].every(Boolean));
 }
 
+async function checkWebhookSubscriptionRaceContract() {
+  const supabase = createFakePaymentSupabase({ raceSubscriptionInsert: true });
+  const result = await processRazorpayWebhook(JSON.stringify(webhookPayload({
+    id: "evt_contract_race",
+    paymentId: "pay_contract_race_webhook",
+    orderId: "order_contract_race_webhook"
+  })), {}, { supabase });
+
+  pushCheck("Webhook activation treats unique subscription race as existing membership", [
+    result.ok === true,
+    result.stored === true,
+    result.duplicate === false,
+    result.activated === false,
+    result.subscription?.active === true,
+    result.subscription?.providerPaymentId === "pay_contract_race_webhook",
+    supabase.state.paymentEvents.size === 1,
+    supabase.state.subscriptions.size === 1,
+    supabase.state.racedSubscriptionInsertCount === 1
+  ].every(Boolean));
+}
+
 async function checkSubscriptionWebhookIdempotencyContract() {
   const supabase = createFakePaymentSupabase();
   const first = await processRazorpayWebhook(JSON.stringify(subscriptionWebhookPayload({
@@ -353,15 +413,15 @@ function checkRazorpayReadinessContract() {
   ].every(Boolean));
 }
 
-function webhookPayload() {
+function webhookPayload({ id = "evt_contract_123", paymentId = "pay_contract_123", orderId = "order_contract_123" } = {}) {
   return {
-    id: "evt_contract_123",
+    id,
     event: "payment.captured",
     payload: {
       payment: {
         entity: {
-          id: "pay_contract_123",
-          order_id: "order_contract_123",
+          id: paymentId,
+          order_id: orderId,
           email: "contract@soulguru.local",
           contact: "+15550000000",
           notes: {
@@ -404,6 +464,8 @@ function createFakePaymentSupabase(options = {}) {
     subscriptions: new Map(),
     calls: [],
     failSubscriptionInsert: Boolean(options.failSubscriptionInsert),
+    raceSubscriptionInsert: Boolean(options.raceSubscriptionInsert),
+    racedSubscriptionInsertCount: 0,
     nextSubscriptionId: 1
   };
 
@@ -461,10 +523,22 @@ function createFakePaymentQuery(state, table) {
           return query;
         }
 
+        if (state.raceSubscriptionInsert && state.racedSubscriptionInsertCount === 0) {
+          state.racedSubscriptionInsertCount += 1;
+          const subscription = buildFakeSubscriptionRow(state, payload);
+          state.subscriptions.set(subscription.id, subscription);
+          query.result = {
+            data: null,
+            error: {
+              code: "23505",
+              message: "duplicate provider subscription"
+            }
+          };
+          return query;
+        }
+
         const subscription = {
-          ...clone(payload),
-          id: `subscription-${state.nextSubscriptionId++}`,
-          created_at: "2026-06-24T00:00:00.000Z"
+          ...buildFakeSubscriptionRow(state, payload)
         };
         state.subscriptions.set(subscription.id, subscription);
         query.result = { data: subscription, error: null };
@@ -499,6 +573,14 @@ function createFakePaymentQuery(state, table) {
   };
 
   return query;
+}
+
+function buildFakeSubscriptionRow(state, payload) {
+  return {
+    ...clone(payload),
+    id: `subscription-${state.nextSubscriptionId++}`,
+    created_at: "2026-06-24T00:00:00.000Z"
+  };
 }
 
 function findSubscription(subscriptions, filters) {
