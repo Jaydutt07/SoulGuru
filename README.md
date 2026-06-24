@@ -121,7 +121,7 @@ Check Pinecone/OpenAI memory behavior, hashed namespaces, sanitized metadata, an
 npm run memory:check
 ```
 
-Check Upstash rate limiting, hashed Redis keys, pipeline requests, and degraded behavior:
+Check Upstash rate limiting, hashed Redis keys, pipeline requests, and emergency memory fallback behavior:
 
 ```bash
 npm run rate-limit:check

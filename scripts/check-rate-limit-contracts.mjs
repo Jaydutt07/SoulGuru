@@ -1,7 +1,9 @@
 import {
   buildRateLimitKey,
+  checkMemoryRateLimit,
   checkRateLimit,
-  hashRateLimitSubject
+  hashRateLimitSubject,
+  resetRateLimitMemoryForTests
 } from "../src/backend/rateLimit.js";
 
 const checks = [];
@@ -10,6 +12,7 @@ await checkUnconfiguredRateLimitSkipsNetwork();
 await checkRateLimitKeyPrivacy();
 await checkUpstashPipelineContract();
 await checkBlockedAndDegradedBehavior();
+await checkEmergencyMemoryFallbackBuckets();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -118,6 +121,7 @@ async function checkUpstashPipelineContract() {
 }
 
 async function checkBlockedAndDegradedBehavior() {
+  resetRateLimitMemoryForTests();
   const blocked = await checkRateLimit({
     env: {
       UPSTASH_REDIS_REST_URL: "https://upstash-contract.redis/",
@@ -136,24 +140,28 @@ async function checkBlockedAndDegradedBehavior() {
 
   const originalWarn = console.warn;
   console.warn = () => {};
-  let degraded;
+  const degradedResults = [];
   try {
-    degraded = await checkRateLimit({
-      env: {
-        UPSTASH_REDIS_REST_URL: "https://upstash-contract.redis",
-        UPSTASH_REDIS_REST_TOKEN: "upstash-token"
-      },
-      key: "raw-phone",
-      route: "otp",
-      limit: 5,
-      fetchImpl: async () => ({
-        ok: false,
-        status: 503,
-        async json() {
-          return {};
-        }
-      })
-    });
+    for (let index = 0; index < 4; index += 1) {
+      degradedResults.push(await checkRateLimit({
+        env: {
+          UPSTASH_REDIS_REST_URL: "https://upstash-contract.redis",
+          UPSTASH_REDIS_REST_TOKEN: "upstash-token"
+        },
+        key: "raw-phone",
+        route: "otp",
+        limit: 3,
+        windowSeconds: 60,
+        now: Date.UTC(2026, 5, 24, 0, 0, 0),
+        fetchImpl: async () => ({
+          ok: false,
+          status: 503,
+          async json() {
+            return {};
+          }
+        })
+      }));
+    }
   } finally {
     console.warn = originalWarn;
   }
@@ -165,10 +173,68 @@ async function checkBlockedAndDegradedBehavior() {
     blocked.remaining === 0,
     blocked.resetSeconds === 60
   ].every(Boolean));
-  pushCheck("Rate limit degrades open on Upstash failure", [
-    degraded.allowed === true,
-    degraded.remaining === 5,
-    degraded.degraded === true
+  pushCheck("Rate limit uses emergency memory fallback on Upstash failure", [
+    degradedResults[0].allowed === true,
+    degradedResults[0].remaining === 2,
+    degradedResults[0].degraded === true,
+    degradedResults[0].fallback === "memory",
+    degradedResults[2].allowed === true,
+    degradedResults[2].remaining === 0,
+    degradedResults[3].allowed === false,
+    degradedResults[3].count === 4,
+    degradedResults[3].resetSeconds === 60
+  ].every(Boolean));
+}
+
+async function checkEmergencyMemoryFallbackBuckets() {
+  resetRateLimitMemoryForTests();
+  const start = Date.UTC(2026, 5, 24, 0, 0, 0);
+  const first = checkMemoryRateLimit({
+    route: "Soul Wisdom / Daily",
+    key: "asha@example.com",
+    limit: 2,
+    windowSeconds: 10,
+    now: start
+  });
+  const second = checkMemoryRateLimit({
+    route: "Soul Wisdom / Daily",
+    key: "asha@example.com",
+    limit: 2,
+    windowSeconds: 10,
+    now: start + 1000
+  });
+  const third = checkMemoryRateLimit({
+    route: "Soul Wisdom / Daily",
+    key: "asha@example.com",
+    limit: 2,
+    windowSeconds: 10,
+    now: start + 2000
+  });
+  const reset = checkMemoryRateLimit({
+    route: "Soul Wisdom / Daily",
+    key: "asha@example.com",
+    limit: 2,
+    windowSeconds: 10,
+    now: start + 11000
+  });
+
+  pushCheck("Emergency memory fallback preserves limits and resets by window", [
+    first.allowed === true,
+    first.count === 1,
+    first.remaining === 1,
+    first.resetSeconds === 10,
+    second.allowed === true,
+    second.count === 2,
+    second.remaining === 0,
+    second.resetSeconds === 9,
+    third.allowed === false,
+    third.count === 3,
+    third.remaining === 0,
+    third.resetSeconds === 8,
+    reset.allowed === true,
+    reset.count === 1,
+    reset.remaining === 1,
+    reset.resetSeconds === 10
   ].every(Boolean));
 }
 
