@@ -8,6 +8,7 @@ export function buildDeploymentReadiness(env = process.env) {
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY"
     ], "Configure Supabase and apply all migrations before production launch."),
+    checkAstroSolves(env),
     checkOtp(env),
     checkRazorpay(env),
     checkRequired(env, "rateLimit", "Upstash rate limiting", [
@@ -51,6 +52,23 @@ function checkRequired(env, id, label, requiredEnv, advice, severity = "critical
     requiredEnv,
     missingEnv: missing,
     advice: missing.length ? advice : ""
+  };
+}
+
+function checkAstroSolves(env) {
+  const localQuotaEnabled = String(env.ASTRO_SOLVES_ALLOW_LOCAL_QUOTA || "false").toLowerCase() === "true";
+  const missingEnv = localQuotaEnabled ? ["ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=false"] : [];
+
+  return {
+    id: "astroSolvesQuota",
+    label: "Astro Solves quota persistence",
+    severity: "critical",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=false"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Disable local Astro Solves quota mode so production questions are counted and stored in Supabase."
+      : ""
   };
 }
 

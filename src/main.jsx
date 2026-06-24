@@ -634,6 +634,18 @@ function AstroSolvesTab({ user, updateUser }) {
         return;
       }
 
+      if (!response.ok && !LOCAL_AUTH_FALLBACK_ENABLED) {
+        setSolveStatus(data.error || "Astro Solves is unavailable. Please try again shortly.");
+        trackEvent("astro_solve_failed", { status: response.status });
+        return;
+      }
+
+      if (response.ok && data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {
+        setSolveStatus("Analysis could not be saved. Please try again shortly.");
+        trackEvent("astro_solve_failed", { reason: "not_stored" });
+        return;
+      }
+
       const insight = response.ok ? normalizeAstroSolveInsight(data, fallback) : {
         ...fallback,
         source: "local-fallback"
@@ -648,6 +660,12 @@ function AstroSolvesTab({ user, updateUser }) {
       setSolveStatus(response.ok ? "Analysis created." : "Using local fallback until the backend is connected.");
       trackEvent("astro_solve_completed", { source: insight.source || "api" });
     } catch {
+      if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+        setSolveStatus("Astro Solves is unavailable. Please try again shortly.");
+        trackEvent("astro_solve_failed", { reason: "request_error" });
+        return;
+      }
+
       const fallback = {
         ...generateProblemInsight(question, user, solvedProblems.length),
         source: "local-fallback"

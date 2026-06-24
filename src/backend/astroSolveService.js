@@ -44,6 +44,13 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     throw new Error("Question is required");
   }
 
+  if (!supabase && !isLocalAstroSolveQuotaAllowed(env)) {
+    throwHttpError(
+      "Supabase is required to enforce Astro Solves quota. Set ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true only for isolated local testing.",
+      503
+    );
+  }
+
   const allowance = await getAstroSolveAllowance({ supabase, userKey, payload });
   if (allowance.remaining <= 0) {
     return {
@@ -82,6 +89,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     answer,
     astrologyContext,
     source: allowance.isMember ? "member" : "free",
+    stored: false,
     model,
     promptVersion: ASTRO_SOLVE_PROMPT_VERSION,
     allowance: {
@@ -93,7 +101,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   };
 
   if (supabase) {
-    await storeAstroSolve(supabase, {
+    const storeResult = await storeAstroSolve(supabase, {
       user,
       userKey,
       question,
@@ -102,6 +110,10 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
       source: result.source,
       model
     });
+    if (!storeResult.stored) {
+      throwHttpError("Astro Solves answer could not be saved. Please try again.", 503);
+    }
+    result.stored = true;
   }
 
   await upsertMemory({
@@ -117,6 +129,10 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   }, env);
 
   return result;
+}
+
+export function isLocalAstroSolveQuotaAllowed(env = process.env) {
+  return String(env.ASTRO_SOLVES_ALLOW_LOCAL_QUOTA || "false").toLowerCase() === "true";
 }
 
 function buildAstroSolveInput({ user, question, context, today }) {
@@ -223,7 +239,10 @@ async function storeAstroSolve(supabase, { user, userKey, question, answer, astr
 
   if (error) {
     console.warn("Unable to store Astro Solves answer", error.message);
+    return { stored: false, error: error.message };
   }
+
+  return { stored: true };
 }
 
 async function upsertUserProfile(supabase, user) {
@@ -315,6 +334,12 @@ function nullableNumber(value) {
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }
 
 function firstName(name) {

@@ -4,6 +4,7 @@ const checks = [];
 
 checkFullProductionStackIsReady();
 checkPartialStackIsNotReady();
+checkLocalAstroSolvesQuotaIsNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -50,6 +51,20 @@ function checkPartialStackIsNotReady() {
     warningFailures.some((check) => check.id === "pinecone"),
     warningFailures.some((check) => check.id === "clerk"),
     warningFailures.some((check) => check.id === "observability")
+  ].every(Boolean));
+}
+
+function checkLocalAstroSolvesQuotaIsNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "true"
+  });
+  const astroQuota = report.checks.find((check) => check.id === "astroSolvesQuota");
+
+  pushCheck("Readiness rejects local Astro Solves quota mode", [
+    report.ok === false,
+    astroQuota?.status === "fail",
+    astroQuota?.missingEnv.includes("ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=false")
   ].every(Boolean));
 }
 

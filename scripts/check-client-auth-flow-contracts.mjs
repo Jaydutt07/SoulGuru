@@ -7,6 +7,7 @@ const checks = [];
 checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
+checkProductionAstroSolvesRequiresStoredBackendAnswer();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -33,6 +34,15 @@ function checkProductionCreateRequiresProfilePersistence() {
     source.includes("const profile = await syncUserProfileToServer(account);"),
     source.includes("setError(\"Unable to save your account profile. Please try again shortly.\");"),
     source.includes("onLogin(mergeAccountProfile(account, profile));")
+  ].every(Boolean));
+}
+
+function checkProductionAstroSolvesRequiresStoredBackendAnswer() {
+  pushCheck("Production Astro Solves does not use local fallback for failed or unstored answers", [
+    source.includes("if (!response.ok && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
+    source.includes("if (response.ok && data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
+    source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n        setSolveStatus(\"Astro Solves is unavailable. Please try again shortly.\");"),
+    source.includes("trackEvent(\"astro_solve_failed\", { reason: \"not_stored\" });")
   ].every(Boolean));
 }
 

@@ -2,10 +2,90 @@ import {
   ASTRO_SOLVE_FREE_ALLOWANCE,
   ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
   ASTRO_SOLVE_PROMPT_VERSION,
-  createAstroSolve
+  createAstroSolve,
+  isLocalAstroSolveQuotaAllowed
 } from "../src/backend/astroSolveService.js";
 
 const checks = [];
+
+async function checkLocalQuotaModeRequiresExplicitFlag() {
+  const user = astroUser("local-quota-default");
+  const openAiRequests = [];
+
+  let error = null;
+  try {
+    await createAstroSolve({
+      user,
+      question: "Why do I feel blocked before starting important work?",
+      priorCount: 0
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase: null,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("Astro Solves local quota mode requires explicit server flag", [
+    error?.statusCode === 503,
+    /Supabase is required/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    isLocalAstroSolveQuotaAllowed({ ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "true" }) === true,
+    isLocalAstroSolveQuotaAllowed({ ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "false" }) === false
+  ].every(Boolean));
+}
+
+async function checkExplicitLocalQuotaModeReturnsUnstoredAnswer() {
+  const user = astroUser("local-quota-enabled");
+  const answerJson = JSON.stringify({
+    root: "The root pattern is that urgency is being used as proof of seriousness, so starting only feels valid when pressure is already high. The delay is less about laziness and more about not trusting ordinary preparation.",
+    astrology: "The supplied context points toward work rhythm, timing pressure, and emotional caution around visible results. Use the pattern as a signal to reduce the task into a cleaner first commitment rather than waiting for confidence.",
+    solution: "For seven days, begin with a ten-minute work block before checking reactions or messages. Keep one written target for the day, close the smallest loop before noon, and use a brief evening lamp practice to reset attention."
+  });
+  const openAiRequests = [];
+
+  const result = await createAstroSolve({
+    user,
+    question: "Why do I feel blocked before starting important work?",
+    priorCount: 0
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "true"
+  }, {
+    supabase: null,
+    upsertGuidanceMemory: async () => ({ configured: false, upserted: false }),
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return { output_text: answerJson };
+          }
+        }
+      };
+    }
+  });
+
+  pushCheck("Explicit local Astro Solves quota mode returns unstored answer", [
+    result.allowed === true,
+    result.stored === false,
+    result.allowance?.limit === ASTRO_SOLVE_FREE_ALLOWANCE,
+    result.allowance?.used === 1,
+    result.allowance?.remaining === ASTRO_SOLVE_FREE_ALLOWANCE - 1,
+    openAiRequests.length === 1
+  ].every(Boolean));
+}
 
 async function checkClientOnlySubscriptionDoesNotExtendSupabaseQuota() {
   const user = astroUser("client-only-member");
@@ -109,6 +189,7 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
   pushCheck("Persisted member receives 18-question Astro Solves allowance", [
     result.allowed === true,
     result.source === "member",
+    result.stored === true,
     result.allowance?.limit === ASTRO_SOLVE_FREE_ALLOWANCE + ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
     result.allowance?.used === ASTRO_SOLVE_FREE_ALLOWANCE + ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
     result.allowance?.remaining === 0,
@@ -135,6 +216,56 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
     memoryUpserts[0].metadata?.source === "member",
     memoryUpserts[0].metadata?.model === "gpt-astro-contract",
     /Problem:/.test(memoryUpserts[0].text || "")
+  ].every(Boolean));
+}
+
+async function checkStorageFailureDoesNotReturnAnswer() {
+  const user = astroUser("storage-failure");
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    failQuestionInsert: true
+  });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createAstroSolve({
+      user,
+      question: "Should I change jobs right now?"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      upsertGuidanceMemory: async (payload) => {
+        memoryUpserts.push(payload);
+        return { configured: true, upserted: true };
+      },
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Astro Solves storage failure does not return uncounted answer", [
+    error?.statusCode === 503,
+    /could not be saved/.test(error?.message || ""),
+    openAiRequests.length === 1,
+    memoryUpserts.length === 0,
+    supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert").length === 1
   ].every(Boolean));
 }
 
@@ -177,14 +308,15 @@ async function checkPersistedMemberAtLimitBlocksNineteenthQuestion() {
   ].every(Boolean));
 }
 
-function createFakeSupabase({ subscriptions = [], questions = [] } = {}) {
+function createFakeSupabase({ subscriptions = [], questions = [], failQuestionInsert = false } = {}) {
   const state = {
     calls: [],
     subscriptions: new Map(),
     questions: questions.map((question) => ({ ...question })),
     profiles: new Map(),
     nextProfileId: 1,
-    nextQuestionId: questions.length + 1
+    nextQuestionId: questions.length + 1,
+    failQuestionInsert
   };
 
   for (const subscription of subscriptions) {
@@ -257,6 +389,14 @@ class FakeQuery {
     });
 
     if (this.table === "astro_solve_questions") {
+      if (this.state.failQuestionInsert) {
+        this.result = {
+          data: null,
+          error: { message: "contract insert failure" }
+        };
+        return this;
+      }
+
       const row = {
         ...clone(payload),
         id: `astro-row-${this.state.nextQuestionId++}`,
@@ -343,8 +483,11 @@ function printReport() {
 }
 
 async function main() {
+  await checkLocalQuotaModeRequiresExplicitFlag();
+  await checkExplicitLocalQuotaModeReturnsUnstoredAnswer();
   await checkClientOnlySubscriptionDoesNotExtendSupabaseQuota();
   await checkPersistedMemberGetsBonusAndStoresAnswer();
+  await checkStorageFailureDoesNotReturnAnswer();
   await checkPersistedMemberAtLimitBlocksNineteenthQuestion();
 
   const failed = checks.filter((check) => !check.passed);
