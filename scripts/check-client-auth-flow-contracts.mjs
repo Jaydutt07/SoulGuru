@@ -9,6 +9,7 @@ checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
+checkProductionSaveAdviceRequiresStoredBackendAnswer();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -52,6 +53,15 @@ function checkProductionMoreGuidanceRequiresStoredBackendAnswer() {
     source.includes("if (ok && data?.guidance && (data.stored !== false || LOCAL_PAID_FALLBACK_ENABLED)) {"),
     source.includes("if (ok && data?.guidance && data.stored === false) {"),
     source.includes("setDeepGuidanceStatus(\"Deeper guidance could not be saved. Please try again shortly.\");")
+  ].every(Boolean));
+}
+
+function checkProductionSaveAdviceRequiresStoredBackendAnswer() {
+  pushCheck("Production Save Advice waits for backend persistence", [
+    source.includes("const result = await saveGuidanceToServer(user, reading, savedItem.id);"),
+    source.includes("if (!data.saved && !LOCAL_PAID_FALLBACK_ENABLED) {"),
+    source.includes("setSaveStatus(\"Advice could not sync. Please try again shortly.\");"),
+    source.includes("trackEvent(\"guidance_save_failed\");")
   ].every(Boolean));
 }
 

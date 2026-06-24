@@ -446,6 +446,8 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const todayKey = useMemo(() => getTodayKey(new Date(), user.birthTimezone || undefined), [user.birthTimezone]);
   const fallbackReading = useMemo(() => getDailyWisdom(user, todayKey), [user, todayKey]);
   const [reading, setReading] = useState(fallbackReading);
+  const [isSavingAdvice, setIsSavingAdvice] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("");
   const focus = useMemo(() => getDailyFocus(user), [user]);
 
   useEffect(() => {
@@ -515,19 +517,44 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
     };
   }, [fallbackReading, todayKey, user]);
 
-  function saveAdvice() {
+  async function saveAdvice() {
+    if (isSavingAdvice) return;
+
     const savedItem = {
       id: `saved-${Date.now()}`,
       date: new Date().toISOString(),
       reading
     };
-    updateUser((current) => ({
-      ...current,
-      savedGuidance: [savedItem, ...(current.savedGuidance || [])].slice(0, 30),
-      guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
-    }));
-    saveGuidanceToServer(user, reading, savedItem.id);
-    trackEvent("guidance_saved");
+
+    setIsSavingAdvice(true);
+    setSaveStatus("Saving advice...");
+
+    try {
+      const result = await saveGuidanceToServer(user, reading, savedItem.id);
+      const storedItem = result.item || savedItem;
+      updateUser((current) => ({
+        ...current,
+        savedGuidance: [storedItem, ...(current.savedGuidance || [])].slice(0, 30),
+        guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
+      }));
+      setSaveStatus(result.saved ? "Advice saved." : "Saved locally until the backend is connected.");
+      trackEvent("guidance_saved", { source: result.saved ? "server" : "local-fallback" });
+    } catch {
+      if (LOCAL_PAID_FALLBACK_ENABLED) {
+        updateUser((current) => ({
+          ...current,
+          savedGuidance: [savedItem, ...(current.savedGuidance || [])].slice(0, 30),
+          guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
+        }));
+        setSaveStatus("Saved locally until the backend is connected.");
+        trackEvent("guidance_saved", { source: "local-fallback" });
+      } else {
+        setSaveStatus("Advice could not sync. Please try again shortly.");
+        trackEvent("guidance_save_failed");
+      }
+    } finally {
+      setIsSavingAdvice(false);
+    }
   }
 
   return (
@@ -560,15 +587,16 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         ))}
       </div>
       <div className="guidance-actions">
-        <button className="secondary-action calm-action" type="button" onClick={saveAdvice}>
+        <button className="secondary-action calm-action" type="button" onClick={saveAdvice} disabled={isSavingAdvice}>
           <BadgeCheck size={18} aria-hidden="true" />
-          Save Advice
+          {isSavingAdvice ? "Saving" : "Save Advice"}
         </button>
         <button className="primary-action guidance-action" type="button" onClick={onMoreGuidance}>
           <Crown size={18} aria-hidden="true" />
           More Guidance
         </button>
       </div>
+      {saveStatus && <p className="checkout-note">{saveStatus}</p>}
     </section>
   );
 }
@@ -1718,8 +1746,8 @@ function writeDailyReadingCache(user, dateKey, reading, meta = {}) {
   }
 }
 
-function saveGuidanceToServer(user, reading, sourceId) {
-  authFetch(getApiUrl("/api/more-guidance"), {
+async function saveGuidanceToServer(user, reading, sourceId) {
+  const response = await authFetch(getApiUrl("/api/more-guidance"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1742,7 +1770,15 @@ function saveGuidanceToServer(user, reading, sourceId) {
       sourceId,
       reading
     })
-  }).catch(() => {});
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Unable to save guidance.");
+  }
+  if (!data.saved && !LOCAL_PAID_FALLBACK_ENABLED) {
+    throw new Error("Guidance was not stored. Please try again.");
+  }
+  return data;
 }
 
 function readGuidanceHistoryRaw(user) {
