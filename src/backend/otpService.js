@@ -1,9 +1,10 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHmac, randomInt } from "node:crypto";
 import { sendEmail } from "./emailService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_EXPIRY_MINUTES = 10;
 const DEFAULT_MAX_ATTEMPTS = 5;
+const MIN_OTP_HASH_SECRET_LENGTH = 32;
 
 export async function requestOtp(payload, env = process.env, deps = {}) {
   const phone = normalizePhone(payload.phone || payload.user?.phone);
@@ -29,6 +30,8 @@ export async function requestOtp(payload, env = process.env, deps = {}) {
       demoCode: code
     };
   }
+
+  assertOtpHashSecret(env);
 
   const delivery = await deliver({ phone, email, code, purpose }, env);
   const { data, error } = await supabase
@@ -69,6 +72,8 @@ export async function verifyOtp(payload, env = process.env, deps = {}) {
       verified: false
     };
   }
+
+  assertOtpHashSecret(env);
 
   const challengeId = String(payload.challengeId || "").trim();
   const phone = normalizePhone(payload.phone || payload.user?.phone);
@@ -213,10 +218,21 @@ function buildOtpEmail({ code, purpose, expiryMinutes }) {
 }
 
 function hashOtp({ phone, code }, env) {
-  const secret = env.OTP_HASH_SECRET || env.SUPABASE_SERVICE_ROLE_KEY || env.OPENAI_API_KEY || "local-dev-otp-secret";
-  return createHash("sha256")
-    .update(`${normalizePhone(phone)}.${code}.${secret}`)
+  return createHmac("sha256", getOtpHashSecret(env))
+    .update(`${normalizePhone(phone)}.${code}`)
     .digest("hex");
+}
+
+function assertOtpHashSecret(env) {
+  getOtpHashSecret(env);
+}
+
+function getOtpHashSecret(env) {
+  const secret = String(env.OTP_HASH_SECRET || "").trim();
+  if (secret.length < MIN_OTP_HASH_SECRET_LENGTH) {
+    throw createHttpError(`OTP_HASH_SECRET must be at least ${MIN_OTP_HASH_SECRET_LENGTH} characters`, 500);
+  }
+  return secret;
 }
 
 function createOtpCode() {

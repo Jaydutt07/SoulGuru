@@ -1,10 +1,11 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
+import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
 import { requestOtp, verifyOtp } from "../src/backend/otpService.js";
 
 const checks = [];
 const phone = "+919800000004";
 const email = "otp@soulguru.local";
-const otpSecret = "contract-otp-secret";
+const otpSecret = "contract-otp-secret-with-at-least-32-chars";
 
 async function checkSupabaseOtpRequestStoresHashAndHidesDemoCode() {
   const supabase = createFakeSupabase();
@@ -50,6 +51,37 @@ async function checkSupabaseOtpRequestStoresHashAndHidesDemoCode() {
     challenge.metadata?.deliveryId === "sms-contract-1",
     challenge.attempts === 0,
     !challenge.verified_at
+  ].every(Boolean));
+}
+
+async function checkOtpHashSecretIsRequiredBeforeDelivery() {
+  const supabase = createFakeSupabase();
+  const deliveries = [];
+
+  await expectRejects(
+    "Supabase OTP request requires strong hash secret before delivery",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: "too-short",
+      OTP_DEMO_ENABLED: "false"
+    }, {
+      supabase,
+      createOtpCode: () => "123456",
+      deliverOtp: async (payload) => {
+        deliveries.push(payload);
+        return { sent: true, channel: "sms-webhook" };
+      }
+    }),
+    /OTP_HASH_SECRET.*32/i,
+    500
+  );
+
+  pushCheck("Weak OTP hash secret does not send or store OTP", [
+    deliveries.length === 0,
+    supabase.state.challenges.size === 0
   ].every(Boolean));
 }
 
@@ -170,6 +202,36 @@ async function checkMaxAttemptsAndExpiryBlockVerification() {
     !supabase.state.challenges.get("otp-limit").verified_at,
     !supabase.state.challenges.get("otp-expired").verified_at
   ].every(Boolean));
+}
+
+function checkOtpReadinessRequiresStrongSecret() {
+  const baseEnv = {
+    OPENAI_API_KEY: "sk-contract",
+    OPENAI_MODEL: "gpt-5.5",
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role",
+    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
+    RAZORPAY_KEY_ID: "rzp_test_contract",
+    RAZORPAY_KEY_SECRET: "razorpay-secret",
+    RAZORPAY_WEBHOOK_SECRET: "webhook-secret",
+    MORE_GUIDANCE_PRICE_PAISE: "49900"
+  };
+  const weakReport = buildDeploymentReadiness({
+    ...baseEnv,
+    OTP_HASH_SECRET: "too-short"
+  });
+  const strongReport = buildDeploymentReadiness({
+    ...baseEnv,
+    OTP_HASH_SECRET: otpSecret
+  });
+  const weakOtp = weakReport.checks.find((check) => check.id === "otp");
+  const strongOtp = strongReport.checks.find((check) => check.id === "otp");
+
+  pushCheck("Production readiness rejects weak OTP hash secret", [
+    weakOtp?.status === "fail",
+    weakOtp?.missingEnv.includes("OTP_HASH_SECRET>=32 characters")
+  ].every(Boolean));
+  pushCheck("Production readiness accepts strong OTP hash secret", strongOtp?.status === "pass");
 }
 
 function createFakeSupabase({ challenges = [] } = {}) {
@@ -307,8 +369,8 @@ function buildChallenge({ id, phone, email, code, attempts, expiresAt }) {
 }
 
 function hashOtp({ phone, code, secret }) {
-  return createHash("sha256")
-    .update(`${normalizePhone(phone)}.${code}.${secret}`)
+  return createHmac("sha256", secret)
+    .update(`${normalizePhone(phone)}.${code}`)
     .digest("hex");
 }
 
@@ -334,8 +396,10 @@ function printReport() {
 
 async function main() {
   await checkSupabaseOtpRequestStoresHashAndHidesDemoCode();
+  await checkOtpHashSecretIsRequiredBeforeDelivery();
   await checkVerifyOtpAttemptsAndSuccess();
   await checkMaxAttemptsAndExpiryBlockVerification();
+  checkOtpReadinessRequiresStrongSecret();
 
   const failed = checks.filter((check) => !check.passed);
   printReport();

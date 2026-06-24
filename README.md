@@ -38,7 +38,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 SOUL_WISDOM_RATE_LIMIT=20
 USER_PROFILE_RATE_LIMIT=60
 OTP_RATE_LIMIT=10
-OTP_HASH_SECRET=
+OTP_HASH_SECRET=replace-with-at-least-32-random-characters
 ```
 
 Required for APK builds that should call the deployed backend:
@@ -253,7 +253,7 @@ The server uses `SUPABASE_SERVICE_ROLE_KEY` only in backend code. Do not expose 
 
 `POST /api/auth-otp`
 
-Requests and verifies backend-controlled OTP challenges. With Supabase configured, OTP codes are hashed in `auth_otp_challenges`, expire after `OTP_EXPIRY_MINUTES`, and enforce `OTP_MAX_ATTEMPTS`. Delivery uses `OTP_SMS_WEBHOOK_URL` when configured, otherwise Resend email when an email is available. Local development can fall back to demo OTP.
+Requests and verifies backend-controlled OTP challenges. With Supabase configured, OTP codes are stored as HMAC-SHA256 hashes in `auth_otp_challenges`, require a 32+ character `OTP_HASH_SECRET`, expire after `OTP_EXPIRY_MINUTES`, and enforce `OTP_MAX_ATTEMPTS`. Delivery uses `OTP_SMS_WEBHOOK_URL` when configured, otherwise Resend email when an email is available. Local development can fall back to demo OTP.
 
 `POST /api/soul-wisdom`
 

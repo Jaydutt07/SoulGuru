@@ -54,14 +54,20 @@ function checkRequired(env, id, label, requiredEnv, advice, severity = "critical
 }
 
 function checkOtp(env) {
-  const missingBase = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "OTP_HASH_SECRET"]
+  const missingBase = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
     .filter((name) => !hasEnv(env, name));
+  const otpSecret = String(env.OTP_HASH_SECRET || "").trim();
   const hasSms = hasEnv(env, "OTP_SMS_WEBHOOK_URL");
   const hasEmail = hasEnv(env, "RESEND_API_KEY") && hasEnv(env, "RESEND_FROM_EMAIL");
   const demoEnabled = String(env.OTP_DEMO_ENABLED || "false").toLowerCase() === "true";
   const deliveryConfigured = hasSms || hasEmail;
   const missingEnv = [...missingBase];
 
+  if (!otpSecret) {
+    missingEnv.push("OTP_HASH_SECRET");
+  } else if (otpSecret.length < 32) {
+    missingEnv.push("OTP_HASH_SECRET>=32 characters");
+  }
   if (!deliveryConfigured) {
     missingEnv.push("OTP_SMS_WEBHOOK_URL or RESEND_API_KEY+RESEND_FROM_EMAIL");
   }
@@ -77,7 +83,7 @@ function checkOtp(env) {
     requiredEnv: [
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
-      "OTP_HASH_SECRET",
+      "OTP_HASH_SECRET>=32 characters",
       "OTP_SMS_WEBHOOK_URL or RESEND_API_KEY+RESEND_FROM_EMAIL",
       "OTP_DEMO_ENABLED=false"
     ],

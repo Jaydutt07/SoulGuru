@@ -24,6 +24,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed profile sync route for account birth details
 - Server-backed OTP challenge route with Supabase storage and optional SMS/email delivery
 - Offline OTP hashing, delivery, attempts, and expiry contract checker
+- Production-gated OTP HMAC secret strength check before delivery or storage
 - Supabase schema for idempotent Razorpay payment events and subscription provider metadata
 - Daily Soul Guru cache service with Supabase lookup/upsert
 - Offline daily Soul Guru cache contract checker for Supabase hit/miss behavior
