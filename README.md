@@ -71,6 +71,18 @@ Run the same local smoke with live Soul Wisdom and Astro Solves AI calls:
 npm run local:smoke:ai
 ```
 
+Check Soul Guru reading quality, word count, banned repeated phrasing, and similarity across five profiles:
+
+```bash
+npm run soul:quality
+```
+
+Run the same quality gate with live OpenAI Soul Guru readings:
+
+```bash
+npm run soul:quality:ai
+```
+
 Smoke-test a deployed backend URL:
 
 ```bash
@@ -256,6 +268,7 @@ Before release:
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
+- Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:apk:backend`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
