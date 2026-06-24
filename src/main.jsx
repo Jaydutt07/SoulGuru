@@ -187,7 +187,7 @@ function AuthScreen({ onLogin }) {
 
     try {
       if (mode === "existing") {
-        const account = accounts[phone] || await lookupAccountFromServer(phone);
+        const account = await lookupAccountFromServer(phone) || (LOCAL_AUTH_FALLBACK_ENABLED ? accounts[phone] : null);
         if (!account) {
           setError("No account found for this number.");
           return;
@@ -215,7 +215,7 @@ function AuthScreen({ onLogin }) {
         return;
       }
       const serverAccount = await lookupAccountFromServer(phone);
-      if (accounts[phone] || serverAccount) {
+      if ((LOCAL_AUTH_FALLBACK_ENABLED && accounts[phone]) || serverAccount) {
         if (serverAccount) saveAccount(serverAccount);
         setError("This number already has an account.");
         return;
@@ -262,7 +262,7 @@ function AuthScreen({ onLogin }) {
         return;
       }
 
-      const account = {
+      const account = enrichUserWithPlace({
         id: `sg-${Date.now()}`,
         name: pendingOtp.payload.name.trim(),
         birthDate: pendingOtp.payload.birthDate,
@@ -275,8 +275,19 @@ function AuthScreen({ onLogin }) {
         memberPlan: "",
         guidanceHistory: [],
         savedGuidance: []
-      };
-      onLogin(enrichUserWithPlace(account));
+      });
+
+      if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+        const profile = await syncUserProfileToServer(account);
+        if (!profile) {
+          setError("Unable to save your account profile. Please try again shortly.");
+          return;
+        }
+        onLogin(mergeAccountProfile(account, profile));
+        return;
+      }
+
+      onLogin(account);
     } catch (error) {
       setError(error.message || "Unable to verify OTP.");
     } finally {
