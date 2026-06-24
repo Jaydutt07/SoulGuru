@@ -85,6 +85,7 @@ This project is being built toward the stack shown in the product planning image
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
 - Astronomy-based birth/transit context replacing hash-only astrology
 - Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows
+- Server-side birth place geocoding enrichment for uncatalogued profile locations
 - Soul Guru v8 daily wisdom prompt with private paragraph architecture, stricter live repair checks, and structure-similarity gates
 - Sidereal chart-based Harmony compatibility with offline contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates

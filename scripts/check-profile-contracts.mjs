@@ -5,6 +5,7 @@ const checks = [];
 await checkLocalFallbackContract();
 await checkLookupContract();
 await checkPhoneProfileCreationContract();
+await checkGeocodedBirthPlaceProfileContract();
 await checkAuthenticatedPhoneMergeContract();
 await checkSharedProfileIdMergeContract();
 await checkPhoneMergeRaceContract();
@@ -89,6 +90,65 @@ async function checkPhoneProfileCreationContract() {
     rows.length === 1,
     rows[0].phone === "+919999001234",
     rows[0].birth_timezone === "Asia/Kolkata"
+  ].every(Boolean));
+}
+
+async function checkGeocodedBirthPlaceProfileContract() {
+  const supabase = createFakeProfileSupabase();
+  const geocoderRequests = [];
+  const result = await upsertUserProfile({
+    user: profileUser({
+      authUserId: "",
+      phone: "+91 99990 04567",
+      email: "paris@soulguru.local",
+      birthPlace: "Paris, France",
+      birthLatitude: null,
+      birthLongitude: null,
+      birthTimezone: "",
+      birthTimezoneOffsetMinutes: null,
+      birthPlaceResolvedLabel: "",
+      birthPlaceResolutionSource: ""
+    })
+  }, {
+    PLACE_GEOCODER_URL: "https://geocoder.example/search",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Test"
+  }, {
+    supabase,
+    fetch: async (url, options) => {
+      geocoderRequests.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return [{
+            display_name: "Paris, Ile-de-France, France",
+            lat: "48.8566",
+            lon: "2.3522"
+          }];
+        }
+      };
+    }
+  });
+
+  const row = Array.from(supabase.state.profiles.values())[0];
+  const requestUrl = new URL(geocoderRequests[0]?.url || "https://missing.example");
+
+  pushCheck("Profile upsert resolves uncatalogued birth place through backend geocoder", [
+    result.configured === true,
+    geocoderRequests.length === 1,
+    requestUrl.origin === "https://geocoder.example",
+    requestUrl.searchParams.get("q") === "Paris, France",
+    requestUrl.searchParams.get("format") === "jsonv2",
+    requestUrl.searchParams.get("limit") === "1",
+    geocoderRequests[0].options.headers["User-Agent"] === "SoulGuru Contract Test",
+    result.profile?.birthPlace === "Paris, France",
+    approx(result.profile?.birthLatitude, 48.8566, 0.001),
+    approx(result.profile?.birthLongitude, 2.3522, 0.001),
+    result.profile?.birthTimezone === "Europe/Paris",
+    result.profile?.birthTimezoneOffsetMinutes === 120,
+    result.profile?.birthPlaceResolvedLabel === "Paris, Ile-de-France, France",
+    result.profile?.birthPlaceResolutionSource === "geocoder",
+    row.birth_timezone === "Europe/Paris",
+    row.birth_place_resolution_source === "geocoder"
   ].every(Boolean));
 }
 
@@ -413,6 +473,10 @@ async function expectRejects(label, action, pattern, statusCode) {
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function approx(actual, expected, tolerance) {
+  return Math.abs(Number(actual) - expected) <= tolerance;
 }
 
 function pushCheck(label, passed) {

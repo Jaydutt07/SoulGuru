@@ -1,4 +1,5 @@
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import { enrichUserWithServerPlace } from "./placeResolutionService.js";
 
 const PROFILE_SELECT = "id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone, birth_timezone_offset_minutes, birth_place_resolved_label, birth_place_resolution_source, created_at, updated_at";
 
@@ -45,7 +46,7 @@ export async function lookupUserProfile(payload, env = process.env, deps = {}) {
 }
 
 export async function upsertUserProfile(payload, env = process.env, deps = {}) {
-  const user = payload.user || {};
+  const user = await enrichUserWithServerPlace(payload.user || {}, env, deps);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
 
   if (!supabase) {
@@ -236,6 +237,7 @@ function normalizeTime(time) {
 }
 
 function nullableNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }

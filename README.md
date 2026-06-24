@@ -43,6 +43,13 @@ OTP_RATE_LIMIT=10
 OTP_HASH_SECRET=replace-with-at-least-32-random-characters
 ```
 
+Recommended for accurate uncatalogued birth-place resolution:
+
+```bash
+PLACE_GEOCODER_URL=
+PLACE_GEOCODER_USER_AGENT=SoulGuru/1.0 birth-place-resolution
+```
+
 Required for APK builds that should call the deployed backend:
 
 ```bash
@@ -322,7 +329,7 @@ The production client only displays and locally caches Soul Guru readings that c
 
 `POST /api/user-profile`
 
-Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage.
+Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage. If `PLACE_GEOCODER_URL` is configured, uncatalogued birth places are resolved server-side through a Nominatim-compatible geocoder, enriched with latitude/longitude, an IANA timezone, and the birth-date-specific timezone offset before chart calculations use the profile.
 
 In production builds, local account/session storage is disabled for login restore. Users enter through backend OTP/profile lookup, and local account persistence is kept only for development fallback mode.
 
