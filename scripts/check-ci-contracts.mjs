@@ -28,6 +28,7 @@ function checkRequiredCommands(workflowText) {
   const requiredCommands = [
     "npm run ci:check",
     "npm run soul:quality",
+    "npm run soul:quality:extended",
     "npm run env:check",
     "npm run deployment:check",
     "npm run astrology:check",

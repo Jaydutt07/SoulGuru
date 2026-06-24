@@ -38,6 +38,9 @@ jobs:
       - name: Soul Guru local quality gate
         run: npm run soul:quality
 
+      - name: Soul Guru extended diversity gate
+        run: npm run soul:quality:extended
+
       - name: Verify env manifest contracts
         run: npm run env:check
 

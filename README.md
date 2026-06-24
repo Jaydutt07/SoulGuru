@@ -252,6 +252,7 @@ The CI template checks:
 
 - `npm run ci:check`
 - `npm run soul:quality`
+- `npm run soul:quality:extended`
 - `npm run env:check`
 - `npm run deployment:check`
 - `npm run astrology:check`
@@ -273,6 +274,7 @@ The CI template checks:
 - `npm run more-guidance:check`
 - `npm run mobile:backend:check`
 - `npm run local:smoke`
+- `npm run deployment:smoke:check`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
 - Android debug APK build plus `npm run security:check`
