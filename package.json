@@ -42,6 +42,7 @@
     "soul:quality:ai": "node scripts/check-soul-wisdom-quality.mjs --include-ai",
     "local:smoke": "node scripts/smoke-local-api.mjs",
     "local:smoke:ai": "node scripts/smoke-local-api.mjs --include-ai",
+    "deployment:smoke:check": "node scripts/check-deployment-smoke-contracts.mjs",
     "production:check": "node scripts/check-production-readiness.mjs",
     "release:check": "node scripts/check-release-readiness.mjs",
     "release:check:local": "node scripts/check-release-readiness.mjs --allow-missing-external",

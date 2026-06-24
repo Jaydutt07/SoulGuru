@@ -98,6 +98,9 @@ jobs:
       - name: Smoke-test local API routes
         run: npm run local:smoke
 
+      - name: Verify deployment smoke contracts
+        run: npm run deployment:smoke:check
+
       - name: Audit production dependencies
         run: npm audit --omit dev
 

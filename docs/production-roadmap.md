@@ -67,6 +67,7 @@ This project is being built toward the stack shown in the product planning image
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing
 - Vercel deployment config plus deployed backend smoke-test script for health, readiness, profile lookup, and More Guidance dashboard
+- Strict deployed backend smoke contract so production-ready checks require authenticated protected POST routes
 - Combined release readiness runner for local and strict production preflight checks
 - Workflow-ready GitHub Actions CI template for web/API contracts, local smoke, APK build, and APK secret scanning
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
@@ -106,7 +107,7 @@ This project is being built toward the stack shown in the product planning image
 15. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
 16. Run `npm run public-env:check:strict`.
 17. Run `npm run payments:check`.
-18. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
+18. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
 19. Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
 20. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
 21. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.

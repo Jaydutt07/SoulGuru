@@ -224,7 +224,7 @@ npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app
 npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready
 ```
 
-The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, and the More Guidance dashboard contract without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. If production Clerk auth is required, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN` to validate protected POST routes.
+The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, and the More Guidance dashboard contract without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. In non-ready smoke runs, protected `401` responses prove route reachability. In `--expect-ready` runs, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN`; protected POST routes must validate with real authentication before the smoke can pass.
 
 ## Continuous Integration
 
@@ -497,11 +497,12 @@ Before release:
 - Run `npm run payments:check`.
 - Run `npm run more-guidance:check`.
 - Run `npm run mobile:backend:check`.
+- Run `npm run deployment:smoke:check`.
 - Run `npm run soul:cache:check`.
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
-- Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
+- Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
 - Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.

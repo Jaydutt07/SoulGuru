@@ -82,14 +82,11 @@ async function checkProfileLookup() {
     }
   });
 
-  if (isAuthRequired(result)) {
-    pushCheck({
-      id: "user-profile-auth",
-      label: "User profile API",
-      passed: true,
-      status: result.status,
-      detail: "Route is reachable and requires authentication. Provide --auth-token to validate the full profile lookup body."
-    });
+  if (handleAuthRequired(result, {
+    id: "user-profile-auth",
+    label: "User profile API",
+    contract: "profile lookup"
+  })) {
     return;
   }
 
@@ -118,14 +115,11 @@ async function checkMoreGuidanceDashboard() {
     }
   });
 
-  if (isAuthRequired(result)) {
-    pushCheck({
-      id: "more-guidance-auth",
-      label: "More Guidance dashboard API",
-      passed: true,
-      status: result.status,
-      detail: "Route is reachable and requires authentication. Provide --auth-token to validate the full dashboard body."
-    });
+  if (handleAuthRequired(result, {
+    id: "more-guidance-auth",
+    label: "More Guidance dashboard API",
+    contract: "More Guidance dashboard"
+  })) {
     return;
   }
 
@@ -173,6 +167,27 @@ async function requestJson(path, { method = "GET", body: requestBody } = {}) {
 
 function isAuthRequired(result) {
   return result.status === 401 && /auth/i.test(String(result.body?.error || ""));
+}
+
+function handleAuthRequired(result, { id, label, contract }) {
+  if (!isAuthRequired(result)) {
+    return false;
+  }
+
+  const tokenHint = authToken
+    ? "The supplied --auth-token/DEPLOYMENT_SMOKE_AUTH_TOKEN was rejected by the deployment."
+    : "Provide --auth-token or DEPLOYMENT_SMOKE_AUTH_TOKEN to validate protected POST routes.";
+
+  pushCheck({
+    id,
+    label,
+    passed: !expectReady,
+    status: result.status,
+    detail: expectReady
+      ? `Production-ready smoke requires authenticated ${contract}. ${tokenHint}`
+      : `Route is reachable and requires authentication. ${tokenHint}`
+  });
+  return true;
 }
 
 function smokeUser() {

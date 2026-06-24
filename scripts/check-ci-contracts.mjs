@@ -48,6 +48,7 @@ function checkRequiredCommands(workflowText) {
     "npm run more-guidance:check",
     "npm run mobile:backend:check",
     "npm run local:smoke",
+    "npm run deployment:smoke:check",
     "npm audit --omit dev",
     "npm run production:check -- --allow-fail",
     "npm run android:apk"
