@@ -9,12 +9,7 @@ export function buildDeploymentReadiness(env = process.env) {
       "SUPABASE_SERVICE_ROLE_KEY"
     ], "Configure Supabase and apply all migrations before production launch."),
     checkOtp(env),
-    checkRequired(env, "razorpay", "Razorpay checkout", [
-      "RAZORPAY_KEY_ID",
-      "RAZORPAY_KEY_SECRET",
-      "RAZORPAY_WEBHOOK_SECRET",
-      "MORE_GUIDANCE_PRICE_PAISE"
-    ], "Configure Razorpay keys, webhook secret, and More Guidance price."),
+    checkRazorpay(env),
     checkRequired(env, "rateLimit", "Upstash rate limiting", [
       "UPSTASH_REDIS_REST_URL",
       "UPSTASH_REDIS_REST_TOKEN"
@@ -88,6 +83,36 @@ function checkOtp(env) {
     ],
     missingEnv,
     advice: missingEnv.length ? "Configure Supabase-backed OTP storage, a strong OTP hash secret, and a real SMS/email delivery path." : ""
+  };
+}
+
+function checkRazorpay(env) {
+  const requiredEnv = [
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",
+    "RAZORPAY_WEBHOOK_SECRET",
+    "MORE_GUIDANCE_PRICE_PAISE",
+    "PAYMENTS_ALLOW_LOCAL_ACTIVATION=false"
+  ];
+  const missingEnv = [
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",
+    "RAZORPAY_WEBHOOK_SECRET",
+    "MORE_GUIDANCE_PRICE_PAISE"
+  ].filter((name) => !hasEnv(env, name));
+  const localActivationEnabled = String(env.PAYMENTS_ALLOW_LOCAL_ACTIVATION || "false").toLowerCase() === "true";
+  if (localActivationEnabled) {
+    missingEnv.push("PAYMENTS_ALLOW_LOCAL_ACTIVATION=false");
+  }
+
+  return {
+    id: "razorpay",
+    label: "Razorpay checkout",
+    severity: "critical",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv,
+    missingEnv,
+    advice: missingEnv.length ? "Configure Razorpay keys, webhook secret, More Guidance price, and persisted payment activation." : ""
   };
 }
 

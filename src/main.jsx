@@ -1446,6 +1446,9 @@ async function verifyRazorpayPayment({ user, order, payment }) {
   if (!response.ok || !data.verified) {
     throw new Error(data.error || "Payment signature could not be verified.");
   }
+  if (!data.stored && !LOCAL_PAID_FALLBACK_ENABLED) {
+    throw new Error("Payment verified, but the subscription was not stored. Please contact support.");
+  }
   return data;
 }
 

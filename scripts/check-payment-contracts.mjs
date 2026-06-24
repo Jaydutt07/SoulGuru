@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
 import {
   createRazorpayOrder,
   processRazorpayWebhook,
@@ -14,6 +15,7 @@ await checkCheckoutSignatureContract();
 await checkCheckoutVerificationContract();
 await checkWebhookSignatureContract();
 await checkWebhookProcessingContract();
+checkRazorpayReadinessContract();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -127,10 +129,11 @@ async function checkCheckoutVerificationContract() {
     paymentId,
     signature
   }, {
-    RAZORPAY_KEY_SECRET: secret
+    RAZORPAY_KEY_SECRET: secret,
+    PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
   });
 
-  pushCheck("Checkout verification returns local subscription contract", [
+  pushCheck("Checkout verification returns local subscription only when explicitly allowed", [
     result.verified === true,
     result.stored === false,
     result.subscription?.active === true,
@@ -143,6 +146,25 @@ async function checkCheckoutVerificationContract() {
     Date.parse(result.subscription?.startedAt),
     Date.parse(result.subscription?.endsAt)
   ].every(Boolean));
+
+  await expectRejects(
+    "Checkout verification requires persisted payment storage",
+    () => verifyRazorpayCheckoutPayment({
+      user: {
+        id: "user-contract",
+        phone: "+15550000000"
+      },
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret
+    }),
+    /Supabase is required/i
+  );
 
   await expectRejects(
     "Checkout verification rejects bad signature",
@@ -213,6 +235,42 @@ async function checkWebhookProcessingContract() {
     result.activated === false,
     result.eventName === "payment.captured",
     /Supabase/i.test(result.reason || "")
+  ].every(Boolean));
+}
+
+function checkRazorpayReadinessContract() {
+  const readyReport = buildDeploymentReadiness({
+    OPENAI_API_KEY: "sk-contract",
+    OPENAI_MODEL: "gpt-5.5",
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role",
+    OTP_HASH_SECRET: "otp-secret",
+    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
+    RAZORPAY_KEY_ID: "rzp_test_contract",
+    RAZORPAY_KEY_SECRET: "razorpay-secret",
+    RAZORPAY_WEBHOOK_SECRET: "webhook-secret",
+    MORE_GUIDANCE_PRICE_PAISE: "49900"
+  });
+  const localActivationReport = buildDeploymentReadiness({
+    OPENAI_API_KEY: "sk-contract",
+    OPENAI_MODEL: "gpt-5.5",
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role",
+    OTP_HASH_SECRET: "otp-secret",
+    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
+    RAZORPAY_KEY_ID: "rzp_test_contract",
+    RAZORPAY_KEY_SECRET: "razorpay-secret",
+    RAZORPAY_WEBHOOK_SECRET: "webhook-secret",
+    MORE_GUIDANCE_PRICE_PAISE: "49900",
+    PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+  });
+  const readyRazorpay = readyReport.checks.find((check) => check.id === "razorpay");
+  const unsafeRazorpay = localActivationReport.checks.find((check) => check.id === "razorpay");
+
+  pushCheck("Production readiness accepts persisted Razorpay activation", readyRazorpay?.status === "pass");
+  pushCheck("Production readiness rejects local payment activation", [
+    unsafeRazorpay?.status === "fail",
+    unsafeRazorpay?.missingEnv.includes("PAYMENTS_ALLOW_LOCAL_ACTIVATION=false")
   ].every(Boolean));
 }
 

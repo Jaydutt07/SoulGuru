@@ -105,6 +105,12 @@ export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymen
   const supabase = createSupabaseAdmin(env);
 
   if (!supabase) {
+    if (!isLocalPaymentActivationAllowed(env)) {
+      const error = new Error("Supabase is required to persist More Guidance payments");
+      error.statusCode = 503;
+      throw error;
+    }
+
     return {
       verified: true,
       stored: false,
@@ -359,6 +365,10 @@ async function sendMembershipConfirmation(to, details, env) {
 
 function buildPaymentUserKey(user) {
   return String(user.authUserId || user.id || user.phone || user.email || "anonymous").toLowerCase().trim();
+}
+
+function isLocalPaymentActivationAllowed(env) {
+  return String(env.PAYMENTS_ALLOW_LOCAL_ACTIVATION || "false").toLowerCase() === "true";
 }
 
 function signRazorpayOrder({ orderId, userKey, amount, currency }, secret) {

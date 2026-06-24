@@ -304,8 +304,11 @@ RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 RAZORPAY_VERIFY_RATE_LIMIT=20
+PAYMENTS_ALLOW_LOCAL_ACTIVATION=false
 MORE_GUIDANCE_PRICE_PAISE=49900
 ```
+
+Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false` outside isolated local testing. Real More Guidance purchases must be persisted in Supabase before the app unlocks paid guidance.
 
 For confirmation emails:
 
