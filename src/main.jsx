@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { buildAstrologyContext, getSaadeSatiFromChart } from "./astrologyEngine.js";
+import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
 import { cleanWisdomText, firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
@@ -30,6 +31,9 @@ const SOUL_READING_CACHE_VERSION = "soul-wisdom-v2";
 const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v2";
 const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v2";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
+
+initializeObservability();
 
 const TABS = [
   { id: "soul", label: "Soul Guru", Icon: Sparkles },
@@ -82,11 +86,22 @@ function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    identifyUser(user);
+  }, [user]);
+
+  useEffect(() => {
+    if (splashDone && user) {
+      trackEvent("tab_viewed", { tab: activeTab });
+    }
+  }, [activeTab, splashDone, user]);
+
   function handleLogin(account) {
     saveAccount(account);
     window.localStorage.setItem(SESSION_KEY, account.phone);
     setUser(account);
     setActiveTab("soul");
+    trackEvent("login_completed", { mode: "otp_demo" });
   }
 
   function updateUser(updater) {
@@ -100,8 +115,10 @@ function App() {
 
   function handleLogout() {
     window.localStorage.removeItem(SESSION_KEY);
+    clearObservedUser();
     setUser(null);
     setActiveTab("soul");
+    trackEvent("logout_completed");
   }
 
   if (!splashDone) {
@@ -578,6 +595,8 @@ function AstroSolvesTab({ user, updateUser }) {
 }
 
 function SubscriptionPage({ user, updateUser, onBack }) {
+  const [checkoutStatus, setCheckoutStatus] = useState("");
+  const [isActivating, setIsActivating] = useState(false);
   const subscription = user.soulGuruSubscription;
   const isActive = Boolean(subscription?.active);
   const startsAt = subscription?.startedAt ? new Date(subscription.startedAt) : new Date();
@@ -588,7 +607,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
   const guidanceHistory = getCachedGuidanceHistory(user);
   const savedGuidance = user.savedGuidance || [];
 
-  function activatePlan() {
+  function activatePlan(metadata = {}) {
     const start = new Date();
     const end = addMonths(start, 3);
     updateUser((current) => ({
@@ -599,9 +618,68 @@ function SubscriptionPage({ user, updateUser, onBack }) {
         duration: "3 months",
         astroBonusQuestions: 15,
         startedAt: start.toISOString(),
-        endsAt: end.toISOString()
+        endsAt: end.toISOString(),
+        ...metadata
       }
     }));
+    trackEvent("more_guidance_activated", {
+      provider: metadata.provider || "demo",
+      duration: "3m"
+    });
+  }
+
+  async function startCheckout() {
+    if (isActive || isActivating) return;
+    setIsActivating(true);
+    setCheckoutStatus("Preparing secure checkout...");
+    trackEvent("more_guidance_checkout_started");
+
+    try {
+      const response = await fetch(getApiUrl("/api/create-razorpay-order"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            email: user.email
+          }
+        })
+      });
+
+      const order = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (DEMO_PAYMENTS_ENABLED) {
+          activatePlan({ provider: "demo", paymentStatus: "demo" });
+          setCheckoutStatus("Demo activation is active for this local build.");
+          return;
+        }
+        throw new Error(order.error || "Payment setup is not connected in this build.");
+      }
+
+      await openRazorpayCheckout({
+        order,
+        user,
+        onSuccess(payment) {
+          activatePlan({
+            provider: "razorpay",
+            paymentStatus: "paid",
+            razorpayOrderId: order.orderId,
+            razorpayPaymentId: payment.razorpay_payment_id
+          });
+          setCheckoutStatus("Payment received. More Guidance is active.");
+        },
+        onFailure(message) {
+          setCheckoutStatus(message || "Payment was not completed.");
+          trackEvent("more_guidance_checkout_failed");
+        }
+      });
+    } catch (error) {
+      setCheckoutStatus(error.message || "Unable to start checkout.");
+    } finally {
+      setIsActivating(false);
+    }
   }
 
   return (
@@ -638,10 +716,16 @@ function SubscriptionPage({ user, updateUser, onBack }) {
         </div>
       </div>
 
-      <button className={isActive ? "primary-action subscribed-action" : "primary-action"} type="button" onClick={activatePlan}>
+      <button
+        className={isActive ? "primary-action subscribed-action" : "primary-action"}
+        type="button"
+        onClick={startCheckout}
+        disabled={isActive || isActivating}
+      >
         <Check size={18} aria-hidden="true" />
-        {isActive ? "Subscription active" : "Activate 3 months"}
+        {isActive ? "Subscription active" : isActivating ? "Opening checkout" : "Activate 3 months"}
       </button>
+      {checkoutStatus && <p className="checkout-note">{checkoutStatus}</p>}
 
       {isActive && (
         <>
@@ -970,6 +1054,65 @@ function stableHash(value) {
 
 function getApiUrl(path) {
   return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
+async function openRazorpayCheckout({ order, user, onSuccess, onFailure }) {
+  await loadRazorpayCheckout();
+  if (!window.Razorpay) {
+    throw new Error("Razorpay checkout could not be loaded.");
+  }
+
+  const checkout = new window.Razorpay({
+    key: order.keyId,
+    amount: order.amount,
+    currency: order.currency || "INR",
+    name: "SoulGuru",
+    description: "Soul Guru + Astro Solve",
+    order_id: order.orderId,
+    prefill: {
+      name: user.name,
+      email: user.email,
+      contact: user.phone
+    },
+    notes: {
+      soulguru_plan: "more_guidance_3m",
+      user_key: order.userKey
+    },
+    theme: {
+      color: "#176b73"
+    },
+    handler: onSuccess,
+    modal: {
+      ondismiss() {
+        onFailure("Checkout closed before payment was completed.");
+      }
+    }
+  });
+
+  checkout.on("payment.failed", (response) => {
+    onFailure(response?.error?.description || "Payment failed.");
+  });
+  checkout.open();
+}
+
+function loadRazorpayCheckout() {
+  if (window.Razorpay) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", () => reject(new Error("Razorpay checkout failed to load.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Razorpay checkout failed to load."));
+    document.head.appendChild(script);
+  });
 }
 
 function getTodayKey(date = new Date(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata") {

@@ -1,4 +1,4 @@
-import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
+import { createRazorpayOrder } from "../src/backend/payments.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
 import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
 
@@ -13,19 +13,19 @@ export default async function handler(req, res) {
     const rate = await checkRateLimit({
       env: process.env,
       key: buildRateLimitKey(req, payload.user),
-      route: "soul-wisdom",
-      limit: Number(process.env.SOUL_WISDOM_RATE_LIMIT || 20),
-      windowSeconds: 24 * 60 * 60
+      route: "razorpay-order",
+      limit: Number(process.env.RAZORPAY_ORDER_RATE_LIMIT || 10),
+      windowSeconds: 60 * 60
     });
 
     if (!rate.allowed) {
-      sendJson(res, 429, { error: "Daily guidance limit reached. Please try again tomorrow.", rate });
+      sendJson(res, 429, { error: "Too many payment attempts. Try again later.", rate });
       return;
     }
 
-    const result = await createDailySoulWisdom(payload, process.env);
-    sendJson(res, 200, { ...result, rate });
+    const order = await createRazorpayOrder(payload, process.env);
+    sendJson(res, 200, order);
   } catch (error) {
-    sendJson(res, 500, { error: error.message || "Unable to create guidance" });
+    sendJson(res, 500, { error: error.message || "Unable to create order" });
   }
 }

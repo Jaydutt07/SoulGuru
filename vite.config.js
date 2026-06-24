@@ -1,6 +1,9 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { createRazorpayOrder } from "./src/backend/payments.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
+import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
+import { parseJsonRequest, sendJson } from "./src/backend/request.js";
 
 function soulGuruApiPlugin() {
   return {
@@ -9,56 +12,78 @@ function soulGuruApiPlugin() {
       const env = loadEnv(server.config.mode, process.cwd(), "");
 
       server.middlewares.use("/api/health", (_req, res) => {
-        res.statusCode = 200;
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({
+        sendJson(res, 200, {
           ok: true,
           service: "SoulGuru API",
           time: new Date().toISOString()
-        }));
+        });
       });
 
       server.middlewares.use("/api/soul-wisdom", async (req, res) => {
         if (req.method !== "POST") {
-          res.statusCode = 405;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ error: "Method not allowed" }));
+          sendJson(res, 405, { error: "Method not allowed" });
           return;
         }
 
         try {
-          const payload = JSON.parse(await readRequestBody(req));
-          const result = await createDailySoulWisdom(payload, {
+          const runtimeEnv = {
             ...process.env,
             ...env
+          };
+          const payload = await parseJsonRequest(req);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "soul-wisdom",
+            limit: Number(runtimeEnv.SOUL_WISDOM_RATE_LIMIT || 20),
+            windowSeconds: 24 * 60 * 60
           });
 
-          res.statusCode = 200;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify(result));
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Daily guidance limit reached. Please try again tomorrow.", rate });
+            return;
+          }
+
+          const result = await createDailySoulWisdom(payload, runtimeEnv);
+          sendJson(res, 200, { ...result, rate });
         } catch (error) {
-          res.statusCode = 500;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ error: error.message || "Unable to create guidance" }));
+          sendJson(res, 500, { error: error.message || "Unable to create guidance" });
+        }
+      });
+
+      server.middlewares.use("/api/create-razorpay-order", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const payload = await parseJsonRequest(req);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "razorpay-order",
+            limit: Number(runtimeEnv.RAZORPAY_ORDER_RATE_LIMIT || 10),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many payment attempts. Try again later.", rate });
+            return;
+          }
+
+          const order = await createRazorpayOrder(payload, runtimeEnv);
+          sendJson(res, 200, order);
+        } catch (error) {
+          sendJson(res, 500, { error: error.message || "Unable to create order" });
         }
       });
     }
   };
-}
-
-function readRequestBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > 20000) {
-        reject(new Error("Request body is too large"));
-        req.destroy();
-      }
-    });
-    req.on("end", () => resolve(body || "{}"));
-    req.on("error", reject);
-  });
 }
 
 export default defineConfig({
