@@ -163,7 +163,7 @@ Check tracked files and the local debug APK for accidentally exposed secrets or 
 npm run security:check
 ```
 
-Check the Razorpay payment/signature contract without contacting Razorpay or writing to Supabase:
+Check the Razorpay payment/signature contract and client checkout flow without contacting Razorpay or writing to Supabase:
 
 ```bash
 npm run payments:check
@@ -327,6 +327,8 @@ Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns 
 `POST /api/verify-razorpay-payment`
 
 Verifies the Razorpay checkout return signature, backend-signed order token, stable user identity, and configured plan amount/currency before the app marks More Guidance active. This protects the client-side activation path from cross-user payment reuse, anonymous paid unlocks, or underpriced order tampering while the webhook remains the durable payment event source.
+
+The client More Guidance checkout must request a backend-created Razorpay order, load Razorpay Checkout with only public order details, verify the returned payment through `/api/verify-razorpay-payment`, and require a stored subscription before production activation. `npm run payments:check` covers both backend payment contracts and this frontend checkout contract.
 
 `POST /api/razorpay-webhook`
 
