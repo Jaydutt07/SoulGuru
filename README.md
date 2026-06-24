@@ -89,6 +89,21 @@ Smoke-test a deployed backend URL:
 npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app
 ```
 
+## Continuous Integration
+
+The ready-to-use GitHub Actions workflow template lives at `docs/github-actions-ci.yml`. To activate it, copy it to `.github/workflows/ci.yml` using GitHub credentials with `workflow` scope.
+
+The CI template checks:
+
+- `npm run soul:quality`
+- `npm run build`
+- `npm run local:smoke`
+- `npm audit --omit dev`
+- `npm run production:check -- --allow-fail`
+- Android debug APK build
+
+If the repository secret `OPENAI_API_KEY` is configured, the workflow also runs `npm run soul:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
+
 ## Supabase Setup
 
 Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. The core migrations create:
