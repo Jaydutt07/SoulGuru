@@ -258,7 +258,7 @@ Create a Pinecone index that matches the configured OpenAI embedding model. The 
 
 ## OTP And Clerk Auth
 
-The local app can show a demo OTP when Supabase/SMS delivery is unavailable. In production, configure Supabase plus an SMS webhook or Resend fallback for OTP delivery. For authenticated API protection, configure Clerk and set:
+The local app can show a demo OTP when Supabase/SMS delivery is unavailable. Production builds must keep both `OTP_DEMO_ENABLED=false` and `VITE_LOCAL_AUTH_FALLBACK=false`; strict public env checks fail if local OTP fallback is enabled for release. In production, configure Supabase plus an SMS webhook or Resend fallback for OTP delivery. For authenticated API protection, configure Clerk and set:
 
 ```bash
 VITE_CLERK_PUBLISHABLE_KEY=

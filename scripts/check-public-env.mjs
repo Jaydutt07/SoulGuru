@@ -13,6 +13,7 @@ const allowedPublicKeys = new Set([
   "VITE_API_BASE_URL",
   "VITE_CLERK_PUBLISHABLE_KEY",
   "VITE_DEMO_PAYMENTS",
+  "VITE_LOCAL_AUTH_FALLBACK",
   "VITE_POSTHOG_HOST",
   "VITE_POSTHOG_KEY",
   "VITE_SENTRY_DSN",
@@ -136,7 +137,11 @@ function checkSupabaseAnonKey() {
 }
 
 function checkDemoFlags() {
+  const localAuthFallback = String(env.VITE_LOCAL_AUTH_FALLBACK || "false").toLowerCase() === "true";
   const demoPayments = String(env.VITE_DEMO_PAYMENTS || "false").toLowerCase() === "true";
+  if (strict && localAuthFallback) {
+    findings.push("VITE_LOCAL_AUTH_FALLBACK: local OTP fallback must be false for production/release builds.");
+  }
   if (strict && demoPayments) {
     findings.push("VITE_DEMO_PAYMENTS: demo payments must be false for production/release builds.");
   }

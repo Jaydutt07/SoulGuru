@@ -34,6 +34,7 @@ const SOUL_READING_CACHE_VERSION = "soul-wisdom-v5";
 const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v5";
 const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v5";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
 initializeObservability();
@@ -1326,17 +1327,31 @@ async function requestOtpFromServer({ phone, email, purpose }) {
     if (!response.ok) {
       throw new Error(data.error || "Unable to send OTP.");
     }
+    const serverBacked = Boolean(data.configured && data.challengeId);
+    const fallbackCode = LOCAL_AUTH_FALLBACK_ENABLED
+      ? data.demoCode || (!data.configured ? createOtp() : "")
+      : "";
+
+    if (!serverBacked && !fallbackCode) {
+      throw new Error("OTP login is not configured for this build. Please try again later.");
+    }
+
     return {
       challengeId: data.challengeId || null,
-      serverBacked: Boolean(data.configured && data.challengeId),
+      serverBacked,
       expiresAt: data.expiresAt || null,
       delivery: data.delivery || {},
-      code: data.demoCode || (!data.configured ? createOtp() : "")
+      code: fallbackCode
     };
   } catch (error) {
     if (error.message && error.message !== "Failed to fetch") {
       throw error;
     }
+
+    if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+      throw new Error("Unable to reach OTP service. Please try again shortly.");
+    }
+
     return {
       challengeId: null,
       serverBacked: false,

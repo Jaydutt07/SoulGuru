@@ -33,6 +33,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Server-backed More Guidance dashboard and saved advice persistence
+- Production-gated local OTP fallback so demo login cannot silently replace backend OTP in release builds
 - Paid More Guidance deep reading generation with daily Supabase caching
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
 - Local-LAN APK build helper for phone testing against the Mac dev backend
