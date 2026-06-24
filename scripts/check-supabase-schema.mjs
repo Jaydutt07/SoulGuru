@@ -136,6 +136,78 @@ const schemaContract = [
   }
 ];
 
+const indexContract = [
+  {
+    name: "daily_soul_readings_user_date_idx",
+    table: "daily_soul_readings",
+    columns: ["user_key", "reading_date"]
+  },
+  {
+    name: "subscriptions_user_status_idx",
+    table: "more_guidance_subscriptions",
+    columns: ["user_key", "status", "ends_at"]
+  },
+  {
+    name: "saved_guidance_user_created_idx",
+    table: "saved_guidance",
+    columns: ["user_key", "created_at"]
+  },
+  {
+    name: "astro_questions_user_created_idx",
+    table: "astro_solve_questions",
+    columns: ["user_key", "created_at"]
+  },
+  {
+    name: "payment_events_provider_created_idx",
+    table: "payment_events",
+    columns: ["provider", "created_at"]
+  },
+  {
+    name: "subscriptions_provider_payment_idx",
+    table: "more_guidance_subscriptions",
+    columns: ["provider", "provider_payment_id"]
+  },
+  {
+    name: "astro_questions_prompt_user_idx",
+    table: "astro_solve_questions",
+    columns: ["user_key", "prompt_version", "created_at"]
+  },
+  {
+    name: "saved_guidance_profile_created_idx",
+    table: "saved_guidance",
+    columns: ["user_profile_id", "created_at"]
+  },
+  {
+    name: "auth_otp_phone_created_idx",
+    table: "auth_otp_challenges",
+    columns: ["phone", "created_at"]
+  },
+  {
+    name: "auth_otp_expires_idx",
+    table: "auth_otp_challenges",
+    columns: ["expires_at"]
+  },
+  {
+    name: "subscriptions_provider_payment_unique_idx",
+    table: "more_guidance_subscriptions",
+    columns: ["provider", "provider_payment_id"],
+    unique: true,
+    where: "provider_payment_id is not null"
+  },
+  {
+    name: "subscriptions_provider_subscription_unique_idx",
+    table: "more_guidance_subscriptions",
+    columns: ["provider", "provider_subscription_id"],
+    unique: true,
+    where: "provider_subscription_id is not null"
+  },
+  {
+    name: "more_guidance_readings_user_date_idx",
+    table: "more_guidance_readings",
+    columns: ["user_key", "reading_date"]
+  }
+];
+
 const missingEnv = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((key) => !hasEnv(env, key));
 if (missingEnv.length > 0) {
   const report = buildReport({
@@ -158,6 +230,7 @@ const checks = [];
 for (const item of schemaContract) {
   checks.push(await checkTable(item));
 }
+checks.push(...await checkSchemaRpcContract());
 
 const failed = checks.filter((check) => check.status === "fail");
 const report = buildReport({
@@ -179,7 +252,9 @@ async function checkTable({ table, columns }) {
 
   if (!error) {
     return {
+      type: "table",
       table,
+      label: `table ${table}`,
       status: "pass",
       columns,
       error: ""
@@ -187,14 +262,62 @@ async function checkTable({ table, columns }) {
   }
 
   return {
+    type: "table",
     table,
+    label: `table ${table}`,
     status: "fail",
     columns,
     error: sanitizeSupabaseError(error)
   };
 }
 
+async function checkSchemaRpcContract() {
+  const { data, error } = await supabase.rpc("soulguru_schema_contract");
+
+  if (error) {
+    return [
+      {
+        type: "rpc",
+        name: "soulguru_schema_contract",
+        label: "schema contract RPC",
+        status: "fail",
+        error: sanitizeSupabaseError(error)
+      }
+    ];
+  }
+
+  const indexes = data?.indexes || {};
+  return indexContract.map((item) => checkIndex(item, indexes[item.name]));
+}
+
+function checkIndex(item, indexDefinition) {
+  const normalized = normalizeIndexDefinition(indexDefinition);
+  const expectedWhere = normalizeIndexDefinition(item.where || "");
+  const requirements = [
+    Boolean(indexDefinition),
+    normalized.includes(` on public.${item.table} `),
+    item.columns.every((column) => normalized.includes(column.toLowerCase())),
+    item.unique ? normalized.startsWith("create unique index") : true,
+    expectedWhere ? normalized.includes(expectedWhere) : true
+  ];
+
+  return {
+    type: "index",
+    name: item.name,
+    label: `index ${item.name}`,
+    status: requirements.every(Boolean) ? "pass" : "fail",
+    table: item.table,
+    columns: item.columns,
+    unique: Boolean(item.unique),
+    where: item.where || "",
+    error: requirements.every(Boolean)
+      ? ""
+      : `${item.name} is missing or does not match the required ${item.table} index contract.`
+  };
+}
+
 function buildReport({ status, checks, missingEnv }) {
+  const expectedChecks = schemaContract.length + indexContract.length;
   const projectHost = safeHost(env.SUPABASE_URL);
   return {
     service: "SoulGuru Supabase schema",
@@ -202,10 +325,10 @@ function buildReport({ status, checks, missingEnv }) {
     generatedAt: new Date().toISOString(),
     projectHost,
     summary: {
-      total: schemaContract.length,
+      total: status === "skipped" ? expectedChecks : checks.length,
       passing: checks.filter((check) => check.status === "pass").length,
       failing: checks.filter((check) => check.status === "fail").length,
-      skipped: status === "skipped" ? schemaContract.length : 0
+      skipped: status === "skipped" ? expectedChecks : 0
     },
     missingEnv,
     checks
@@ -238,7 +361,7 @@ function printReport(report) {
 
   for (const check of report.checks) {
     const marker = check.status === "pass" ? "PASS" : "FAIL";
-    console.log(`${marker} ${check.table}`);
+    console.log(`${marker} ${check.label || check.table || check.name}`);
     if (check.error) {
       console.log(`  ${check.error}`);
     }
@@ -249,6 +372,14 @@ function sanitizeSupabaseError(error) {
   return String(error?.message || error?.details || "Unknown Supabase error")
     .replaceAll(env.SUPABASE_SERVICE_ROLE_KEY || "", "[redacted]")
     .replaceAll(env.SUPABASE_URL || "", "[supabase-url]");
+}
+
+function normalizeIndexDefinition(value) {
+  return String(value || "")
+    .replace(/[()"']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 function hasEnv(source, name) {

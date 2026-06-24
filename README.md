@@ -266,7 +266,7 @@ The CI template checks:
 
 If the repository secret `OPENAI_API_KEY` is configured, the workflow also runs `npm run soul:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
-If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app contract.
+If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app table, column, and index contract.
 
 ## Supabase Setup
 
@@ -364,7 +364,7 @@ OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps. `009_unique_subscription_provider_ids.sql` keeps Razorpay subscription lifecycle events idempotent.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps. `009_unique_subscription_provider_ids.sql` keeps Razorpay subscription lifecycle events idempotent. `010_schema_contract_rpc.sql` adds a service-role-only schema metadata RPC for live deployment verification.
 
 Then run:
 
@@ -372,7 +372,7 @@ Then run:
 npm run supabase:schema:check
 ```
 
-This read-only check uses the service role key to verify all production tables and columns needed for daily Soul Guru caching, OTP login, paid More Guidance, saved advice, Astro Solves, and Razorpay payment events.
+This read-only check uses the service role key to verify all production tables, columns, and critical indexes needed for daily Soul Guru caching, OTP login, paid More Guidance, saved advice, Astro Solves, and Razorpay payment events.
 
 ## Observability
 

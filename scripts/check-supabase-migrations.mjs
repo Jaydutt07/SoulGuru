@@ -11,7 +11,8 @@ const requiredMigrationFiles = [
   "006_unique_subscription_payments.sql",
   "007_birth_place_resolution.sql",
   "008_more_guidance_readings.sql",
-  "009_unique_subscription_provider_ids.sql"
+  "009_unique_subscription_provider_ids.sql",
+  "010_schema_contract_rpc.sql"
 ];
 
 const schemaContract = [
@@ -251,6 +252,14 @@ function checkCriticalDefaults() {
     hasColumn("user_profiles", "birth_timezone_offset_minutes"),
     hasColumn("user_profiles", "birth_place_resolved_label"),
     hasColumn("user_profiles", "birth_place_resolution_source")
+  ].every(Boolean));
+  pushCheck("Live Supabase schema contract RPC is service-role only", [
+    contains("create or replace function public.soulguru_schema_contract()"),
+    contains("returns jsonb"),
+    contains("from pg_indexes"),
+    contains("grant execute on function public.soulguru_schema_contract() to service_role"),
+    contains("revoke all on function public.soulguru_schema_contract() from anon"),
+    contains("revoke all on function public.soulguru_schema_contract() from authenticated")
   ].every(Boolean));
 }
 
