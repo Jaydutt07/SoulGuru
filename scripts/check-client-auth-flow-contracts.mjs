@@ -2,8 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 const source = fs.readFileSync(path.join(process.cwd(), "src", "main.jsx"), "utf8");
+const authClientSource = fs.readFileSync(path.join(process.cwd(), "src", "authClient.js"), "utf8");
 const checks = [];
 
+checkFrontendClerkBridge();
 checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
@@ -25,6 +27,19 @@ function checkProductionExistingLoginPrefersServerProfile() {
   pushCheck("Production existing-account login prefers server profile over local cache", source.includes(
     "const account = await lookupAccountFromServer(phone) || (LOCAL_AUTH_FALLBACK_ENABLED ? accounts[phone] : null);"
   ));
+}
+
+function checkFrontendClerkBridge() {
+  pushCheck("Frontend Clerk bridge loads configured ClerkJS and attaches bearer tokens", [
+    source.includes("import { authFetch, initializeClerkAuth } from \"./authClient.js\";"),
+    source.includes("initializeClerkAuth();"),
+    authClientSource.includes("const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || \"\";"),
+    authClientSource.includes("https://${clerkDomain}/npm/@clerk/ui@1/dist/ui.browser.js"),
+    authClientSource.includes("https://${clerkDomain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js"),
+    authClientSource.includes("\"data-clerk-publishable-key\": CLERK_PUBLISHABLE_KEY"),
+    authClientSource.includes("headers.set(\"Authorization\", `Bearer ${token}`);"),
+    authClientSource.includes("return window.atob(padded).replace(/\\$$/, \"\");")
+  ].every(Boolean));
 }
 
 function checkProductionCreateIgnoresLocalDuplicateCache() {

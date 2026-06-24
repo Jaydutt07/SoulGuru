@@ -21,7 +21,7 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
-import { authFetch } from "./authClient.js";
+import { authFetch, initializeClerkAuth } from "./authClient.js";
 import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
 import { generateCompatibility } from "./compatibility.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
@@ -40,6 +40,7 @@ const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK ===
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
 initializeObservability();
+initializeClerkAuth();
 
 const TABS = [
   { id: "soul", label: "Soul Guru", Icon: Sparkles },
