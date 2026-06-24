@@ -36,6 +36,7 @@ Required for production daily-reading cache:
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 SOUL_WISDOM_RATE_LIMIT=20
+USER_PROFILE_RATE_LIMIT=60
 ```
 
 Required for APK builds that should call the deployed backend:
@@ -69,6 +70,10 @@ The server uses `SUPABASE_SERVICE_ROLE_KEY` only in backend code. Do not expose 
 `POST /api/soul-wisdom`
 
 Creates or returns the cached daily Soul Guru reading for a user/date. If Supabase is configured, it checks `daily_soul_readings` first and only calls OpenAI on cache miss. If Upstash is configured, this endpoint is rate-limited server-side.
+
+`POST /api/user-profile`
+
+Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage.
 
 `POST /api/create-razorpay-order`
 

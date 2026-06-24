@@ -102,6 +102,12 @@ function App() {
     window.localStorage.setItem(SESSION_KEY, account.phone);
     setUser(account);
     setActiveTab("soul");
+    syncUserProfileToServer(account).then((profile) => {
+      if (!profile) return;
+      const syncedAccount = mergeAccountProfile(account, profile);
+      saveAccount(syncedAccount);
+      setUser((current) => current?.phone === syncedAccount.phone ? mergeAccountProfile(current, profile) : current);
+    });
     trackEvent("login_completed", { mode: "otp_demo" });
   }
 
@@ -110,6 +116,9 @@ function App() {
       const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
       saveAccount(next);
       window.localStorage.setItem(SESSION_KEY, next.phone);
+      if (hasProfileChanged(current, next)) {
+        syncUserProfileToServer(next);
+      }
       return next;
     });
   }
@@ -171,6 +180,7 @@ function AuthScreen({ onLogin }) {
   const [pendingOtp, setPendingOtp] = useState(null);
   const [otpValue, setOtpValue] = useState("");
   const [error, setError] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   useEffect(() => {
     setPendingOtp(null);
@@ -182,7 +192,8 @@ function AuthScreen({ onLogin }) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function sendOtp() {
+  async function sendOtp() {
+    if (isSendingOtp) return;
     const phone = normalizePhone(form.phone);
     const accounts = readAccounts();
     setError("");
@@ -192,30 +203,48 @@ function AuthScreen({ onLogin }) {
       return;
     }
 
-    if (mode === "existing") {
-      if (!accounts[phone]) {
-        setError("No account found for this number.");
+    setIsSendingOtp(true);
+
+    try {
+      if (mode === "existing") {
+        const account = accounts[phone] || await lookupAccountFromServer(phone);
+        if (!account) {
+          setError("No account found for this number.");
+          return;
+        }
+        saveAccount(account);
+        setPendingOtp({
+          phone,
+          code: createOtp(),
+          account,
+          payload: account
+        });
+        setOtpValue("");
         return;
       }
-    } else {
+
       const requiredFields = ["name", "birthDate", "birthPlace", "birthTime", "email"];
       const missingField = requiredFields.find((field) => !String(form[field]).trim());
       if (missingField) {
         setError("Complete all details before verification.");
         return;
       }
-      if (accounts[phone]) {
+      const serverAccount = await lookupAccountFromServer(phone);
+      if (accounts[phone] || serverAccount) {
+        if (serverAccount) saveAccount(serverAccount);
         setError("This number already has an account.");
         return;
       }
-    }
 
-    setPendingOtp({
-      phone,
-      code: createOtp(),
-      payload: { ...form, phone }
-    });
-    setOtpValue("");
+      setPendingOtp({
+        phone,
+        code: createOtp(),
+        payload: { ...form, phone }
+      });
+      setOtpValue("");
+    } finally {
+      setIsSendingOtp(false);
+    }
   }
 
   function verifyOtp() {
@@ -226,7 +255,11 @@ function AuthScreen({ onLogin }) {
     }
 
     if (mode === "existing") {
-      const account = readAccounts()[pendingOtp.phone];
+      const account = pendingOtp.account || readAccounts()[pendingOtp.phone];
+      if (!account) {
+        setError("No account found for this number.");
+        return;
+      }
       onLogin(account);
       return;
     }
@@ -311,9 +344,9 @@ function AuthScreen({ onLogin }) {
             </button>
           </div>
         ) : (
-          <button className="primary-action" type="button" onClick={sendOtp}>
+          <button className="primary-action" type="button" onClick={sendOtp} disabled={isSendingOtp}>
             <Send size={18} aria-hidden="true" />
-            Send OTP
+            {isSendingOtp ? "Checking account" : "Send OTP"}
           </button>
         )}
       </section>
@@ -1141,6 +1174,94 @@ function saveAccount(account) {
   const accounts = readAccounts();
   accounts[account.phone] = account;
   window.localStorage.setItem(ACCOUNT_DB_KEY, JSON.stringify(accounts));
+}
+
+async function lookupAccountFromServer(phone) {
+  try {
+    const response = await authFetch(getApiUrl("/api/user-profile"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "lookup",
+        phone: normalizePhone(phone)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.profile) return null;
+    return profileToAccount(data.profile);
+  } catch {
+    return null;
+  }
+}
+
+async function syncUserProfileToServer(account) {
+  if (!account?.phone || !account?.birthDate) return null;
+  try {
+    const response = await authFetch(getApiUrl("/api/user-profile"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        user: buildProfileUserPayload(account)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok ? data.profile : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildProfileUserPayload(account) {
+  return {
+    id: account.id,
+    authUserId: account.authUserId,
+    name: account.name,
+    phone: account.phone,
+    email: account.email,
+    birthDate: account.birthDate,
+    birthTime: account.birthTime,
+    birthPlace: account.birthPlace,
+    birthLatitude: account.birthLatitude,
+    birthLongitude: account.birthLongitude
+  };
+}
+
+function profileToAccount(profile) {
+  return mergeAccountProfile({
+    id: profile.authUserId || profile.id || `profile-${Date.now()}`,
+    phone: profile.phone,
+    solvedProblems: [],
+    memberPlan: "",
+    guidanceHistory: [],
+    savedGuidance: []
+  }, profile);
+}
+
+function mergeAccountProfile(account, profile) {
+  if (!profile) return account;
+  const phone = normalizePhone(profile.phone || account.phone);
+  return {
+    ...account,
+    id: account.id || profile.authUserId || profile.id,
+    profileId: profile.profileId || profile.id || account.profileId,
+    authUserId: profile.authUserId || account.authUserId || null,
+    name: profile.name || account.name || "SoulGuru user",
+    phone,
+    email: profile.email || account.email || "",
+    birthDate: profile.birthDate || account.birthDate || "",
+    birthTime: profile.birthTime || account.birthTime || "",
+    birthPlace: profile.birthPlace || account.birthPlace || "",
+    birthLatitude: profile.birthLatitude ?? account.birthLatitude ?? null,
+    birthLongitude: profile.birthLongitude ?? account.birthLongitude ?? null,
+    syncedAt: profile.updatedAt || new Date().toISOString()
+  };
+}
+
+function hasProfileChanged(previous, next) {
+  if (!previous) return true;
+  return ["id", "authUserId", "name", "phone", "email", "birthDate", "birthTime", "birthPlace", "birthLatitude", "birthLongitude"]
+    .some((field) => previous?.[field] !== next?.[field]);
 }
 
 function getSessionUser() {

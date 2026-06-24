@@ -5,6 +5,7 @@ import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { getMoreGuidanceDashboard, saveGuidance } from "./src/backend/guidanceService.js";
 import { searchGuidanceMemory, upsertGuidanceMemory } from "./src/backend/memoryService.js";
 import { createRazorpayOrder } from "./src/backend/payments.js";
+import { handleUserProfile } from "./src/backend/profileService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
 import { parseJsonRequest, sendJson } from "./src/backend/request.js";
@@ -207,6 +208,39 @@ function soulGuruApiPlugin() {
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
           sendJson(res, error.statusCode || 500, { error: error.message || "Unable to load More Guidance" });
+        }
+      });
+
+      server.middlewares.use("/api/user-profile", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user || { phone: payload.phone, email: payload.email }),
+            route: "user-profile",
+            limit: Number(runtimeEnv.USER_PROFILE_RATE_LIMIT || 60),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many profile requests. Try again later.", rate });
+            return;
+          }
+
+          const result = await handleUserProfile(payload, runtimeEnv);
+          sendJson(res, 200, { ...result, rate, auth });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to update profile" });
         }
       });
     }

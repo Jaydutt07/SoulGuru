@@ -183,7 +183,7 @@ function mapSavedGuidance(item) {
 
 async function upsertUserProfile(supabase, user) {
   const profile = {
-    auth_user_id: user.authUserId || user.id || null,
+    auth_user_id: user.authUserId || null,
     phone: user.phone || null,
     email: user.email || null,
     full_name: user.name || "SoulGuru user",

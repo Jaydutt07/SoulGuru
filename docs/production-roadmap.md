@@ -20,6 +20,7 @@ This project is being built toward the stack shown in the product planning image
 - Android Capacitor project and debug APK
 - Vercel-compatible API route for Soul Guru readings
 - Supabase schema for users, cached readings, subscriptions, saved advice, and Astro Solves
+- Server-backed profile sync route for account birth details
 - Supabase schema for idempotent Razorpay payment events and subscription provider metadata
 - Daily Soul Guru cache service with Supabase lookup/upsert
 - Optional Upstash-backed rate limit helper for paid/AI endpoints
