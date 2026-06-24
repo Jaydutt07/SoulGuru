@@ -60,6 +60,7 @@ This project is being built toward the stack shown in the product planning image
 - Production Soul Guru cache guard so daily AI readings require Supabase persistence
 - Production Astro Solves quota guard so real answers require Supabase persistence
 - Production More Guidance paid-access guard so deeper readings require persisted subscription and cache state
+- Production-gated Shani remedy member preview so Pandit chat cannot unlock from local account state
 - Live Supabase schema checker for migration/table/column contract verification
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing

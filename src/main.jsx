@@ -1131,9 +1131,11 @@ function GuidanceList({ title, items, empty }) {
 function ShaniTab({ user, updateUser }) {
   const [now, setNow] = useState(() => new Date());
   const [chatOpen, setChatOpen] = useState(false);
+  const [planStatus, setPlanStatus] = useState("");
   const report = useMemo(() => getSaadeSatiReport(user, now), [user, now]);
   const countdown = useMemo(() => getCountdown(report.endDate, now), [report.endDate, now]);
-  const memberPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === user.memberPlan);
+  const effectiveMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : "";
+  const memberPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === effectiveMemberPlanId);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60 * 60 * 1000);
@@ -1141,7 +1143,12 @@ function ShaniTab({ user, updateUser }) {
   }, []);
 
   function selectPlan(planId) {
-    updateUser({ memberPlan: planId });
+    if (LOCAL_PAID_FALLBACK_ENABLED) {
+      updateUser({ memberPlan: planId });
+      setPlanStatus("Local Shani member preview is active.");
+      return;
+    }
+    setPlanStatus("Secure Shani remedy checkout is required before member guidance can unlock.");
   }
 
   return (
@@ -1188,7 +1195,7 @@ function ShaniTab({ user, updateUser }) {
             <button
               type="button"
               key={plan.id}
-              className={user.memberPlan === plan.id ? "plan-card active" : "plan-card"}
+              className={effectiveMemberPlanId === plan.id ? "plan-card active" : "plan-card"}
               onClick={() => selectPlan(plan.id)}
             >
               <strong>{plan.name}</strong>
@@ -1196,6 +1203,7 @@ function ShaniTab({ user, updateUser }) {
             </button>
           ))}
         </div>
+        {planStatus && <p className="checkout-note">{planStatus}</p>}
       </div>
 
       {memberPlan && (

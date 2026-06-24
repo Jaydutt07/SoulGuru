@@ -10,6 +10,7 @@ checkProductionCreateRequiresProfilePersistence();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
 checkProductionSaveAdviceRequiresStoredBackendAnswer();
+checkProductionShaniDoesNotTrustLocalMemberPlan();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -62,6 +63,15 @@ function checkProductionSaveAdviceRequiresStoredBackendAnswer() {
     source.includes("if (!data.saved && !LOCAL_PAID_FALLBACK_ENABLED) {"),
     source.includes("setSaveStatus(\"Advice could not sync. Please try again shortly.\");"),
     source.includes("trackEvent(\"guidance_save_failed\");")
+  ].every(Boolean));
+}
+
+function checkProductionShaniDoesNotTrustLocalMemberPlan() {
+  pushCheck("Production Shani does not unlock Pandit from local memberPlan", [
+    source.includes("const effectiveMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : \"\";"),
+    source.includes("const memberPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === effectiveMemberPlanId);"),
+    source.includes("if (LOCAL_PAID_FALLBACK_ENABLED) {"),
+    source.includes("setPlanStatus(\"Secure Shani remedy checkout is required before member guidance can unlock.\");")
   ].every(Boolean));
 }
 
