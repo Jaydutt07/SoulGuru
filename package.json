@@ -27,6 +27,7 @@
     "otp:check": "node scripts/check-otp-contracts.mjs",
     "public-env:check": "node scripts/check-public-env.mjs",
     "public-env:check:strict": "node scripts/check-public-env.mjs --strict",
+    "rate-limit:check": "node scripts/check-rate-limit-contracts.mjs",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",
     "soul:cache:check": "node scripts/check-soul-wisdom-cache.mjs",
     "soul:quality": "node scripts/check-soul-wisdom-quality.mjs",

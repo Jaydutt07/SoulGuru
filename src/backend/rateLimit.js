@@ -1,14 +1,17 @@
+import crypto from "node:crypto";
 import { getClientIp } from "./request.js";
 
 const DEFAULT_LIMIT = 20;
 const DEFAULT_WINDOW_SECONDS = 24 * 60 * 60;
+const HASHED_KEY_PATTERN = /^rl_[a-f0-9]{32}$/;
 
 export async function checkRateLimit({
   env = process.env,
   key,
   route = "default",
   limit = DEFAULT_LIMIT,
-  windowSeconds = DEFAULT_WINDOW_SECONDS
+  windowSeconds = DEFAULT_WINDOW_SECONDS,
+  fetchImpl = fetch
 }) {
   const restUrl = env.UPSTASH_REDIS_REST_URL;
   const token = env.UPSTASH_REDIS_REST_TOKEN;
@@ -17,9 +20,9 @@ export async function checkRateLimit({
     return { allowed: true, remaining: limit, skipped: true };
   }
 
-  const redisKey = `soulguru:rate:${route}:${key || "anonymous"}`;
+  const redisKey = buildRedisRateLimitKey(route, key);
   try {
-    const response = await fetch(`${restUrl.replace(/\/$/, "")}/pipeline`, {
+    const response = await fetchImpl(`${restUrl.replace(/\/$/, "")}/pipeline`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -51,11 +54,34 @@ export async function checkRateLimit({
 }
 
 export function buildRateLimitKey(req, user = {}) {
-  return String(
+  return hashRateLimitSubject(
     user.authUserId ||
     user.id ||
     user.phone ||
     user.email ||
     getClientIp(req)
-  ).toLowerCase().trim();
+  );
+}
+
+export function hashRateLimitSubject(value) {
+  const normalized = String(value || "anonymous").toLowerCase().trim() || "anonymous";
+  return `rl_${crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 32)}`;
+}
+
+function buildRedisRateLimitKey(route, key) {
+  return `soulguru:rate:${sanitizeRoute(route)}:${normalizeRateLimitKey(key)}`;
+}
+
+function normalizeRateLimitKey(key) {
+  const value = String(key || "").toLowerCase().trim();
+  if (HASHED_KEY_PATTERN.test(value)) return value;
+  return hashRateLimitSubject(value || "anonymous");
+}
+
+function sanitizeRoute(route) {
+  const value = String(route || "default")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return value || "default";
 }

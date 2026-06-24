@@ -44,6 +44,9 @@ jobs:
       - name: Verify guidance memory contracts
         run: npm run memory:check
 
+      - name: Verify rate limit contracts
+        run: npm run rate-limit:check
+
       - name: Verify Soul Guru daily cache contract
         run: npm run soul:cache:check
 

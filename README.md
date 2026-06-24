@@ -93,6 +93,12 @@ Check Pinecone/OpenAI memory behavior, hashed namespaces, sanitized metadata, an
 npm run memory:check
 ```
 
+Check Upstash rate limiting, hashed Redis keys, pipeline requests, and degraded behavior:
+
+```bash
+npm run rate-limit:check
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -178,6 +184,7 @@ The CI template checks:
 - `npm run astrology:check`
 - `npm run auth:check`
 - `npm run memory:check`
+- `npm run rate-limit:check`
 - `npm run soul:cache:check`
 - `npm run astro:check`
 - `npm run otp:check`
@@ -410,6 +417,7 @@ Before release:
 - Run `npm run astrology:check`.
 - Run `npm run auth:check`.
 - Run `npm run memory:check`.
+- Run `npm run rate-limit:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.

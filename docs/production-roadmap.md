@@ -27,6 +27,7 @@ This project is being built toward the stack shown in the product planning image
 - Daily Soul Guru cache service with Supabase lookup/upsert
 - Offline daily Soul Guru cache contract checker for Supabase hit/miss behavior
 - Optional Upstash-backed rate limit helper for paid/AI endpoints
+- Offline Upstash rate-limit contract checker with hashed Redis keys and degraded-open behavior
 - Razorpay order route and signature-verified webhook route
 - Razorpay checkout return verification before local subscription activation
 - Offline Razorpay order, checkout signature, and webhook contract checker
