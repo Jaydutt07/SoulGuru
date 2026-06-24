@@ -34,6 +34,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Server-backed More Guidance dashboard and saved advice persistence
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
+- Local-LAN APK build helper for phone testing against the Mac dev backend
 - Production readiness endpoint and CLI checks for backend env configuration
 - Vercel deployment config plus deployed backend smoke-test script
 - Astronomy-based birth/transit context replacing hash-only astrology

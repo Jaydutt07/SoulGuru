@@ -215,6 +215,20 @@ SoulGuru-debug.apk
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
 Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
 
+For phone testing before Vercel deployment, run the backend on your Mac's Wi-Fi/LAN address:
+
+```bash
+npm run dev:lan
+```
+
+In a second terminal, build a phone APK that points at that LAN backend:
+
+```bash
+npm run android:apk:local
+```
+
+That command auto-detects your Mac's LAN IP and builds `SoulGuru-debug.apk` with `VITE_API_BASE_URL=http://YOUR_LAN_IP:5173`. Your phone and Mac must be on the same network, and the dev server must stay running while you test AI/backend features on the phone.
+
 Use this command for the APK you want to test on a phone after Vercel is deployed:
 
 ```bash

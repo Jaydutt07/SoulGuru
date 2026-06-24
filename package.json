@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:lan": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "android:add": "cap add android",
     "android:sync": "npm run build && cap sync android",
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../SoulGuru-debug.apk",
     "android:apk:backend": "node scripts/validate-mobile-backend.mjs && npm run android:apk",
+    "android:apk:local": "node scripts/build-local-mobile-apk.mjs",
     "mobile:check-backend": "node scripts/validate-mobile-backend.mjs",
+    "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
     "production:check": "node scripts/check-production-readiness.mjs",
     "deployment:smoke": "node scripts/smoke-deployed-backend.mjs"
   },

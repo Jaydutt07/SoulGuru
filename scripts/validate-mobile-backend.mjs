@@ -8,6 +8,7 @@ const env = {
 
 const apiBaseUrl = String(env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
 const allowLocalhost = process.argv.includes("--allow-localhost");
+const allowLan = process.argv.includes("--allow-lan");
 const skipHealth = process.argv.includes("--skip-health");
 
 if (!apiBaseUrl) {
@@ -22,12 +23,17 @@ try {
 }
 
 const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(parsedUrl.hostname);
-if (parsedUrl.protocol !== "https:" && !(allowLocalhost && isLocalhost)) {
-  fail("VITE_API_BASE_URL must use https for mobile builds.");
+const isLanHost = isPrivateHost(parsedUrl.hostname);
+if (parsedUrl.protocol !== "https:" && !(allowLocalhost && isLocalhost) && !(allowLan && isLanHost)) {
+  fail("VITE_API_BASE_URL must use https for mobile builds, unless --allow-lan is used for local phone testing.");
 }
 
 if (isLocalhost && !allowLocalhost) {
   fail("VITE_API_BASE_URL cannot point to localhost for a phone APK. Use a deployed backend URL.");
+}
+
+if (isLanHost && !allowLan) {
+  fail("VITE_API_BASE_URL points to a private LAN host. Use --allow-lan only for local phone testing, or use a deployed HTTPS backend.");
 }
 
 const unsafePublicKeys = Object.keys(env).filter((key) => {
@@ -55,4 +61,21 @@ console.log(`Mobile backend check passed: ${apiBaseUrl}`);
 function fail(message) {
   console.error(`Mobile backend check failed: ${message}`);
   process.exit(1);
+}
+
+function isPrivateHost(hostname) {
+  const normalized = String(hostname || "").toLowerCase();
+  if (normalized.startsWith("[") && normalized.endsWith("]")) {
+    return isPrivateHost(normalized.slice(1, -1));
+  }
+  if (normalized === "host.docker.internal") return true;
+  if (normalized.startsWith("fe80:") || normalized.startsWith("fd")) return true;
+
+  const parts = normalized.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) return false;
+  return (
+    parts[0] === 10 ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168)
+  );
 }
