@@ -68,6 +68,7 @@ This project is being built toward the stack shown in the product planning image
 - Combined release readiness runner for local and strict production preflight checks
 - Astronomy-based birth/transit context replacing hash-only astrology
 - Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows
+- Sidereal chart-based Harmony compatibility with offline contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice
 

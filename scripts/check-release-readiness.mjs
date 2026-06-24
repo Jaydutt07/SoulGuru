@@ -17,6 +17,7 @@ const skipped = [];
 
 await runStep("Public env safety", "node", ["scripts/check-public-env.mjs", "--strict"]);
 await runStep("Astrology engine contract", "npm", ["run", "astrology:check"]);
+await runStep("Harmony compatibility contract", "npm", ["run", "compatibility:check"]);
 await runStep("Auth contract checks", "npm", ["run", "auth:check"]);
 await runStep("Guidance memory contract checks", "npm", ["run", "memory:check"]);
 await runStep("Rate limit contract checks", "npm", ["run", "rate-limit:check"]);

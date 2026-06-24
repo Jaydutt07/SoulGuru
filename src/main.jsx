@@ -23,6 +23,7 @@ import {
 import "./styles.css";
 import { authFetch } from "./authClient.js";
 import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
+import { generateCompatibility } from "./compatibility.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
 import { enrichUserWithPlace } from "./placeResolver.js";
@@ -2039,33 +2040,6 @@ function getNumbers(user) {
     { label: "Lucky number", value: lucky, note: "Use it for gentle alignment in dates, goals, and small starts." },
     { label: "Avoid", value: avoid, note: "Do not overuse this number when a choice already feels tense." }
   ];
-}
-
-function generateCompatibility(user, partner) {
-  const userSign = getWesternZodiac(user.birthDate);
-  const partnerSign = getWesternZodiac(partner.birthDate);
-  const userLife = reduceDigits(user.birthDate);
-  const partnerLife = reduceDigits(partner.birthDate);
-  const elementScore = userSign.element === partnerSign.element ? 22 : compatibleElements(userSign.element, partnerSign.element) ? 15 : 7;
-  const numberScore = 24 - Math.min(18, Math.abs(userLife - partnerLife) * 3);
-  const nameScore = stableHash(`${user.name}-${partner.name}`) % 25;
-  const score = Math.min(96, Math.max(42, 45 + elementScore + numberScore + nameScore));
-
-  return {
-    score,
-    title: `${userSign.sign} and ${partnerSign.sign}`,
-    summary: `${firstName(user.name)} and ${firstName(partner.name)} have a ${score >= 78 ? "warm and naturally supportive" : score >= 62 ? "promising but effort-based" : "karmic and growth-heavy"} bond. The match improves when affection is steady and expectations are spoken before they become tests.`,
-    details: [
-      { label: "Emotional rhythm:", text: `${userSign.element} and ${partnerSign.element} energy needs regular reassurance without losing personal space.` },
-      { label: "Strength:", text: `Life paths ${userLife} and ${partnerLife} can build loyalty when both partners respect each other's pace.` },
-      { label: "Growth edge:", text: "Avoid silent scorekeeping. One honest weekly check-in will protect the connection." }
-    ]
-  };
-}
-
-function compatibleElements(first, second) {
-  const pair = [first, second].sort().join("-");
-  return ["air-fire", "earth-water"].includes(pair);
 }
 
 function reduceDigits(value) {

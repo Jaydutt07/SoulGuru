@@ -85,6 +85,12 @@ Check chart/transit calculation, place resolution, timezone handling, and Saade 
 npm run astrology:check
 ```
 
+Check Harmony compatibility against sidereal birth-chart placements:
+
+```bash
+npm run compatibility:check
+```
+
 Check Clerk auth behavior and production client login rules, including fail-closed required auth, backend identity injection, server-profile-first login, and profile persistence before account creation completes:
 
 ```bash
