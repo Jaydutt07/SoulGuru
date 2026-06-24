@@ -27,8 +27,15 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   if (supabase) {
     const cached = await readCachedReading(supabase, userKey, date);
     if (cached) {
-      return { ...cached, cached: true, source: "supabase" };
+      return { ...cached, cached: true, source: "supabase", stored: true };
     }
+  }
+
+  if (!supabase && !isUncachedSoulWisdomAllowed(env)) {
+    throwHttpError(
+      "Supabase is required to cache Soul Guru daily readings. Set SOUL_WISDOM_ALLOW_UNCACHED=true only for isolated quality testing.",
+      503
+    );
   }
 
   const apiKey = env.OPENAI_API_KEY;
@@ -76,6 +83,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     wisdom: reading.wisdom,
     astrologyContext,
     cached: false,
+    stored: false,
     model,
     promptVersion: SOUL_WISDOM_PROMPT_VERSION,
     readingDate: date,
@@ -93,7 +101,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   };
 
   if (supabase) {
-    await writeCachedReading(supabase, {
+    const cacheResult = await writeCachedReading(supabase, {
       user,
       userKey,
       date,
@@ -102,6 +110,10 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
       astrologyContext,
       model
     });
+    if (!cacheResult.stored) {
+      throwHttpError("Soul Guru reading could not be cached. Please try again.", 503);
+    }
+    result.stored = true;
   }
 
   await upsertMemory({
@@ -117,6 +129,10 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   }, env);
 
   return result;
+}
+
+export function isUncachedSoulWisdomAllowed(env = process.env) {
+  return String(env.SOUL_WISDOM_ALLOW_UNCACHED || "false").toLowerCase() === "true";
 }
 
 async function requestSoulWisdom(client, model, input) {
@@ -139,7 +155,7 @@ async function readCachedReading(supabase, userKey, date) {
 
   if (error) {
     console.warn("Unable to read cached Soul Guru reading", error.message);
-    return null;
+    throwHttpError("Soul Guru daily cache could not be checked. Please try again.", 503);
   }
 
   if (!data?.reading) return null;
@@ -175,7 +191,10 @@ async function writeCachedReading(supabase, { user, userKey, date, timezone, rea
 
   if (error) {
     console.warn("Unable to cache Soul Guru reading", error.message);
+    return { stored: false, error: error.message };
   }
+
+  return { stored: true };
 }
 
 async function upsertUserProfile(supabase, user) {
@@ -225,6 +244,12 @@ function nullableNumber(value) {
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }
 
 function buildServerFallbackWisdom(user, context) {

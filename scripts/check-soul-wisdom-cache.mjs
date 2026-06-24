@@ -1,9 +1,134 @@
 import {
   createDailySoulWisdom,
+  isUncachedSoulWisdomAllowed,
   SOUL_WISDOM_PROMPT_VERSION
 } from "../src/backend/soulWisdomService.js";
 
 const checks = [];
+
+async function checkUncachedModeRequiresExplicitFlag() {
+  const user = soulUser("uncached-default");
+  const openAiRequests = [];
+  let error = null;
+
+  try {
+    await createDailySoulWisdom({
+      user,
+      date: "2026-06-24"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase: null,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("Soul Guru uncached mode requires explicit server flag", [
+    error?.statusCode === 503,
+    /Supabase is required/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    isUncachedSoulWisdomAllowed({ SOUL_WISDOM_ALLOW_UNCACHED: "true" }) === true,
+    isUncachedSoulWisdomAllowed({ SOUL_WISDOM_ALLOW_UNCACHED: "false" }) === false
+  ].every(Boolean));
+}
+
+async function checkExplicitUncachedModeReturnsUnstoredReading() {
+  const user = soulUser("uncached-enabled");
+  const wisdomJson = JSON.stringify({
+    wisdom: "The notebook beside your cup is asking for a smaller promise than the one your mind keeps building. Tara, write the sentence that names the real task, then leave the larger worry outside the room for one hour. The sensitive point is not effort; it is the way pressure keeps pretending to be preparation. Finish one thing that can be verified today, and let the rest wait without earning more attention.",
+    innerWeather: "Pressure becoming practical",
+    todayMove: "Name the real task",
+    release: "Stop rehearsing the larger worry"
+  });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+
+  const result = await createDailySoulWisdom({
+    user,
+    date: "2026-06-24"
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-contract",
+    SOUL_WISDOM_ALLOW_UNCACHED: "true"
+  }, {
+    supabase: null,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async (payload) => {
+      memoryUpserts.push(payload);
+      return { configured: false, upserted: false };
+    },
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return { output_text: wisdomJson };
+          }
+        }
+      };
+    }
+  });
+
+  pushCheck("Explicit uncached Soul Guru mode returns unstored quality-test reading", [
+    result.cached === false,
+    result.stored === false,
+    result.model === "gpt-contract",
+    result.promptVersion === SOUL_WISDOM_PROMPT_VERSION,
+    openAiRequests.length === 1,
+    memoryUpserts.length === 1
+  ].every(Boolean));
+}
+
+async function checkCacheReadFailureDoesNotCallOpenAI() {
+  const supabase = createFakeSupabase({ failDailySelect: true });
+  const openAiRequests = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createDailySoulWisdom({
+      user: soulUser("cache-read-failure"),
+      date: "2026-06-24"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Soul Guru cache read failure does not call OpenAI", [
+    error?.statusCode === 503,
+    /cache could not be checked/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert").length === 0
+  ].every(Boolean));
+}
 
 async function checkCachedReadingBypassesOpenAI() {
   const date = "2026-06-24";
@@ -45,6 +170,7 @@ async function checkCachedReadingBypassesOpenAI() {
   pushCheck("Cached reading returns Supabase source", [
     result.cached === true,
     result.source === "supabase",
+    result.stored === true,
     result.wisdom === cachedWisdom,
     result.promptVersion === SOUL_WISDOM_PROMPT_VERSION,
     result.readingDate === date
@@ -123,6 +249,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   pushCheck("Cache miss calls backend OpenAI once", [
     openAiRequests.length === 1,
     first.cached === false,
+    first.stored === true,
     first.model === "gpt-contract",
     first.promptVersion === SOUL_WISDOM_PROMPT_VERSION,
     first.reading.wisdom.includes("Leela"),
@@ -147,6 +274,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   pushCheck("Second same-day read uses cache without OpenAI", [
     second.cached === true,
     second.source === "supabase",
+    second.stored === true,
     second.wisdom === first.wisdom,
     openAiRequests.length === 1,
     dailyWrites.length === 1
@@ -159,13 +287,69 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   ].every(Boolean));
 }
 
-function createFakeSupabase({ dailyReadings = [] } = {}) {
+async function checkCacheWriteFailureDoesNotReturnReading() {
+  const user = soulUser("cache-failure");
+  const wisdomJson = JSON.stringify({
+    wisdom: "The glass of water near the paper is enough of a beginning for the day. Tara, make the first action plain before the worry turns it into a performance. The pressure underneath this is not weakness; it is the habit of measuring care by how much tension you can carry. Finish the visible task, leave one sentence unsent, and give your body proof that progress does not need drama.",
+    innerWeather: "Focused under private pressure",
+    todayMove: "Finish the visible task",
+    release: "Leave one sentence unsent"
+  });
+  const supabase = createFakeSupabase({ failDailyUpsert: true });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createDailySoulWisdom({
+      user,
+      date: "2026-06-24"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+      upsertGuidanceMemory: async (payload) => {
+        memoryUpserts.push(payload);
+        return { configured: false, upserted: false };
+      },
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: wisdomJson };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Soul Guru cache write failure does not return uncached reading", [
+    error?.statusCode === 503,
+    /could not be cached/.test(error?.message || ""),
+    openAiRequests.length === 1,
+    memoryUpserts.length === 0,
+    supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert").length === 1
+  ].every(Boolean));
+}
+
+function createFakeSupabase({ dailyReadings = [], failDailySelect = false, failDailyUpsert = false } = {}) {
   const state = {
     calls: [],
     dailyReadings: new Map(),
     profiles: new Map(),
     nextProfileId: 1,
-    nextDailyId: 1
+    nextDailyId: 1,
+    failDailySelect,
+    failDailyUpsert
   };
 
   for (const reading of dailyReadings) {
@@ -216,6 +400,14 @@ class FakeQuery {
     }
 
     if (this.table === "daily_soul_readings") {
+      if (this.state.failDailyUpsert) {
+        this.result = {
+          data: null,
+          error: { message: "contract cache failure" }
+        };
+        return this;
+      }
+
       const key = dailyKey(payload);
       const existing = this.state.dailyReadings.get(key);
       const reading = {
@@ -234,6 +426,13 @@ class FakeQuery {
 
   async maybeSingle() {
     if (this.table === "daily_soul_readings") {
+      if (this.state.failDailySelect) {
+        return {
+          data: null,
+          error: { message: "contract cache read failure" }
+        };
+      }
+
       const key = dailyKey({
         user_key: this.filters.user_key,
         reading_date: this.filters.reading_date,
@@ -265,6 +464,18 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function soulUser(id) {
+  return {
+    id,
+    name: "Tara Sen",
+    phone: "+919800000002",
+    email: `${id}@soulguru.local`,
+    birthDate: "1992-04-12",
+    birthTime: "08:20",
+    birthPlace: "Pune"
+  };
+}
+
 function pushCheck(label, passed) {
   checks.push({ label, passed });
 }
@@ -278,8 +489,12 @@ function printReport() {
 }
 
 async function main() {
+  await checkUncachedModeRequiresExplicitFlag();
+  await checkExplicitUncachedModeReturnsUnstoredReading();
+  await checkCacheReadFailureDoesNotCallOpenAI();
   await checkCachedReadingBypassesOpenAI();
   await checkCacheMissWritesAndSecondReadUsesCache();
+  await checkCacheWriteFailureDoesNotReturnReading();
 
   const failed = checks.filter((check) => !check.passed);
   printReport();

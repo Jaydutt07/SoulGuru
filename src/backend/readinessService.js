@@ -8,6 +8,7 @@ export function buildDeploymentReadiness(env = process.env) {
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY"
     ], "Configure Supabase and apply all migrations before production launch."),
+    checkSoulWisdom(env),
     checkAstroSolves(env),
     checkOtp(env),
     checkRazorpay(env),
@@ -68,6 +69,23 @@ function checkAstroSolves(env) {
     missingEnv,
     advice: missingEnv.length
       ? "Disable local Astro Solves quota mode so production questions are counted and stored in Supabase."
+      : ""
+  };
+}
+
+function checkSoulWisdom(env) {
+  const uncachedEnabled = String(env.SOUL_WISDOM_ALLOW_UNCACHED || "false").toLowerCase() === "true";
+  const missingEnv = uncachedEnabled ? ["SOUL_WISDOM_ALLOW_UNCACHED=false"] : [];
+
+  return {
+    id: "soulWisdomCache",
+    label: "Soul Guru daily cache persistence",
+    severity: "critical",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["SOUL_WISDOM_ALLOW_UNCACHED=false"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Disable uncached Soul Guru mode so production readings are cached once per user per day."
       : ""
   };
 }

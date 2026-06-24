@@ -84,6 +84,7 @@ async function buildAiResults() {
 
   const aiEnv = {
     ...env,
+    SOUL_WISDOM_ALLOW_UNCACHED: "true",
     SUPABASE_URL: "",
     SUPABASE_SERVICE_ROLE_KEY: "",
     PINECONE_API_KEY: "",

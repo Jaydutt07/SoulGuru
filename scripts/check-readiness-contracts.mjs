@@ -4,6 +4,7 @@ const checks = [];
 
 checkFullProductionStackIsReady();
 checkPartialStackIsNotReady();
+checkUncachedSoulWisdomIsNotReady();
 checkLocalAstroSolvesQuotaIsNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
@@ -65,6 +66,20 @@ function checkLocalAstroSolvesQuotaIsNotReady() {
     report.ok === false,
     astroQuota?.status === "fail",
     astroQuota?.missingEnv.includes("ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=false")
+  ].every(Boolean));
+}
+
+function checkUncachedSoulWisdomIsNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    SOUL_WISDOM_ALLOW_UNCACHED: "true"
+  });
+  const soulCache = report.checks.find((check) => check.id === "soulWisdomCache");
+
+  pushCheck("Readiness rejects uncached Soul Guru mode", [
+    report.ok === false,
+    soulCache?.status === "fail",
+    soulCache?.missingEnv.includes("SOUL_WISDOM_ALLOW_UNCACHED=false")
   ].every(Boolean));
 }
 

@@ -26,6 +26,7 @@ Required for AI readings:
 ```bash
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.5
+SOUL_WISDOM_ALLOW_UNCACHED=false
 ASTRO_SOLVE_MODEL=gpt-5.5
 ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=false
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
@@ -265,7 +266,7 @@ Requests and verifies backend-controlled OTP challenges. With Supabase configure
 
 `POST /api/soul-wisdom`
 
-Creates or returns the cached daily Soul Guru reading for a user/date. If Supabase is configured, it checks `daily_soul_readings` first and only calls OpenAI on cache miss. The reading context uses the user's resolved birth place, coordinates, and timezone silently so the final Words of Wisdom stay personal without mentioning astrology. If Upstash is configured, this endpoint is rate-limited server-side.
+Creates or returns the cached daily Soul Guru reading for a user/date. Production requires Supabase-backed caching in `daily_soul_readings`, checks the cache first, and only calls OpenAI on cache miss. `SOUL_WISDOM_ALLOW_UNCACHED=true` is only for isolated local quality testing. The reading context uses the user's resolved birth place, coordinates, and timezone silently so the final Words of Wisdom stay personal without mentioning astrology. If Upstash is configured, this endpoint is rate-limited server-side.
 
 `POST /api/user-profile`
 
