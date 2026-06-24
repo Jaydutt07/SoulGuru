@@ -303,7 +303,7 @@ Verifies the Razorpay checkout return signature and backend-signed order token b
 
 `POST /api/razorpay-webhook`
 
-Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events.
+Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events. Production webhook processing requires Supabase event storage; unstored webhook events are allowed only when `PAYMENTS_ALLOW_LOCAL_ACTIVATION=true` is explicitly set for isolated local testing.
 
 `POST /api/astro-solve`
 

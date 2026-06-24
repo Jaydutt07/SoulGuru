@@ -76,6 +76,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed More Guidance tracking contract with days left, month status, progress, and milestones
 - Fail-closed More Guidance dashboard reads so paid history and saved advice cannot silently disappear
 - Fail-closed Astro Solves quota checks so unreadable subscription/count state cannot spend OpenAI or return uncounted answers
+- Fail-closed Razorpay webhook processing unless local payment activation is explicitly enabled
 
 ## Next Implementation Steps
 

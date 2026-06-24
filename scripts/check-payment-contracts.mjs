@@ -226,9 +226,17 @@ async function checkWebhookSignatureContract() {
 
 async function checkWebhookProcessingContract() {
   const rawBody = JSON.stringify(webhookPayload());
-  const result = await processRazorpayWebhook(rawBody, {});
+  await expectRejects(
+    "Webhook processing requires persisted event storage",
+    () => processRazorpayWebhook(rawBody, {}),
+    /Supabase is required/i
+  );
 
-  pushCheck("Webhook processing degrades without Supabase", [
+  const result = await processRazorpayWebhook(rawBody, {
+    PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+  });
+
+  pushCheck("Webhook processing degrades only in explicit local payment mode", [
     result.ok === true,
     result.stored === false,
     result.duplicate === false,

@@ -30,6 +30,6 @@ export default async function handler(req, res) {
     const result = await processRazorpayWebhook(rawBody, process.env);
     sendJson(res, 200, result);
   } catch (error) {
-    sendJson(res, 500, { error: error.message || "Unable to process webhook" });
+    sendJson(res, error.statusCode || 500, { error: error.message || "Unable to process webhook" });
   }
 }

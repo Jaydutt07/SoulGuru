@@ -162,13 +162,19 @@ export async function processRazorpayWebhook(rawBody, env = process.env) {
   const supabase = createSupabaseAdmin(env);
 
   if (!supabase) {
+    if (!isLocalPaymentActivationAllowed(env)) {
+      const error = new Error("Supabase is required to persist Razorpay webhook events");
+      error.statusCode = 503;
+      throw error;
+    }
+
     return {
       ok: true,
       stored: false,
       duplicate: false,
       activated: false,
       eventName,
-      reason: "Supabase is not configured"
+      reason: "Supabase is not configured; local payment mode is enabled"
     };
   }
 
