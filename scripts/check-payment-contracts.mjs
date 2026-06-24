@@ -57,7 +57,9 @@ async function checkOrderCreationContract() {
         name: "Contract User",
         phone: "+15550000000",
         email: "contract@soulguru.local"
-      }
+      },
+      amount: 1,
+      currency: "USD"
     }, {
       RAZORPAY_KEY_ID: "rzp_test_contract",
       RAZORPAY_KEY_SECRET: "contract-secret",
@@ -77,6 +79,8 @@ async function checkOrderCreationContract() {
       order.provider === "razorpay",
       order.keyId === "rzp_test_contract",
       order.orderId === "order_contract_123",
+      order.amount === 49900,
+      order.currency === "INR",
       order.orderToken === expectedOrderToken
     ].every(Boolean));
   } finally {
@@ -87,6 +91,16 @@ async function checkOrderCreationContract() {
     "Razorpay missing keys",
     () => createRazorpayOrder({ user: {} }, {}),
     /keys are not configured/i
+  );
+
+  await expectRejects(
+    "Razorpay order rejects invalid configured price",
+    () => createRazorpayOrder({ user: {} }, {
+      RAZORPAY_KEY_ID: "rzp_test_contract",
+      RAZORPAY_KEY_SECRET: "contract-secret",
+      MORE_GUIDANCE_PRICE_PAISE: "0"
+    }),
+    /positive integer/i
   );
 }
 
@@ -200,6 +214,42 @@ async function checkCheckoutVerificationContract() {
       RAZORPAY_KEY_SECRET: secret
     }),
     /could not be matched/i
+  );
+
+  await expectRejects(
+    "Checkout verification rejects underpriced plan token",
+    () => verifyRazorpayCheckoutPayment({
+      user: { id: "user-contract" },
+      orderId,
+      amount: 1,
+      currency,
+      orderToken: hmac(`${orderId}|user-contract|1|${currency}`, secret),
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+    }),
+    /amount does not match/i,
+    400
+  );
+
+  await expectRejects(
+    "Checkout verification rejects tampered currency token",
+    () => verifyRazorpayCheckoutPayment({
+      user: { id: "user-contract" },
+      orderId,
+      amount,
+      currency: "USD",
+      orderToken: hmac(`${orderId}|user-contract|${amount}|USD`, secret),
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+    }),
+    /amount does not match/i,
+    400
   );
 
   await expectRejects(
@@ -601,12 +651,15 @@ function hmac(value, secret) {
   return crypto.createHmac("sha256", secret).update(value).digest("hex");
 }
 
-async function expectRejects(label, action, pattern) {
+async function expectRejects(label, action, pattern, statusCode) {
   try {
     await action();
     pushCheck(label, false);
   } catch (error) {
-    pushCheck(label, pattern.test(String(error.message || "")));
+    pushCheck(label, [
+      pattern.test(String(error.message || "")),
+      statusCode ? error.statusCode === statusCode : true
+    ].every(Boolean));
   }
 }
 

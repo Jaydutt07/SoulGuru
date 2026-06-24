@@ -301,11 +301,11 @@ Creates, updates, or looks up a user profile in Supabase using the backend servi
 
 `POST /api/create-razorpay-order`
 
-Creates a Razorpay checkout order for Soul Guru + Astro Solve. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
+Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
 
 `POST /api/verify-razorpay-payment`
 
-Verifies the Razorpay checkout return signature and backend-signed order token before the app marks More Guidance active. This protects the client-side activation path from cross-user payment reuse while the webhook remains the durable payment event source.
+Verifies the Razorpay checkout return signature, backend-signed order token, and configured plan amount/currency before the app marks More Guidance active. This protects the client-side activation path from cross-user payment reuse or underpriced order tampering while the webhook remains the durable payment event source.
 
 `POST /api/razorpay-webhook`
 

@@ -82,6 +82,7 @@ This project is being built toward the stack shown in the product planning image
 - OTP challenge storage before delivery so users are not sent unverifiable codes
 - Razorpay webhook replay repair for stored activation events and idempotent provider subscription lifecycle events
 - Race-safe Razorpay subscription activation so unique database conflicts re-read the existing paid membership
+- Server-owned More Guidance price and currency checks for Razorpay orders and checkout verification
 
 ## Next Implementation Steps
 

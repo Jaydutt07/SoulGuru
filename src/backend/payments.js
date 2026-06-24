@@ -4,9 +4,11 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
 const MEMBERSHIP_PLAN_NAME = "Soul Guru + Astro Solve";
+const MORE_GUIDANCE_CURRENCY = "INR";
+const DEFAULT_MORE_GUIDANCE_PRICE_PAISE = 49900;
 const SUBSCRIPTION_SELECT = "id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata";
 
-export async function createRazorpayOrder({ user = {}, amount, currency = "INR" }, env = process.env) {
+export async function createRazorpayOrder({ user = {} }, env = process.env) {
   const keyId = env.RAZORPAY_KEY_ID;
   const keySecret = env.RAZORPAY_KEY_SECRET;
 
@@ -14,7 +16,8 @@ export async function createRazorpayOrder({ user = {}, amount, currency = "INR" 
     throw new Error("Razorpay keys are not configured");
   }
 
-  const amountPaise = Number(amount || env.MORE_GUIDANCE_PRICE_PAISE || 49900);
+  const amountPaise = getMoreGuidancePricePaise(env);
+  const currency = MORE_GUIDANCE_CURRENCY;
   const userKey = buildPaymentUserKey(user);
   const response = await fetch(RAZORPAY_ORDERS_URL, {
     method: "POST",
@@ -42,19 +45,25 @@ export async function createRazorpayOrder({ user = {}, amount, currency = "INR" 
     throw new Error(data?.error?.description || `Razorpay order failed with ${response.status}`);
   }
 
+  const responseAmount = Number(data.amount);
+  const responseCurrency = String(data.currency || "").toUpperCase();
+  if (responseAmount !== amountPaise || responseCurrency !== currency) {
+    throw new Error("Razorpay order response did not match the More Guidance plan");
+  }
+
   return {
     provider: "razorpay",
     keyId,
     orderId: data.id,
-    amount: data.amount,
-    currency: data.currency,
+    amount: responseAmount,
+    currency: responseCurrency,
     status: data.status,
     userKey,
     orderToken: signRazorpayOrder({
       orderId: data.id,
       userKey,
-      amount: data.amount,
-      currency: data.currency
+      amount: responseAmount,
+      currency: responseCurrency
     }, keySecret)
   };
 }
@@ -76,6 +85,14 @@ export function verifyRazorpayPaymentSignature({ orderId, paymentId, signature }
 }
 
 export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymentId, signature, amount, currency = "INR", orderToken }, env = process.env, deps = {}) {
+  const expectedAmount = getMoreGuidancePricePaise(env);
+  const expectedCurrency = MORE_GUIDANCE_CURRENCY;
+  if (Number(amount) !== expectedAmount || String(currency || "").toUpperCase() !== expectedCurrency) {
+    const error = new Error("Payment amount does not match the More Guidance plan");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const verified = verifyRazorpayPaymentSignature({
     orderId,
     paymentId,
@@ -435,6 +452,14 @@ function buildPaymentUserKey(user) {
 
 function isLocalPaymentActivationAllowed(env) {
   return String(env.PAYMENTS_ALLOW_LOCAL_ACTIVATION || "false").toLowerCase() === "true";
+}
+
+function getMoreGuidancePricePaise(env) {
+  const amount = Number(env.MORE_GUIDANCE_PRICE_PAISE || DEFAULT_MORE_GUIDANCE_PRICE_PAISE);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error("MORE_GUIDANCE_PRICE_PAISE must be a positive integer");
+  }
+  return amount;
 }
 
 function hasOwn(object, key) {
