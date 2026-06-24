@@ -48,7 +48,13 @@ export async function createRazorpayOrder({ user = {}, amount, currency = "INR" 
     amount: data.amount,
     currency: data.currency,
     status: data.status,
-    userKey
+    userKey,
+    orderToken: signRazorpayOrder({
+      orderId: data.id,
+      userKey,
+      amount: data.amount,
+      currency: data.currency
+    }, keySecret)
   };
 }
 
@@ -68,7 +74,7 @@ export function verifyRazorpayPaymentSignature({ orderId, paymentId, signature }
   return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
 }
 
-export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymentId, signature }, env = process.env) {
+export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymentId, signature, amount, currency = "INR", orderToken }, env = process.env) {
   const verified = verifyRazorpayPaymentSignature({
     orderId,
     paymentId,
@@ -82,6 +88,18 @@ export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymen
   }
 
   const userKey = buildPaymentUserKey(user);
+  if (!verifyRazorpayOrderToken({
+    orderId,
+    userKey,
+    amount,
+    currency,
+    orderToken
+  }, env.RAZORPAY_KEY_SECRET)) {
+    const error = new Error("Payment order could not be matched to this SoulGuru account");
+    error.statusCode = 401;
+    throw error;
+  }
+
   const startsAt = new Date();
   const endsAt = addMonths(startsAt, 3);
   const supabase = createSupabaseAdmin(env);
@@ -341,6 +359,28 @@ async function sendMembershipConfirmation(to, details, env) {
 
 function buildPaymentUserKey(user) {
   return String(user.authUserId || user.id || user.phone || user.email || "anonymous").toLowerCase().trim();
+}
+
+function signRazorpayOrder({ orderId, userKey, amount, currency }, secret) {
+  const payload = normalizeOrderTokenPayload({ orderId, userKey, amount, currency });
+  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+function verifyRazorpayOrderToken({ orderId, userKey, amount, currency, orderToken }, secret) {
+  if (!orderId || !userKey || !amount || !currency || !orderToken || !secret) return false;
+  const expected = signRazorpayOrder({ orderId, userKey, amount, currency }, secret);
+  const actual = String(orderToken);
+  if (actual.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+}
+
+function normalizeOrderTokenPayload({ orderId, userKey, amount, currency }) {
+  return [
+    String(orderId || "").trim(),
+    String(userKey || "").toLowerCase().trim(),
+    String(Number(amount || 0)),
+    String(currency || "INR").toUpperCase().trim()
+  ].join("|");
 }
 
 function addMonths(date, months) {

@@ -31,6 +31,7 @@ This project is being built toward the stack shown in the product planning image
 - Offline Upstash rate-limit contract checker with hashed Redis keys and degraded-open behavior
 - Razorpay order route and signature-verified webhook route
 - Razorpay checkout return verification before local subscription activation
+- Backend-signed Razorpay order token binding checkout verification to the same SoulGuru user
 - Offline Razorpay order, checkout signature, and webhook contract checker
 - Resend helper for subscription confirmation emails
 - Offline Resend email contract checker for API payloads, errors, skips, and membership email escaping

@@ -59,6 +59,7 @@ async function checkOrderCreationContract() {
     });
 
     const expectedAuth = `Basic ${Buffer.from("rzp_test_contract:contract-secret").toString("base64")}`;
+    const expectedOrderToken = hmac("order_contract_123|user-contract|49900|INR", "contract-secret");
     pushCheck("Razorpay order request", [
       seen.url === "https://api.razorpay.com/v1/orders",
       seen.method === "POST",
@@ -69,7 +70,8 @@ async function checkOrderCreationContract() {
       seen.body.notes?.user_key === "user-contract",
       order.provider === "razorpay",
       order.keyId === "rzp_test_contract",
-      order.orderId === "order_contract_123"
+      order.orderId === "order_contract_123",
+      order.orderToken === expectedOrderToken
     ].every(Boolean));
   } finally {
     globalThis.fetch = originalFetch;
@@ -110,12 +112,18 @@ async function checkCheckoutVerificationContract() {
   const orderId = "order_contract_123";
   const paymentId = "pay_contract_123";
   const signature = hmac(`${orderId}|${paymentId}`, secret);
+  const amount = 49900;
+  const currency = "INR";
+  const orderToken = hmac(`${orderId}|user-contract|${amount}|${currency}`, secret);
   const result = await verifyRazorpayCheckoutPayment({
     user: {
       id: "user-contract",
       phone: "+15550000000"
     },
     orderId,
+    amount,
+    currency,
+    orderToken,
     paymentId,
     signature
   }, {
@@ -141,12 +149,46 @@ async function checkCheckoutVerificationContract() {
     () => verifyRazorpayCheckoutPayment({
       user: { id: "user-contract" },
       orderId,
+      amount,
+      currency,
+      orderToken,
       paymentId,
       signature: "bad-signature"
     }, {
       RAZORPAY_KEY_SECRET: secret
     }),
     /could not be verified/i
+  );
+
+  await expectRejects(
+    "Checkout verification rejects mismatched order token",
+    () => verifyRazorpayCheckoutPayment({
+      user: { id: "different-user" },
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret
+    }),
+    /could not be matched/i
+  );
+
+  await expectRejects(
+    "Checkout verification requires backend order token",
+    () => verifyRazorpayCheckoutPayment({
+      user: { id: "user-contract" },
+      orderId,
+      amount,
+      currency,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret
+    }),
+    /could not be matched/i
   );
 }
 

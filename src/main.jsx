@@ -1435,6 +1435,9 @@ async function verifyRazorpayPayment({ user, order, payment }) {
         email: user.email
       },
       orderId: order.orderId,
+      amount: order.amount,
+      currency: order.currency || "INR",
+      orderToken: order.orderToken,
       paymentId: payment.razorpay_payment_id,
       signature: payment.razorpay_signature
     })
