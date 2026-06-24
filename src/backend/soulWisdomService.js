@@ -1,10 +1,10 @@
 import OpenAI from "openai";
-import { buildAstrologyContext } from "../astrologyEngine.js";
-import { buildSoulWisdomInput, normalizeWisdomPayload, SOUL_WISDOM_SYSTEM_PROMPT } from "../soulGuruPrompt.js";
+import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
+import { buildSoulWisdomInput, createFallbackReading, normalizeWisdomPayload, SOUL_WISDOM_SYSTEM_PROMPT } from "../soulGuruPrompt.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-const PROMPT_VERSION = "soul-wisdom-v3";
+const PROMPT_VERSION = "soul-wisdom-v4";
 
 export async function createDailySoulWisdom(payload, env = process.env) {
   const user = payload.user || {};
@@ -26,7 +26,7 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const astrologyContext = payload.context || buildAstrologyContext(user, new Date(`${date}T12:00:00+05:30`));
+  const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
   const memory = await searchGuidanceMemory({
     user,
     query: buildMemoryQuery({ user, astrologyContext, date }),
@@ -45,7 +45,8 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     })
   });
 
-  const reading = normalizeWisdomPayload(response.output_text, payload.fallback);
+  const fallback = payload.fallback || createFallbackReading(buildServerFallbackWisdom(user, astrologyContext));
+  const reading = normalizeWisdomPayload(response.output_text, fallback);
   const result = {
     reading,
     wisdom: reading.wisdom,
@@ -148,8 +149,12 @@ async function upsertUserProfile(supabase, user) {
     birth_date: user.birthDate,
     birth_time: user.birthTime || null,
     birth_place: user.birthPlace || null,
-    birth_latitude: user.birthLatitude || null,
-    birth_longitude: user.birthLongitude || null,
+    birth_latitude: nullableNumber(user.birthLatitude),
+    birth_longitude: nullableNumber(user.birthLongitude),
+    birth_timezone: user.birthTimezone || null,
+    birth_timezone_offset_minutes: nullableNumber(user.birthTimezoneOffsetMinutes),
+    birth_place_resolved_label: user.birthPlaceResolvedLabel || null,
+    birth_place_resolution_source: user.birthPlaceResolutionSource || null,
     updated_at: new Date().toISOString()
   };
 
@@ -175,6 +180,20 @@ function buildUserKey(user) {
   return String(stableValue || "anonymous").toLowerCase().trim();
 }
 
+function nullableNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function buildServerFallbackWisdom(user, context) {
+  const name = firstName(user.name);
+  const scene = context.attentionAnchor || context.dailyScene || "one practical detail";
+  const move = context.mentorMove || context.stabilizer || "make one promise smaller and keep it completely";
+  const caution = context.relationalCaution || context.relationshipMirror || "do not make another person's uncertainty your assignment";
+  const avoid = context.avoid || "over-explaining";
+  return `${capitalize(scene)} deserves less room in your mind than it has been taking. ${name}, make the day smaller on purpose: ${move}, then keep ${avoid} away from the conversation that needs your attention. If ${caution}, let that guide your pace without hardening you. Your job is not to solve every feeling before moving; it is to keep one real promise cleanly and leave enough space for the body to settle.`;
+}
+
 function buildMemoryQuery({ user, astrologyContext, date }) {
   return [
     firstName(user.name),
@@ -190,4 +209,10 @@ function buildMemoryQuery({ user, astrologyContext, date }) {
 
 function firstName(name) {
   return String(name || "friend").trim().split(/\s+/)[0] || "friend";
+}
+
+function capitalize(text) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

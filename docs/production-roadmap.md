@@ -37,6 +37,7 @@ This project is being built toward the stack shown in the product planning image
 - Production readiness endpoint and CLI checks for backend env configuration
 - Vercel deployment config plus deployed backend smoke-test script
 - Astronomy-based birth/transit context replacing hash-only astrology
+- Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice
 
 ## Next Implementation Steps
@@ -47,12 +48,13 @@ This project is being built toward the stack shown in the product planning image
 4. Apply `supabase/migrations/004_saved_guidance_profile.sql`.
 5. Apply `supabase/migrations/005_auth_otp_challenges.sql`.
 6. Apply `supabase/migrations/006_unique_subscription_payments.sql`.
-7. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-8. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
-9. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
-10. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
-11. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
-12. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-13. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-14. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-15. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+7. Apply `supabase/migrations/007_birth_place_resolution.sql`.
+8. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+9. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
+10. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
+11. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
+12. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
+13. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+14. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+15. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+16. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

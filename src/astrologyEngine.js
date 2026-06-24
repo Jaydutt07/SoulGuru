@@ -1,4 +1,5 @@
 import * as Astronomy from "astronomy-engine";
+import { resolveBirthPlace } from "./placeResolver.js";
 
 const SIDEREAL_SIGNS = [
   "Aries",
@@ -73,9 +74,15 @@ const DAILY_SCENES = [
   "the first hour after you check your phone",
   "a decision that becomes simpler once the body is cared for",
   "the small pause before spending money, words, or trust",
-  "a repeated thought that needs an action, not another analysis",
+  "a returning thought that needs one practical answer",
   "a duty that deserves shape before it becomes resentment",
-  "the part of the day where silence can become strength"
+  "the part of the day where silence can become strength",
+  "a half-finished message waiting in the mind",
+  "the receipt, deadline, or tab that keeps taking attention",
+  "a room, desk, or inbox asking for one visible reset",
+  "the moment your shoulders tighten before saying yes",
+  "an old worry trying to enter a new conversation",
+  "a choice that gets cleaner once it is written plainly"
 ];
 
 const CORE_NEEDS = [
@@ -99,7 +106,7 @@ const PERSONAL_EDGES = [
   "separate tiredness from truth before you decide",
   "give worry a practical job or let it stand down",
   "leave one old explanation unfinished",
-  "make the next step visible enough to respect",
+  "make the smallest action visible enough to respect",
   "protect peace without turning cold",
   "answer the real question, not the imagined accusation"
 ];
@@ -145,7 +152,11 @@ const DECISION_GATES = [
   "take care of the body before naming the problem",
   "make the choice that reduces future mess",
   "finish the promise you made to yourself",
-  "decline the extra burden without making a speech"
+  "decline the extra burden without making a speech",
+  "name the cost before accepting the request",
+  "put the deadline on paper before negotiating the mood",
+  "repair the practical leak before asking for certainty",
+  "wait until the first reaction has passed"
 ];
 
 const RELATIONSHIP_MIRRORS = [
@@ -167,7 +178,11 @@ const BODY_SIGNALS = [
   "drink water before calling it intuition",
   "lower the pace of the morning",
   "protect the first quiet hour",
-  "do not negotiate with exhaustion"
+  "do not negotiate with exhaustion",
+  "notice where the jaw or shoulders are voting no",
+  "step away from the screen before choosing words",
+  "start with breath, food, or movement before judgment",
+  "let the body get neutral before you call it a sign"
 ];
 
 const WORK_SIGNALS = [
@@ -178,11 +193,64 @@ const WORK_SIGNALS = [
   "document progress before judging it",
   "choose depth over scattered effort",
   "answer the practical question first",
-  "let the next step be almost boring"
+  "make the action plain enough to complete",
+  "close the loop that already has enough information",
+  "turn the vague plan into a visible appointment",
+  "finish one useful draft before improving it",
+  "protect the work from unnecessary explanation"
+];
+
+const ATTENTION_ANCHORS = [
+  "a tab, bill, or receipt that keeps reopening in the mind",
+  "the message you have edited too many times",
+  "the first yes that would quietly cost too much",
+  "a private standard no one else can see",
+  "the task that became heavier because it stayed unnamed",
+  "a conversation that needs a clean time, not a louder tone",
+  "one comfort habit that has started asking for repayment",
+  "a promise that becomes easier once it is made smaller",
+  "the difference between being available and being reachable",
+  "the moment a small delay starts sounding like rejection"
+];
+
+const MENTOR_MOVES = [
+  "make the promise smaller and keep it completely",
+  "answer with timing instead of a long defense",
+  "turn one private worry into a scheduled action",
+  "let respect show through consistency, not volume",
+  "choose the repair that future-you will notice",
+  "pause before making tiredness sound like intuition",
+  "remove one unnecessary explanation from the plan",
+  "give the day a visible finish line",
+  "let care arrive with a shape and a limit",
+  "protect the useful work from emotional noise"
+];
+
+const RELATIONAL_CAUTIONS = [
+  "do not make another person's uncertainty your assignment",
+  "warmth becomes stronger when access has timing",
+  "the cleanest reply may be shorter than your fear prefers",
+  "a kind no can save more trust than a resentful yes",
+  "wait for behavior to confirm what words are promising",
+  "let listening inform you without recruiting you",
+  "do not confuse being needed with being chosen",
+  "give closeness a doorway instead of leaving every window open"
+];
+
+const CLOSING_PERMISSIONS = [
+  "you can be gentle without becoming endlessly available",
+  "one completed promise is enough evidence for today",
+  "a slower answer can still be a loving one",
+  "you do not have to turn pressure into performance",
+  "letting the day be plain is not the same as wasting it",
+  "self-respect can be quiet and still be final",
+  "not every delay deserves a personal meaning",
+  "finish the useful part and let the rest wait"
 ];
 
 export function buildAstrologyContext(user, date = new Date()) {
-  const birthDate = buildBirthDate(user);
+  const birthPlace = resolveBirthPlace(user.birthPlace, user);
+  const birthDate = buildBirthDate(user, birthPlace);
   const today = new Date(date);
   const birthSun = siderealBody("Sun", birthDate);
   const birthMoon = siderealBody("Moon", birthDate);
@@ -200,7 +268,10 @@ export function buildAstrologyContext(user, date = new Date()) {
     user.email,
     user.birthDate,
     user.birthTime,
-    user.birthPlace,
+    birthPlace.label,
+    birthPlace.latitude,
+    birthPlace.longitude,
+    birthPlace.timezone,
     today.toISOString().slice(0, 10),
     transitMoon.sign,
     transitSaturn.sign
@@ -211,6 +282,14 @@ export function buildAstrologyContext(user, date = new Date()) {
     element: ELEMENTS[birthSun.sign],
     moonSign: birthMoon.sign,
     lifePath,
+    birthLocation: {
+      label: birthPlace.label,
+      latitude: birthPlace.latitude,
+      longitude: birthPlace.longitude,
+      timezone: birthPlace.timezone,
+      timezoneOffsetMinutes: birthPlace.timezoneOffsetMinutes,
+      source: birthPlace.source
+    },
     birthChart: {
       sun: serializePlacement(birthSun),
       moon: serializePlacement(birthMoon),
@@ -232,6 +311,10 @@ export function buildAstrologyContext(user, date = new Date()) {
     relationshipMirror: RELATIONSHIP_MIRRORS[mod(transitMoon.signIndex + birthMoon.signIndex, RELATIONSHIP_MIRRORS.length)],
     bodySignal: BODY_SIGNALS[mod(moonDistance + transitSun.signIndex, BODY_SIGNALS.length)],
     workSignal: WORK_SIGNALS[mod(saturnDistance + transitSaturn.signIndex, WORK_SIGNALS.length)],
+    attentionAnchor: ATTENTION_ANCHORS[mod(seed + moonDistance + solarDistance, ATTENTION_ANCHORS.length)],
+    mentorMove: MENTOR_MOVES[mod(seed + saturnDistance + transitMoon.signIndex, MENTOR_MOVES.length)],
+    relationalCaution: RELATIONAL_CAUTIONS[mod(seed + birthMoon.signIndex + transitSaturn.signIndex, RELATIONAL_CAUTIONS.length)],
+    closingPermission: CLOSING_PERMISSIONS[mod(seed + lifePath + transitSun.signIndex, CLOSING_PERMISSIONS.length)],
     dailyScene: DAILY_SCENES[mod(seed + transitMoon.signIndex + solarDistance, DAILY_SCENES.length)],
     coreNeed: CORE_NEEDS[mod(seed + saturnDistance + lifePath, CORE_NEEDS.length)],
     personalEdge: PERSONAL_EDGES[mod(seed + moonDistance + transitSaturn.signIndex, PERSONAL_EDGES.length)],
@@ -242,8 +325,13 @@ export function buildAstrologyContext(user, date = new Date()) {
   };
 }
 
+export function buildTransitDateForUser(user = {}, dateKey = new Date().toISOString().slice(0, 10), time = "12:00") {
+  const birthPlace = resolveBirthPlace(user.birthPlace, user);
+  return buildDateInTimeZone(dateKey, time, birthPlace.timezone, birthPlace.timezoneOffsetMinutes);
+}
+
 export function getSaadeSatiFromChart(user, date = new Date()) {
-  const birthMoon = siderealBody("Moon", buildBirthDate(user));
+  const birthMoon = siderealBody("Moon", buildBirthDate(user, resolveBirthPlace(user.birthPlace, user)));
   const transitSaturn = siderealBody("Saturn", date);
   const distance = signDistance(birthMoon.sign, transitSaturn.sign);
   const active = [12, 1, 2].includes(distance);
@@ -282,10 +370,92 @@ function geocentricLongitude(bodyName, date) {
   return Astronomy.Ecliptic(vector).elon;
 }
 
-function buildBirthDate(user) {
+function buildBirthDate(user, birthPlace = resolveBirthPlace(user.birthPlace, user)) {
   const date = user.birthDate || new Date().toISOString().slice(0, 10);
   const time = user.birthTime || "12:00";
-  return new Date(`${date}T${time}:00+05:30`);
+  return buildDateInTimeZone(date, time, birthPlace.timezone, birthPlace.timezoneOffsetMinutes);
+}
+
+function buildDateInTimeZone(date, time, timeZone, offsetMinutes = 330) {
+  const { year, month, day } = parseDateParts(date);
+  const { hour, minute } = parseTimeParts(time);
+  const localUtc = Date.UTC(year, month - 1, day, hour, minute);
+
+  if (!timeZone) {
+    return buildDateWithOffset(date, time, offsetMinutes);
+  }
+
+  let utc = localUtc;
+  for (let index = 0; index < 3; index += 1) {
+    const zoneOffset = getTimeZoneOffsetMinutes(new Date(utc), timeZone);
+    if (zoneOffset === null) {
+      return buildDateWithOffset(date, time, offsetMinutes);
+    }
+    const nextUtc = localUtc - zoneOffset * 60000;
+    if (Math.abs(nextUtc - utc) < 1000) {
+      return new Date(nextUtc);
+    }
+    utc = nextUtc;
+  }
+
+  return new Date(utc);
+}
+
+function buildDateWithOffset(date, time, offsetMinutes = 330) {
+  const { year, month, day } = parseDateParts(date);
+  const { hour, minute } = parseTimeParts(time);
+  const offset = finiteNumber(offsetMinutes, 330);
+  const utc = Date.UTC(year, month - 1, day, hour, minute);
+  return new Date(utc - offset * 60000);
+}
+
+function parseDateParts(date) {
+  const [year, month, day] = String(date).split("-").map(Number);
+  return {
+    year: year || 2000,
+    month: month || 1,
+    day: day || 1
+  };
+}
+
+function parseTimeParts(time) {
+  const [hour = 12, minute = 0] = String(time || "12:00").split(":").map(Number);
+  return {
+    hour: Number.isFinite(hour) ? hour : 12,
+    minute: Number.isFinite(minute) ? minute : 0
+  };
+}
+
+function getTimeZoneOffsetMinutes(date, timeZone) {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    });
+    const parts = Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+    const zoneTimeAsUtc = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second)
+    );
+    return Math.round((zoneTimeAsUtc - date.getTime()) / 60000);
+  } catch {
+    return null;
+  }
+}
+
+function finiteNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function lahiriAyanamsa(date) {
@@ -319,10 +489,15 @@ function pickStabilizer(moonDistance, saturnDistance, seed) {
     "make one clean decision and let it stand",
     "slow your speech before a sensitive conversation",
     "return to food, water, and rest before reacting",
-    "write the next step in one sentence",
+    "name one small finish line before you begin",
     "keep one limit without apologizing for it",
     "protect the first quiet hour of the day",
-    "document progress before judging yourself"
+    "document progress before judging yourself",
+    "put the oldest loose end somewhere visible",
+    "make the first reply shorter than your first draft",
+    "turn the worry into a time-bound errand",
+    "finish the draft before improving its style",
+    "let the body settle before making meaning"
   ];
   return stabilizers[mod(moonDistance + saturnDistance + seed, stabilizers.length)];
 }
@@ -336,7 +511,12 @@ function pickAvoidPattern(saturnDistance, solarDistance, seed) {
     "reopening a settled conversation",
     "proving worth through exhaustion",
     "answering before your body settles",
-    "making one mood responsible for the whole day"
+    "making one mood responsible for the whole day",
+    "turning every delay into a private verdict",
+    "confusing access with affection",
+    "letting a small mess become your whole identity",
+    "spending care without checking the cost",
+    "using explanation as a substitute for a decision"
   ];
   return patterns[mod(saturnDistance + solarDistance + seed, patterns.length)];
 }

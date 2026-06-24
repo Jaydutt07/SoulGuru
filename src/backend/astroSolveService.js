@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { buildAstrologyContext } from "../astrologyEngine.js";
+import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import { upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
@@ -56,7 +56,7 @@ export async function createAstroSolve(payload, env = process.env) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const astrologyContext = payload.context || buildAstrologyContext(user, new Date(`${date}T12:00:00+05:30`));
+  const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
   const client = new OpenAI({ apiKey });
   const response = await client.responses.create({
     model,
@@ -124,6 +124,7 @@ User:
 - Birth date: ${user.birthDate}
 - Birth time: ${user.birthTime || "unknown"}
 - Birth place: ${user.birthPlace || "unknown"}
+- Resolved birth location: ${formatBirthLocation(context.birthLocation, user)}
 - Today: ${today}
 
 Problem:
@@ -227,8 +228,12 @@ async function upsertUserProfile(supabase, user) {
     birth_date: user.birthDate,
     birth_time: user.birthTime || null,
     birth_place: user.birthPlace || null,
-    birth_latitude: user.birthLatitude || null,
-    birth_longitude: user.birthLongitude || null,
+    birth_latitude: nullableNumber(user.birthLatitude),
+    birth_longitude: nullableNumber(user.birthLongitude),
+    birth_timezone: user.birthTimezone || null,
+    birth_timezone_offset_minutes: nullableNumber(user.birthTimezoneOffsetMinutes),
+    birth_place_resolved_label: user.birthPlaceResolvedLabel || null,
+    birth_place_resolution_source: user.birthPlaceResolutionSource || null,
     updated_at: new Date().toISOString()
   };
 
@@ -296,6 +301,20 @@ function buildUserKey(user) {
   return String(stableValue || "anonymous").toLowerCase().trim();
 }
 
+function nullableNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function firstName(name) {
   return String(name || "friend").trim().split(/\s+/)[0] || "friend";
+}
+
+function formatBirthLocation(location, user) {
+  if (!location?.label) return user.birthPlace || "unknown";
+  const details = [
+    location.timezone,
+    location.source ? `${location.source} resolution` : ""
+  ].filter(Boolean).join(", ");
+  return details ? `${location.label} (${details})` : location.label;
 }

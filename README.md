@@ -88,7 +88,7 @@ Requests and verifies backend-controlled OTP challenges. With Supabase configure
 
 `POST /api/soul-wisdom`
 
-Creates or returns the cached daily Soul Guru reading for a user/date. If Supabase is configured, it checks `daily_soul_readings` first and only calls OpenAI on cache miss. If Upstash is configured, this endpoint is rate-limited server-side.
+Creates or returns the cached daily Soul Guru reading for a user/date. If Supabase is configured, it checks `daily_soul_readings` first and only calls OpenAI on cache miss. The reading context uses the user's resolved birth place, coordinates, and timezone silently so the final Words of Wisdom stay personal without mentioning astrology. If Upstash is configured, this endpoint is rate-limited server-side.
 
 `POST /api/user-profile`
 
@@ -155,7 +155,7 @@ OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings.
 
 ## Observability
 

@@ -27,7 +27,7 @@ export async function lookupUserProfile(payload, env = process.env) {
 
   const query = supabase
     .from("user_profiles")
-    .select("id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, created_at, updated_at")
+    .select("id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone, birth_timezone_offset_minutes, birth_place_resolved_label, birth_place_resolution_source, created_at, updated_at")
     .limit(1);
 
   const { data, error } = await applyProfileLookupFilter(query, { phone, email, authUserId }).maybeSingle();
@@ -66,7 +66,7 @@ export async function upsertUserProfile(payload, env = process.env) {
   const { data, error } = await supabase
     .from("user_profiles")
     .upsert(profile, { onConflict: conflictTarget })
-    .select("id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, created_at, updated_at")
+    .select("id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone, birth_timezone_offset_minutes, birth_place_resolved_label, birth_place_resolution_source, created_at, updated_at")
     .maybeSingle();
 
   if (error) {
@@ -100,6 +100,10 @@ function normalizeProfileForDatabase(user) {
     birth_place: String(user.birthPlace || "").trim() || null,
     birth_latitude: nullableNumber(user.birthLatitude),
     birth_longitude: nullableNumber(user.birthLongitude),
+    birth_timezone: String(user.birthTimezone || "").trim() || null,
+    birth_timezone_offset_minutes: nullableNumber(user.birthTimezoneOffsetMinutes),
+    birth_place_resolved_label: String(user.birthPlaceResolvedLabel || "").trim() || null,
+    birth_place_resolution_source: String(user.birthPlaceResolutionSource || "").trim() || null,
     updated_at: new Date().toISOString()
   };
 }
@@ -116,6 +120,10 @@ function normalizeLocalProfile(user) {
     birthPlace: String(user.birthPlace || "").trim(),
     birthLatitude: nullableNumber(user.birthLatitude),
     birthLongitude: nullableNumber(user.birthLongitude),
+    birthTimezone: String(user.birthTimezone || "").trim(),
+    birthTimezoneOffsetMinutes: nullableNumber(user.birthTimezoneOffsetMinutes),
+    birthPlaceResolvedLabel: String(user.birthPlaceResolvedLabel || "").trim(),
+    birthPlaceResolutionSource: String(user.birthPlaceResolutionSource || "").trim(),
     updatedAt: new Date().toISOString()
   };
 }
@@ -134,6 +142,10 @@ function mapProfile(row) {
     birthPlace: row.birth_place || "",
     birthLatitude: nullableNumber(row.birth_latitude),
     birthLongitude: nullableNumber(row.birth_longitude),
+    birthTimezone: row.birth_timezone || "",
+    birthTimezoneOffsetMinutes: nullableNumber(row.birth_timezone_offset_minutes),
+    birthPlaceResolvedLabel: row.birth_place_resolved_label || "",
+    birthPlaceResolutionSource: row.birth_place_resolution_source || "",
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

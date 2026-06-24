@@ -22,15 +22,16 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { authFetch } from "./authClient.js";
-import { buildAstrologyContext, getSaadeSatiFromChart } from "./astrologyEngine.js";
+import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
+import { enrichUserWithPlace } from "./placeResolver.js";
 import { cleanWisdomText, firstName, isLowQualityWisdom, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
 const SESSION_KEY = "soulguru.session.v1";
-const SOUL_READING_CACHE_VERSION = "soul-wisdom-v3";
-const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v3";
-const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v3";
+const SOUL_READING_CACHE_VERSION = "soul-wisdom-v4";
+const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v4";
+const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v4";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
@@ -98,13 +99,13 @@ function App() {
   }, [activeTab, splashDone, user]);
 
   function handleLogin(account) {
-    saveAccount(account);
-    window.localStorage.setItem(SESSION_KEY, account.phone);
-    setUser(account);
+    const enrichedAccount = saveAccount(account);
+    window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);
+    setUser(enrichedAccount);
     setActiveTab("soul");
-    syncUserProfileToServer(account).then((profile) => {
+    syncUserProfileToServer(enrichedAccount).then((profile) => {
       if (!profile) return;
-      const syncedAccount = mergeAccountProfile(account, profile);
+      const syncedAccount = mergeAccountProfile(enrichedAccount, profile);
       saveAccount(syncedAccount);
       setUser((current) => current?.phone === syncedAccount.phone ? mergeAccountProfile(current, profile) : current);
     });
@@ -113,8 +114,8 @@ function App() {
 
   function updateUser(updater) {
     setUser((current) => {
-      const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
-      saveAccount(next);
+      const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
+      const next = saveAccount(nextRaw);
       window.localStorage.setItem(SESSION_KEY, next.phone);
       if (hasProfileChanged(current, next)) {
         syncUserProfileToServer(next);
@@ -219,12 +220,12 @@ function AuthScreen({ onLogin }) {
           email: account.email,
           purpose: "login"
         });
-        saveAccount(account);
+        const enrichedAccount = saveAccount(account);
         setPendingOtp({
           phone,
           ...otp,
-          account,
-          payload: account
+          account: enrichedAccount,
+          payload: enrichedAccount
         });
         setOtpValue("");
         return;
@@ -298,7 +299,7 @@ function AuthScreen({ onLogin }) {
         guidanceHistory: [],
         savedGuidance: []
       };
-      onLogin(account);
+      onLogin(enrichUserWithPlace(account));
     } catch (error) {
       setError(error.message || "Unable to verify OTP.");
     } finally {
@@ -454,14 +455,15 @@ function MentorApp({ activeTab, onTabChange, user, updateUser, onLogout }) {
 }
 
 function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
-  const todayKey = useMemo(() => getTodayKey(), []);
+  const todayKey = useMemo(() => getTodayKey(new Date(), user.birthTimezone || undefined), [user.birthTimezone]);
   const fallbackReading = useMemo(() => getDailyWisdom(user, todayKey), [user, todayKey]);
   const [reading, setReading] = useState(fallbackReading);
   const focus = useMemo(() => getDailyFocus(user), [user]);
 
   useEffect(() => {
     let cancelled = false;
-    const context = buildAstrologyContext(user, buildDateFromKey(todayKey));
+    const todayDate = buildDateFromKey(todayKey, user);
+    const context = buildAstrologyContext(user, todayDate);
     const cached = readDailyReadingCache(user, todayKey);
 
     if (cached?.reading) {
@@ -484,12 +486,18 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           email: user.email,
           birthDate: user.birthDate,
           birthTime: user.birthTime,
-          birthPlace: user.birthPlace
+          birthPlace: user.birthPlace,
+          birthLatitude: user.birthLatitude,
+          birthLongitude: user.birthLongitude,
+          birthTimezone: user.birthTimezone,
+          birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+          birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+          birthPlaceResolutionSource: user.birthPlaceResolutionSource
         },
         date: todayKey,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
+        timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
         context,
-        today: buildDateFromKey(todayKey).toLocaleDateString(undefined, {
+        today: todayDate.toLocaleDateString(undefined, {
           weekday: "long",
           month: "long",
           day: "numeric",
@@ -613,6 +621,12 @@ function AstroSolvesTab({ user, updateUser }) {
             birthDate: user.birthDate,
             birthTime: user.birthTime,
             birthPlace: user.birthPlace,
+            birthLatitude: user.birthLatitude,
+            birthLongitude: user.birthLongitude,
+            birthTimezone: user.birthTimezone,
+            birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+            birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+            birthPlaceResolutionSource: user.birthPlaceResolutionSource,
             soulGuruSubscription: user.soulGuruSubscription
           },
           context,
@@ -760,7 +774,13 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           email: user.email,
           birthDate: user.birthDate,
           birthTime: user.birthTime,
-          birthPlace: user.birthPlace
+          birthPlace: user.birthPlace,
+          birthLatitude: user.birthLatitude,
+          birthLongitude: user.birthLongitude,
+          birthTimezone: user.birthTimezone,
+          birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+          birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+          birthPlaceResolutionSource: user.birthPlaceResolutionSource
         }
       })
     })
@@ -787,7 +807,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
     return () => {
       cancelled = true;
     };
-  }, [updateUser, user.birthDate, user.birthPlace, user.birthTime, user.email, user.id, user.name, user.phone, user.soulGuruSubscription?.active]);
+  }, [updateUser, user.birthDate, user.birthLatitude, user.birthLongitude, user.birthPlace, user.birthPlaceResolutionSource, user.birthPlaceResolvedLabel, user.birthTime, user.birthTimezone, user.birthTimezoneOffsetMinutes, user.email, user.id, user.name, user.phone, user.soulGuruSubscription?.active]);
 
   function activatePlan(metadata = {}) {
     const start = new Date();
@@ -1212,9 +1232,11 @@ function readAccounts() {
 }
 
 function saveAccount(account) {
+  const enrichedAccount = enrichUserWithPlace(account);
   const accounts = readAccounts();
-  accounts[account.phone] = account;
+  accounts[enrichedAccount.phone] = enrichedAccount;
   window.localStorage.setItem(ACCOUNT_DB_KEY, JSON.stringify(accounts));
+  return enrichedAccount;
 }
 
 async function lookupAccountFromServer(phone) {
@@ -1347,7 +1369,11 @@ function buildProfileUserPayload(account) {
     birthTime: account.birthTime,
     birthPlace: account.birthPlace,
     birthLatitude: account.birthLatitude,
-    birthLongitude: account.birthLongitude
+    birthLongitude: account.birthLongitude,
+    birthTimezone: account.birthTimezone,
+    birthTimezoneOffsetMinutes: account.birthTimezoneOffsetMinutes,
+    birthPlaceResolvedLabel: account.birthPlaceResolvedLabel,
+    birthPlaceResolutionSource: account.birthPlaceResolutionSource
   };
 }
 
@@ -1378,13 +1404,17 @@ function mergeAccountProfile(account, profile) {
     birthPlace: profile.birthPlace || account.birthPlace || "",
     birthLatitude: profile.birthLatitude ?? account.birthLatitude ?? null,
     birthLongitude: profile.birthLongitude ?? account.birthLongitude ?? null,
+    birthTimezone: profile.birthTimezone || account.birthTimezone || "",
+    birthTimezoneOffsetMinutes: profile.birthTimezoneOffsetMinutes ?? account.birthTimezoneOffsetMinutes ?? null,
+    birthPlaceResolvedLabel: profile.birthPlaceResolvedLabel || account.birthPlaceResolvedLabel || "",
+    birthPlaceResolutionSource: profile.birthPlaceResolutionSource || account.birthPlaceResolutionSource || "",
     syncedAt: profile.updatedAt || new Date().toISOString()
   };
 }
 
 function hasProfileChanged(previous, next) {
   if (!previous) return true;
-  return ["id", "authUserId", "name", "phone", "email", "birthDate", "birthTime", "birthPlace", "birthLatitude", "birthLongitude"]
+  return ["id", "authUserId", "name", "phone", "email", "birthDate", "birthTime", "birthPlace", "birthLatitude", "birthLongitude", "birthTimezone", "birthTimezoneOffsetMinutes"]
     .some((field) => previous?.[field] !== next?.[field]);
 }
 
@@ -1492,8 +1522,8 @@ function getTodayKey(date = new Date(), timeZone = Intl.DateTimeFormat().resolve
   return `${byType.year}-${byType.month}-${byType.day}`;
 }
 
-function buildDateFromKey(dateKey) {
-  return new Date(`${dateKey}T12:00:00+05:30`);
+function buildDateFromKey(dateKey, user = {}) {
+  return buildTransitDateForUser(user, dateKey);
 }
 
 function getSoulReadingUserKey(user) {
@@ -1503,8 +1533,14 @@ function getSoulReadingUserKey(user) {
     user.email,
     user.birthDate,
     user.birthTime,
-    user.birthPlace
-  ].filter(Boolean).join("|")).toString(36);
+    user.birthPlace,
+    user.birthLatitude,
+    user.birthLongitude,
+    user.birthTimezone,
+    user.birthTimezoneOffsetMinutes,
+    user.birthPlaceResolvedLabel,
+    user.birthPlaceResolutionSource
+  ].filter((value) => value !== undefined && value !== null && value !== "").join("|")).toString(36);
 }
 
 function getDailyReadingCacheKey(user, dateKey) {
@@ -1567,7 +1603,13 @@ function saveGuidanceToServer(user, reading, sourceId) {
         email: user.email,
         birthDate: user.birthDate,
         birthTime: user.birthTime,
-        birthPlace: user.birthPlace
+        birthPlace: user.birthPlace,
+        birthLatitude: user.birthLatitude,
+        birthLongitude: user.birthLongitude,
+        birthTimezone: user.birthTimezone,
+        birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+        birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+        birthPlaceResolutionSource: user.birthPlaceResolutionSource
       },
       sourceId,
       reading
@@ -1609,8 +1651,8 @@ function mergeGuidanceItems(primary, fallback) {
   }).slice(0, 90);
 }
 
-function getDailyWisdom(user, dateKey = getTodayKey()) {
-  const context = buildAstrologyContext(user, buildDateFromKey(dateKey));
+function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined)) {
+  const context = buildAstrologyContext(user, buildDateFromKey(dateKey, user));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
   const builders = [
     buildTaskFirstWisdom,
@@ -1656,11 +1698,11 @@ function buildPressureReleaseWisdom(user, context) {
 }
 
 function buildSceneFirstWisdom(user, context) {
-  return `${capitalize(context.dailyScene)} can show you exactly where attention is leaking. ${firstName(user.name)}, do not turn ${context.emotionalKnot} into the manager of the whole day. ${capitalize(context.personalEdge)} by making the next step physical: write it, send it, clean it, close it. When ${context.relationshipMirror}, respond with proportion. Your peace gets stronger when it has a shape.`;
+  return `${capitalize(context.dailyScene)} can show you exactly where attention is leaking. ${firstName(user.name)}, do not turn ${context.emotionalKnot} into the manager of the whole day. ${capitalize(context.personalEdge)} by making one action physical: write it, send it, clean it, close it. When ${context.relationshipMirror}, respond with proportion. Your peace gets stronger when it has a shape.`;
 }
 
 function buildCoreNeedWisdom(user, context) {
-  return `${capitalize(context.coreNeed)} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Start with ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than another round of proving your intention.`;
+  return `${capitalize(context.coreNeed)} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Start with ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than proving your intention again.`;
 }
 
 function buildPersonalEdgeWisdom(user, context) {
@@ -1682,7 +1724,7 @@ function areaOpening(area) {
     return "Your body is giving practical feedback today, not a problem to ignore until it becomes louder.";
   }
   if (lower.includes("public") || lower.includes("ambition")) {
-    return "Recognition is moving slower than your effort, but the work still needs a visible next step.";
+    return "Recognition is moving slower than your effort, but the work still needs one visible finish line.";
   }
   if (lower.includes("creative") || lower.includes("visibility")) {
     return "Your voice needs use today, even if the first version comes out imperfect.";
@@ -1718,8 +1760,8 @@ function capitalize(text) {
 }
 
 function getDailyFocus(user) {
-  const dateKey = getTodayKey();
-  const context = buildAstrologyContext(user, buildDateFromKey(dateKey));
+  const dateKey = getTodayKey(new Date(), user.birthTimezone || undefined);
+  const context = buildAstrologyContext(user, buildDateFromKey(dateKey, user));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}`);
   const focus = [
     context.dailyArea,

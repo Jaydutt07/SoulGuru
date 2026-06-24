@@ -20,6 +20,8 @@ Wisdom paragraph rules:
 - Use the requested blueprint, but do not make the blueprint visible.
 - Vary sentence shapes and sentence count. Do not use a fixed four-sentence formula.
 - Use at least three silent signals, including one concrete scene or behavior.
+- Do not copy any silent signal phrase verbatim; translate the signal into fresh, natural language.
+- The wisdom paragraph, innerWeather, todayMove, and release must not reuse the same distinctive phrase.
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
 - Include a grounded encouragement that does not sound like a slogan.
 - Write with warmth, precision, and quiet authority.
@@ -36,6 +38,13 @@ Avoid these phrases and close variants:
 - "old pull"
 - "steady action will speak"
 - "your steadiness grows"
+- "write the next step"
+- "one visible next step"
+- "another round of analysis"
+- "not asking for more analysis"
+- "almost boring"
+- "quiet proof"
+- "verdict on your worth"
 
 Do not overuse the words calm, steady, clarity, boundary, energy, reassurance, truth, or honest. Use them only when they are the best word.
 Do not sound mystical, vague, performative, or overly poetic.
@@ -49,6 +58,7 @@ User:
 - Birth date: ${user.birthDate}
 - Birth time: ${user.birthTime || "unknown"}
 - Birth place: ${user.birthPlace || "unknown"}
+- Resolved birth location: ${formatBirthLocation(context.birthLocation, user)}
 - Today: ${today}
 
 Silent astrology-derived signals:
@@ -63,6 +73,10 @@ Silent astrology-derived signals:
 - Relationship mirror: ${context.relationshipMirror}
 - Body/routine signal: ${context.bodySignal}
 - Work/creation signal: ${context.workSignal}
+- Attention anchor: ${context.attentionAnchor}
+- Mentor move: ${context.mentorMove}
+- Relational caution: ${context.relationalCaution}
+- Closing permission: ${context.closingPermission}
 - Concrete day scene: ${context.dailyScene}
 - Core need: ${context.coreNeed}
 - Personal edge: ${context.personalEdge}
@@ -130,6 +144,14 @@ export function isLowQualityWisdom(text) {
     /\bold pull\b/,
     /\bsteady action will speak\b/,
     /\byour steadiness grows\b/,
+    /\bwrite the next step\b/,
+    /\bnext step in one\b/,
+    /\bone visible next step\b/,
+    /\banother round of analysis\b/,
+    /\bnot asking for (another|more) analysis\b/,
+    /\balmost boring\b/,
+    /\bquiet proof\b/,
+    /\bverdict on your worth\b/,
     /^today[, ]/,
     /^you may\b/,
     /^there is\b/,
@@ -179,11 +201,36 @@ function parseReading(raw) {
 
 function cleanShortField(text, fallback) {
   const cleaned = cleanWisdomText(text, fallback, 12);
-  return cleaned.replace(/[.!?]+$/g, "");
+  const value = cleaned.replace(/[.!?]+$/g, "");
+  if (!isLowQualityCue(value)) return value;
+  return cleanWisdomText(fallback, createFallbackReading().todayMove, 12).replace(/[.!?]+$/g, "");
+}
+
+function formatBirthLocation(location, user) {
+  if (!location?.label) return user.birthPlace || "unknown";
+  const details = [
+    location.timezone,
+    location.source ? `${location.source} resolution` : ""
+  ].filter(Boolean).join(", ");
+  return details ? `${location.label} (${details})` : location.label;
 }
 
 function limitWords(text, maxWords) {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return text;
   return `${words.slice(0, maxWords).join(" ").replace(/[,:;]+$/, "")}.`;
+}
+
+function isLowQualityCue(text) {
+  const normalized = String(text || "").toLowerCase();
+  return [
+    /\bwrite the next step\b/,
+    /\bnext step in one\b/,
+    /\bone visible next step\b/,
+    /\banother round of analysis\b/,
+    /\bnot asking for (another|more) analysis\b/,
+    /\balmost boring\b/,
+    /\bquiet proof\b/,
+    /\bverdict on your worth\b/
+  ].some((pattern) => pattern.test(normalized));
 }
