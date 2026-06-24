@@ -315,7 +315,7 @@ Server-only Pinecone memory route. It upserts saved guidance, daily readings, an
 
 `POST /api/more-guidance`
 
-Loads the More Guidance dashboard from Supabase, creates the paid deeper guidance map, and saves advice into `saved_guidance`. Production requires persisted subscription access and daily caching in `more_guidance_readings`; `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing. Production builds must also keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
+Loads the More Guidance dashboard from Supabase, including subscription status, 3-month tracking progress, reading history, and saved advice. It also creates the paid deeper guidance map and saves advice into `saved_guidance`. Production requires persisted subscription access and daily caching in `more_guidance_readings`; `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing. Production builds must also keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
 
 `GET /api/health`
 

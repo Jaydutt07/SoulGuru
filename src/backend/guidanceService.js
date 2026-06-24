@@ -4,6 +4,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v1";
 
 const MORE_GUIDANCE_SYSTEM_PROMPT = `
@@ -29,10 +30,10 @@ Rules:
 - Do not use vague spiritual language, grand promises, fear, disclaimers, markdown, bullets, emojis, or text outside JSON.
 `.trim();
 
-export async function getMoreGuidanceDashboard(payload, env = process.env) {
+export async function getMoreGuidanceDashboard(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
   const userKey = buildUserKey(user);
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
 
   if (!supabase) {
     return {
@@ -52,6 +53,7 @@ export async function getMoreGuidanceDashboard(payload, env = process.env) {
   return {
     configured: true,
     subscription,
+    tracking: buildSubscriptionTracking(subscription, deps.now || new Date()),
     guidanceHistory,
     savedGuidance
   };
@@ -259,6 +261,41 @@ export function isLocalMoreGuidanceAllowed(env = process.env) {
   return String(env.MORE_GUIDANCE_ALLOW_LOCAL_ACCESS || "false").toLowerCase() === "true";
 }
 
+export function buildSubscriptionTracking(subscription, now = new Date()) {
+  if (!subscription?.startedAt || !subscription?.endsAt) return null;
+
+  const startedAt = new Date(subscription.startedAt);
+  const endsAt = new Date(subscription.endsAt);
+  const current = new Date(now);
+  if (!Number.isFinite(startedAt.getTime()) || !Number.isFinite(endsAt.getTime())) return null;
+
+  const totalDays = Math.max(1, Math.ceil((endsAt.getTime() - startedAt.getTime()) / DAY_MS));
+  const elapsedDays = clamp(Math.floor((current.getTime() - startedAt.getTime()) / DAY_MS), 0, totalDays);
+  const daysLeft = clamp(Math.ceil((endsAt.getTime() - current.getTime()) / DAY_MS), 0, totalDays);
+  const progress = clamp(Math.round((elapsedDays / totalDays) * 100), 0, 100);
+  const monthIndex = clamp(Math.floor((elapsedDays / totalDays) * 3) + 1, 1, 3);
+  const weeksLeft = Math.max(0, Math.ceil(daysLeft / 7));
+  const status = current.getTime() < startedAt.getTime()
+    ? "upcoming"
+    : current.getTime() >= endsAt.getTime()
+      ? "complete"
+      : "active";
+
+  return {
+    status,
+    startedAt: startedAt.toISOString(),
+    endsAt: endsAt.toISOString(),
+    generatedAt: current.toISOString(),
+    totalDays,
+    elapsedDays,
+    daysLeft,
+    weeksLeft,
+    progress,
+    monthIndex,
+    checkpoints: buildTrackingCheckpoints(progress)
+  };
+}
+
 async function readSubscription(supabase, userKey) {
   const { data, error } = await supabase
     .from("more_guidance_subscriptions")
@@ -293,6 +330,33 @@ async function hasActiveSubscription(supabase, userKey) {
   if (!supabase) return false;
   const subscription = await readSubscription(supabase, userKey);
   return Boolean(subscription?.active);
+}
+
+function buildTrackingCheckpoints(progress) {
+  return [
+    {
+      label: "Month 1",
+      title: "Stabilize the pattern",
+      status: getCheckpointStatus(progress, 0, 34)
+    },
+    {
+      label: "Month 2",
+      title: "Practice the new response",
+      status: getCheckpointStatus(progress, 34, 67)
+    },
+    {
+      label: "Month 3",
+      title: "Carry it into decisions",
+      status: getCheckpointStatus(progress, 67, 101)
+    }
+  ];
+}
+
+function getCheckpointStatus(progress, startsAt, endsBefore) {
+  if (progress >= 100) return "complete";
+  if (progress >= endsBefore) return "complete";
+  if (progress >= startsAt) return "current";
+  return "upcoming";
 }
 
 async function readCachedDeepGuidance(supabase, userKey, date) {
@@ -598,4 +662,8 @@ function nullableNumber(value) {
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }

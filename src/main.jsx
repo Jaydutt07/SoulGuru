@@ -787,11 +787,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
   const localSubscription = LOCAL_PAID_FALLBACK_ENABLED ? user.soulGuruSubscription : null;
   const subscription = serverSubscription || localSubscription;
   const isActive = Boolean(subscription?.active);
-  const startsAt = subscription?.startedAt ? new Date(subscription.startedAt) : new Date();
-  const endsAt = subscription?.endsAt ? new Date(subscription.endsAt) : addMonths(startsAt, 3);
-  const daysTotal = Math.max(1, Math.ceil((endsAt.getTime() - startsAt.getTime()) / 86400000));
-  const daysLeft = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 86400000));
-  const progress = Math.min(100, Math.max(0, Math.round(((daysTotal - daysLeft) / daysTotal) * 100)));
+  const tracking = serverDashboard?.tracking || buildLocalSubscriptionTracking(subscription);
   const localGuidanceHistory = LOCAL_PAID_FALLBACK_ENABLED ? getCachedGuidanceHistory(user) : [];
   const localSavedGuidance = LOCAL_PAID_FALLBACK_ENABLED ? user.savedGuidance || [] : [];
   const guidanceHistory = mergeGuidanceItems(serverDashboard?.guidanceHistory || [], localGuidanceHistory);
@@ -1071,12 +1067,25 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           <article className="tracking-panel">
             <div className="section-heading-row">
               <h3>3-month tracking</h3>
-              <span className="member-badge">{daysLeft} days left</span>
+              <span className="member-badge">{tracking?.daysLeft ?? 0} days left</span>
             </div>
             <div className="progress-track">
-              <span style={{ width: `${progress}%` }} />
+              <span style={{ width: `${tracking?.progress ?? 0}%` }} />
             </div>
-            <p>Started {formatDate(startsAt)}. Ends {formatDate(endsAt)}.</p>
+            <div className="tracking-meta">
+              <span>Month {tracking?.monthIndex || 1} of 3</span>
+              <span>{tracking?.weeksLeft ?? 0} weeks left</span>
+              <span>{tracking?.progress ?? 0}% complete</span>
+            </div>
+            <div className="tracking-steps">
+              {(tracking?.checkpoints || []).map((checkpoint) => (
+                <div className={`tracking-step ${checkpoint.status}`} key={checkpoint.label}>
+                  <span>{checkpoint.label}</span>
+                  <strong>{checkpoint.title}</strong>
+                </div>
+              ))}
+            </div>
+            <p>Started {formatDate(tracking?.startedAt)}. Ends {formatDate(tracking?.endsAt)}.</p>
           </article>
 
           <article className="deep-guidance-panel">
@@ -1822,6 +1831,46 @@ function mergeGuidanceItems(primary, fallback) {
     seen.add(key);
     return true;
   }).slice(0, 90);
+}
+
+function buildLocalSubscriptionTracking(subscription) {
+  if (!subscription?.active) return null;
+  const start = subscription.startedAt ? new Date(subscription.startedAt) : new Date();
+  const end = subscription.endsAt ? new Date(subscription.endsAt) : addMonths(start, 3);
+  const now = new Date();
+  const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+  const elapsedDays = Math.min(totalDays, Math.max(0, Math.floor((now.getTime() - start.getTime()) / 86400000)));
+  const daysLeft = Math.min(totalDays, Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000)));
+  const progress = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+  const monthIndex = Math.min(3, Math.max(1, Math.floor((elapsedDays / totalDays) * 3) + 1));
+
+  return {
+    status: now.getTime() >= end.getTime() ? "complete" : "active",
+    startedAt: start.toISOString(),
+    endsAt: end.toISOString(),
+    totalDays,
+    elapsedDays,
+    daysLeft,
+    weeksLeft: Math.max(0, Math.ceil(daysLeft / 7)),
+    progress,
+    monthIndex,
+    checkpoints: buildTrackingCheckpoints(progress)
+  };
+}
+
+function buildTrackingCheckpoints(progress) {
+  return [
+    { label: "Month 1", title: "Stabilize the pattern", status: getCheckpointStatus(progress, 0, 34) },
+    { label: "Month 2", title: "Practice the new response", status: getCheckpointStatus(progress, 34, 67) },
+    { label: "Month 3", title: "Carry it into decisions", status: getCheckpointStatus(progress, 67, 101) }
+  ];
+}
+
+function getCheckpointStatus(progress, startsAt, endsBefore) {
+  if (progress >= 100) return "complete";
+  if (progress >= endsBefore) return "complete";
+  if (progress >= startsAt) return "current";
+  return "upcoming";
 }
 
 function buildLocalDeepGuidance(user) {

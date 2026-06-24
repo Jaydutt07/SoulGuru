@@ -1,6 +1,8 @@
 import {
+  buildSubscriptionTracking,
   createMoreGuidanceReading,
   DEEP_GUIDANCE_PROMPT_VERSION,
+  getMoreGuidanceDashboard,
   isLocalMoreGuidanceAllowed,
   saveGuidance
 } from "../src/backend/guidanceService.js";
@@ -94,6 +96,62 @@ async function checkExplicitLocalAccessReturnsUnstoredGuidance() {
     result.stored === false,
     result.source === "local-fallback",
     result.promptVersion === DEEP_GUIDANCE_PROMPT_VERSION
+  ].every(Boolean));
+}
+
+async function checkDashboardReturnsThreeMonthTracking() {
+  const user = paidUser("dashboard-member");
+  const now = new Date("2026-07-16T00:00:00.000Z");
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id, {
+      starts_at: "2026-06-01T00:00:00.000Z",
+      ends_at: "2026-09-01T00:00:00.000Z"
+    })]
+  });
+  const expectedTracking = buildSubscriptionTracking({
+    active: true,
+    startedAt: "2026-06-01T00:00:00.000Z",
+    endsAt: "2026-09-01T00:00:00.000Z"
+  }, now);
+  const result = await getMoreGuidanceDashboard({
+    user,
+    limit: 5
+  }, {}, {
+    supabase,
+    now
+  });
+
+  pushCheck("More Guidance dashboard returns 3-month subscription tracking", [
+    result.configured === true,
+    result.subscription?.active === true,
+    result.tracking?.status === expectedTracking.status,
+    result.tracking?.daysLeft === expectedTracking.daysLeft,
+    result.tracking?.progress === expectedTracking.progress,
+    result.tracking?.monthIndex === 2,
+    result.tracking?.checkpoints?.length === 3,
+    result.tracking?.checkpoints?.some((checkpoint) => checkpoint.status === "current")
+  ].every(Boolean));
+}
+
+function checkSubscriptionTrackingLifecycle() {
+  const subscription = {
+    active: true,
+    startedAt: "2026-06-01T00:00:00.000Z",
+    endsAt: "2026-09-01T00:00:00.000Z"
+  };
+  const upcoming = buildSubscriptionTracking(subscription, new Date("2026-05-25T00:00:00.000Z"));
+  const active = buildSubscriptionTracking(subscription, new Date("2026-07-01T00:00:00.000Z"));
+  const complete = buildSubscriptionTracking(subscription, new Date("2026-09-01T00:00:00.000Z"));
+
+  pushCheck("More Guidance tracking reports upcoming active and complete lifecycle states", [
+    upcoming.status === "upcoming",
+    upcoming.progress === 0,
+    active.status === "active",
+    active.monthIndex === 1,
+    complete.status === "complete",
+    complete.daysLeft === 0,
+    complete.progress === 100,
+    complete.checkpoints.every((checkpoint) => checkpoint.status === "complete")
   ].every(Boolean));
 }
 
@@ -560,7 +618,7 @@ class FakeQuery {
   }
 }
 
-function activeSubscription(userKey) {
+function activeSubscription(userKey, overrides = {}) {
   return {
     id: `subscription-${userKey}`,
     user_key: userKey,
@@ -573,7 +631,8 @@ function activeSubscription(userKey) {
     provider_payment_id: `pay-${userKey}`,
     provider_subscription_id: null,
     metadata: {},
-    created_at: "2026-06-01T00:00:00.000Z"
+    created_at: "2026-06-01T00:00:00.000Z",
+    ...overrides
   };
 }
 
@@ -616,6 +675,8 @@ function printReport() {
 async function main() {
   await checkLocalAccessRequiresExplicitFlag();
   await checkExplicitLocalAccessReturnsUnstoredGuidance();
+  await checkDashboardReturnsThreeMonthTracking();
+  checkSubscriptionTrackingLifecycle();
   await checkLocalSaveGuidanceRequiresExplicitFlag();
   await checkPersistedSubscriptionRequired();
   await checkCachedPaidReadingBypassesOpenAI();

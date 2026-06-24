@@ -702,6 +702,65 @@ button:disabled {
   background: linear-gradient(90deg, var(--deep-teal), var(--saffron));
 }
 
+.tracking-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.tracking-meta span {
+  min-height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(23, 50, 58, 0.08);
+  border-radius: 0.75rem;
+  background: rgba(23, 107, 115, 0.06);
+  color: #3f5961;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.tracking-steps {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.tracking-step {
+  min-height: 3.7rem;
+  border: 1px solid rgba(23, 50, 58, 0.08);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 0.65rem 0.7rem;
+}
+
+.tracking-step.current {
+  border-color: rgba(199, 133, 59, 0.35);
+  background: rgba(246, 183, 95, 0.15);
+}
+
+.tracking-step.complete {
+  border-color: rgba(47, 141, 101, 0.28);
+  background: rgba(47, 141, 101, 0.1);
+}
+
+.tracking-step span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.tracking-step strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--ink);
+  font-size: 0.83rem;
+  line-height: 1.25;
+}
+
 .guidance-lists {
   display: grid;
   gap: 0.8rem;

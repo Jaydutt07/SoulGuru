@@ -73,6 +73,7 @@ This project is being built toward the stack shown in the product planning image
 - Sidereal chart-based Harmony compatibility with offline contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice
+- Server-backed More Guidance tracking contract with days left, month status, progress, and milestones
 
 ## Next Implementation Steps
 
