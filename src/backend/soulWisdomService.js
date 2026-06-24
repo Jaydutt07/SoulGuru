@@ -11,7 +11,7 @@ import {
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v5";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v6";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};

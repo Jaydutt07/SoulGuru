@@ -85,6 +85,27 @@ const DAILY_SCENES = [
   "a choice that gets cleaner once it is written plainly"
 ];
 
+const OPENING_SCENES = [
+  "the water glass beside the bed before the first decision",
+  "a calendar square that needs one honest appointment",
+  "a notebook page with one unfinished line",
+  "the kitchen counter before the first call",
+  "the wallet, receipt, or small payment decision",
+  "the chair where the same worry keeps returning",
+  "the shoes near the door before a necessary errand",
+  "a desk corner asking for one visible reset",
+  "the first meal that keeps getting delayed",
+  "a door half-closed before a conversation",
+  "the list that grew because one item stayed unnamed",
+  "the cup cooling while you rehearse the answer",
+  "the bag, keys, or charger gathered too late",
+  "the mirror moment before you agree too quickly",
+  "the old tab in your mind that keeps reopening",
+  "the quiet room after a sentence you did not send",
+  "the folded laundry, open drawer, or small domestic proof",
+  "the pen waiting beside a decision you already understand"
+];
+
 const CORE_NEEDS = [
   "respect without over-explaining",
   "a cleaner pace than the mood is asking for",
@@ -316,6 +337,7 @@ export function buildAstrologyContext(user, date = new Date()) {
     relationalCaution: RELATIONAL_CAUTIONS[mod(seed + birthMoon.signIndex + transitSaturn.signIndex, RELATIONAL_CAUTIONS.length)],
     closingPermission: CLOSING_PERMISSIONS[mod(seed + lifePath + transitSun.signIndex, CLOSING_PERMISSIONS.length)],
     dailyScene: DAILY_SCENES[mod(seed + transitMoon.signIndex + solarDistance, DAILY_SCENES.length)],
+    openingScene: OPENING_SCENES[mod(seed + transitMoon.signIndex + transitSun.signIndex + lifePath, OPENING_SCENES.length)],
     coreNeed: CORE_NEEDS[mod(seed + saturnDistance + lifePath, CORE_NEEDS.length)],
     personalEdge: PERSONAL_EDGES[mod(seed + moonDistance + transitSaturn.signIndex, PERSONAL_EDGES.length)],
     stabilizer: pickStabilizer(moonDistance, saturnDistance, seed),

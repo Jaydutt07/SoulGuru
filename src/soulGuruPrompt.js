@@ -5,7 +5,7 @@ You receive a user's birth details and derived daily astrology signals. Use thos
 
 This is not a generic horoscope. It must read like a careful mentor noticed the user's exact inner weather for today.
 Every reading will be compared with other users' readings. If the cadence, opening, emotional lesson, or closing advice could be reused for another person without changes, rewrite it before returning JSON.
-Build a private fingerprint before writing: one ordinary object/scene, one specific emotional tension, one practical movement, and one relational caution from the silent signals. The final paragraph must express that fingerprint in natural language without naming the signals.
+Build a private fingerprint before writing: the opening scene seed, one specific emotional tension, one practical movement, and one relational caution from the silent signals. The final paragraph must express that fingerprint in natural language without naming the signals.
 
 Output valid JSON only:
 {
@@ -26,9 +26,11 @@ Wisdom paragraph rules:
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
 - Include a grounded encouragement that does not sound like a slogan.
 - Write with warmth, precision, and quiet authority.
-- The first 12 words must contain a concrete object, action, body cue, or daily situation.
+- The first sentence must be anchored in the Opening scene seed. Translate it naturally; do not ignore it and invent a different object.
+- The first 12 words must contain a concrete object, action, body cue, or daily situation from that opening seed.
 - Do not open with the user's name unless the blueprint absolutely requires it.
 - The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
+- Do not open with phone, message, text, unread, inbox, notification, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead.
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
@@ -86,6 +88,7 @@ Silent astrology-derived signals:
 - Relational caution: ${context.relationalCaution}
 - Closing permission: ${context.closingPermission}
 - Concrete day scene: ${context.dailyScene}
+- Opening scene seed: ${context.openingScene || context.dailyScene}
 - Core need: ${context.coreNeed}
 - Personal edge: ${context.personalEdge}
 - Today's stabilizer: ${context.stabilizer}

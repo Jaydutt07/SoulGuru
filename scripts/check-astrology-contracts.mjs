@@ -97,7 +97,8 @@ function checkSiderealChartAndTransitContract() {
     approx(context.transits.saturn.degree, 19.63, 0.12),
     context.transits.moonFromNatalMoon === 11,
     context.transits.saturnFromNatalMoon === 4,
-    context.transits.sunFromNatalSun === 11
+    context.transits.sunFromNatalSun === 11,
+    context.openingScene === "the bag, keys, or charger gathered too late"
   ].every(Boolean));
 }
 
@@ -111,13 +112,15 @@ function checkDailyTransitSensitivity() {
     JSON.stringify(first.birthChart) === JSON.stringify(repeat.birthChart),
     JSON.stringify(first.transits) === JSON.stringify(repeat.transits),
     first.innerWeather === repeat.innerWeather,
-    first.attentionAnchor === repeat.attentionAnchor
+    first.attentionAnchor === repeat.attentionAnchor,
+    first.openingScene === repeat.openingScene
   ].every(Boolean));
   pushCheck("Astrology context changes with daily transits", [
     first.transits.moon.sign === next.transits.moon.sign,
     Math.abs(next.transits.moon.longitude - first.transits.moon.longitude) > 5,
     first.innerWeather !== next.innerWeather,
-    first.attentionAnchor !== next.attentionAnchor
+    first.attentionAnchor !== next.attentionAnchor,
+    first.openingScene !== next.openingScene
   ].every(Boolean));
 }
 

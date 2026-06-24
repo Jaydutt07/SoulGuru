@@ -45,8 +45,8 @@ export function getDailyFocus(user, dateKey = getTodayKey(new Date(), user.birth
 
 function buildSignatureWisdom(user, context, seed) {
   const name = firstName(user.name);
-  const detail = context.attentionAnchor || context.dailyScene || "one practical detail";
-  const scene = context.dailyScene || detail;
+  const detail = context.openingScene || context.attentionAnchor || context.dailyScene || "one practical detail";
+  const scene = context.openingScene || context.dailyScene || detail;
   const action = context.decisionGate || context.mentorMove || context.stabilizer;
   const body = context.bodySignal || "let the body settle before deciding";
   const relation = context.relationalCaution || context.relationshipMirror;
@@ -70,7 +70,7 @@ function buildSignatureWisdom(user, context, seed) {
       "A shorter answer, a named deadline, or a closed tab can protect more peace than another private debate."
     ],
     [
-      `Start with the body: ${fragment(body)}.`,
+      `${capitalize(detail)} is easier to read after the body settles.`,
       `${name}, a normal delay can feel personal if the day stays too loose.`,
       `This is the edge to watch: ${fragment(edge)}.`,
       `Around ${context.dailyArea}, follow the plain instruction: ${fragment(action)}.`,
@@ -89,7 +89,7 @@ function buildSignatureWisdom(user, context, seed) {
       "A quiet limit kept cleanly will feel more loving than a long explanation given too late."
     ],
     [
-      `${capitalize(work)} before the private debate gets another hour.`,
+      `${capitalize(detail)} is the signal to protect the work before the private debate gets another hour.`,
       `${name}, the pressure around ${context.dailyArea} is asking for structure, not a perfect mood.`,
       `Keep the next reply shaped by this: ${fragment(relation)}.`,
       `If ${fragment(avoid)} starts taking over, check the body first: ${fragment(body)}.`,
@@ -97,7 +97,7 @@ function buildSignatureWisdom(user, context, seed) {
       "You do not need to feel certain before you act responsibly."
     ],
     [
-      `${capitalize(body)}; let that be the first answer, not the last resort.`,
+      `${capitalize(detail)} should not wait until the mood becomes perfect.`,
       `${name}, ${fragment(need)} is easier to protect when the day has one named finish line.`,
       `The old habit is ${fragment(avoid)}, but the better move is ${fragment(action)}.`,
       `Handle ${context.dailyArea} through one practical decision and leave the rest of the story unargued.`
@@ -116,7 +116,7 @@ function buildSignatureWisdom(user, context, seed) {
       "A modest finish will steady more than another round of explaining."
     ],
     [
-      `${capitalize(need)} needs one visible action today.`,
+      `${capitalize(detail)} needs one visible action today.`,
       `${name}, the unfinished piece near ${context.dailyArea} will feel lighter once it has a time, a limit, or a smaller version.`,
       `${sentence(action)} If tension rises, pause before acting: ${fragment(body)}.`,
       `Keep this relationship truth nearby: ${fragment(relation)}.`,
@@ -128,35 +128,35 @@ function buildSignatureWisdom(user, context, seed) {
 }
 
 function buildTaskFirstWisdom(user, context) {
-  return `${areaOpening(context.dailyArea)} ${firstName(user.name)}, put ${context.workSignal} where it can be seen, then stop asking the mood to approve it. ${capitalize(context.emotionalKnot)} can turn a simple duty into a private test. Use ${context.stabilizer}, keep ${context.avoid} away from the next decision, and let one finished detail make the day feel less negotiable.`;
+  return `${sceneSeed(context)} points to the task that needs a cleaner shape. ${firstName(user.name)}, put ${context.workSignal} where it can be seen, then stop asking the mood to approve it. ${capitalize(context.emotionalKnot)} can turn a simple duty into a private test. Use ${context.stabilizer}, keep ${context.avoid} away from the next decision, and let one finished detail make the day feel less negotiable.`;
 }
 
 function buildBodyFirstWisdom(user, context) {
-  return `${capitalize(context.bodySignal)} before the day asks for explanations. ${firstName(user.name)}, ${context.innerWeather} becomes easier to trust when ${context.coreNeed} is treated as a real need, not a luxury. ${areaOpening(context.dailyArea)} Give one practical task a clean finish, keep the conversation shorter than the worry around it, and let ${context.relationshipMirror} guide your pace without taking over your worth.`;
+  return `${sceneSeed(context)} is the first clue, but the body gets the first vote. ${firstName(user.name)}, ${context.bodySignal} before explanations take over. ${capitalize(context.innerWeather)} becomes easier to trust when ${context.coreNeed} is treated as a real need, not a luxury. Give one practical task a clean finish, keep the conversation shorter than the worry around it, and let ${context.relationshipMirror} guide your pace without taking over your worth.`;
 }
 
 function buildRelationshipFirstWisdom(user, context) {
-  return `${capitalize(context.relationshipMirror)}, and that detail matters more than another long explanation. ${firstName(user.name)}, ${context.innerWeather} is not a weakness, but it does need direction. ${areaOpening(context.dailyArea)} Do not spend the best part of the day managing ${context.avoid}; ${context.decisionGate} instead. By tonight, the choice that felt plain may be the one you respect most.`;
+  return `${sceneSeed(context)} makes the relationship tone easier to read. ${capitalize(context.relationshipMirror)}, and that detail matters more than another long explanation. ${firstName(user.name)}, ${context.innerWeather} is not a weakness, but it does need direction. Do not spend the best part of the day managing ${context.avoid}; ${context.decisionGate} instead. By tonight, the choice that felt plain may be the one you respect most.`;
 }
 
 function buildQuietAuthorityWisdom(user, context) {
-  return `${firstName(user.name)}, protect the part of the day that still belongs to you. ${areaOpening(context.dailyArea)} ${capitalize(context.timingTone)}, especially if ${context.emotionalKnot} starts making everything urgent. ${capitalize(context.workSignal)}. Then step back from ${context.avoid}; the cleaner choice is not the loudest one, it is the one you can stand behind after the mood passes.`;
+  return `${sceneSeed(context)} is where quiet authority can begin. ${firstName(user.name)}, protect the part of the day that still belongs to you. ${capitalize(context.timingTone)}, especially if ${context.emotionalKnot} starts making everything urgent. ${capitalize(context.workSignal)}. Then step back from ${context.avoid}; the cleaner choice is not the loudest one, it is the one you can stand behind after the mood passes.`;
 }
 
 function buildPressureReleaseWisdom(user, context) {
-  return `${areaOpening(context.dailyArea)} ${capitalize(context.avoid)} will make the day heavier than it needs to be. ${firstName(user.name)}, use ${context.stabilizer} as your private rule. If a conversation starts pulling you into defense, remember that ${context.relationshipMirror}. Finish the visible task, care for the body before the difficult moment, and let one completed action answer the doubt that words keep reopening.`;
+  return `${sceneSeed(context)} can make ${context.avoid} louder than it deserves. ${firstName(user.name)}, use ${context.stabilizer} as your private rule. If a conversation starts pulling you into defense, remember that ${context.relationshipMirror}. Finish the visible task, care for the body before the difficult moment, and let one completed action answer the doubt that words keep reopening.`;
 }
 
 function buildSceneFirstWisdom(user, context) {
-  return `${capitalize(context.dailyScene)} can show you exactly where attention is leaking. ${firstName(user.name)}, do not turn ${context.emotionalKnot} into the manager of the whole day. ${capitalize(context.personalEdge)} by making one action physical: write it, send it, clean it, close it. When ${context.relationshipMirror}, respond with proportion. Your peace gets stronger when it has a shape.`;
+  return `${sceneSeed(context)} can show you exactly where attention is leaking. ${firstName(user.name)}, do not turn ${context.emotionalKnot} into the manager of the whole day. ${capitalize(context.personalEdge)} by making one action physical: write it, send it, clean it, close it. When ${context.relationshipMirror}, respond with proportion. Your peace gets stronger when it has a shape.`;
 }
 
 function buildCoreNeedWisdom(user, context) {
-  return `${capitalize(context.coreNeed)} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Start with ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than proving your intention again.`;
+  return `${sceneSeed(context)} shows why ${context.coreNeed} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Start with ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than proving your intention again.`;
 }
 
 function buildPersonalEdgeWisdom(user, context) {
-  return `${capitalize(context.personalEdge)} before the old rhythm collects more evidence. ${firstName(user.name)}, ${context.innerWeather} needs a practical container: ${context.stabilizer}. ${areaOpening(context.dailyArea)} If ${context.relationshipMirror}, let that soften your reaction without erasing your position. The day does not need a dramatic breakthrough; it needs one choice you can repeat without betraying yourself.`;
+  return `${sceneSeed(context)} is where the old rhythm tries to collect evidence. ${firstName(user.name)}, ${context.innerWeather} needs a practical container: ${context.stabilizer}. ${capitalize(context.personalEdge)} before the day turns it into a verdict. If ${context.relationshipMirror}, let that soften your reaction without erasing your position. The day does not need a dramatic breakthrough; it needs one choice you can repeat without betraying yourself.`;
 }
 
 function areaOpening(area) {
@@ -192,6 +192,10 @@ function areaOpening(area) {
     return "Home rhythm matters today because private disorder can leak into every decision.";
   }
   return "One unfinished responsibility deserves a plain finish today, without turning it into a story about your worth.";
+}
+
+function sceneSeed(context) {
+  return capitalize(context.openingScene || context.dailyScene || "one practical detail near you");
 }
 
 function normalizeLocalWisdom(text) {
