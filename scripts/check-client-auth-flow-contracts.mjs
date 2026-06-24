@@ -7,6 +7,7 @@ const checks = [];
 checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
+checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
 checkProductionSaveAdviceRequiresStoredBackendAnswer();
@@ -37,6 +38,16 @@ function checkProductionCreateRequiresProfilePersistence() {
     source.includes("const profile = await syncUserProfileToServer(account);"),
     source.includes("setError(\"Unable to save your account profile. Please try again shortly.\");"),
     source.includes("onLogin(mergeAccountProfile(account, profile));")
+  ].every(Boolean));
+}
+
+function checkProductionSoulGuruRequiresStoredBackendReading() {
+  pushCheck("Production Soul Guru does not show or cache unstored local fallback readings", [
+    source.includes("const [reading, setReading] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? fallbackReading : null);"),
+    source.includes("if (data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
+    source.includes("if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {"),
+    source.includes("cached.stored === false || cached.source === \"local-fallback\""),
+    source.includes("disabled={isSavingAdvice || !reading}")
   ].every(Boolean));
 }
 

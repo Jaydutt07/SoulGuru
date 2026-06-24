@@ -302,6 +302,8 @@ Requests and verifies backend-controlled OTP challenges. With Supabase configure
 
 Creates or returns the cached daily Soul Guru reading for a user/date. Production requires Supabase-backed caching in `daily_soul_readings`, checks the cache first, and only calls OpenAI on cache miss. `SOUL_WISDOM_ALLOW_UNCACHED=true` is only for isolated local quality testing. The reading context uses the user's resolved birth place, coordinates, and timezone silently so the final Words of Wisdom stay personal without mentioning astrology. If Upstash is configured, this endpoint is rate-limited server-side.
 
+The production client only displays and locally caches Soul Guru readings that came from the backend daily-reading contract. Development builds can use local fallback guidance, but production builds reject unstored or local-fallback readings so users do not mistake demo text for the real daily guidance.
+
 `POST /api/user-profile`
 
 Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage.

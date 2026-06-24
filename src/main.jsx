@@ -446,7 +446,8 @@ function MentorApp({ activeTab, onTabChange, user, updateUser, onLogout }) {
 function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const todayKey = useMemo(() => getTodayKey(new Date(), user.birthTimezone || undefined), [user.birthTimezone]);
   const fallbackReading = useMemo(() => getDailyWisdom(user, todayKey), [user, todayKey]);
-  const [reading, setReading] = useState(fallbackReading);
+  const [reading, setReading] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? fallbackReading : null);
+  const [readingStatus, setReadingStatus] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? "" : "Preparing today's guidance...");
   const [isSavingAdvice, setIsSavingAdvice] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
   const focus = useMemo(() => getDailyFocus(user), [user]);
@@ -459,12 +460,19 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
 
     if (cached?.reading) {
       setReading(cached.reading);
+      setReadingStatus("");
       return () => {
         cancelled = true;
       };
     }
 
-    setReading(fallbackReading);
+    if (LOCAL_AUTH_FALLBACK_ENABLED) {
+      setReading(fallbackReading);
+      setReadingStatus("");
+    } else {
+      setReading(null);
+      setReadingStatus("Preparing today's guidance...");
+    }
 
     authFetch(getApiUrl("/api/soul-wisdom"), {
       method: "POST",
@@ -497,20 +505,56 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         fallback: fallbackReading
       })
     })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled && (data?.reading || data?.wisdom)) {
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        return { ok: response.ok, data };
+      })
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+
+        if (ok && (data?.reading || data?.wisdom)) {
+          if (data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {
+            setReading(null);
+            setReadingStatus("Today's guidance could not be saved. Please try again shortly.");
+            trackEvent("soul_wisdom_failed", { reason: "not_stored" });
+            return;
+          }
+
           const nextReading = normalizeWisdomPayload(data.reading || data.wisdom, fallbackReading);
           setReading(nextReading);
-          writeDailyReadingCache(user, todayKey, nextReading, {
-            cached: Boolean(data.cached),
-            model: data.model,
-            source: data.source || "api"
-          });
+          setReadingStatus("");
+          if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {
+            writeDailyReadingCache(user, todayKey, nextReading, {
+              cached: Boolean(data.cached),
+              model: data.model,
+              source: data.source || "api",
+              stored: data.stored !== false
+            });
+          }
+          return;
         }
+
+        if (LOCAL_AUTH_FALLBACK_ENABLED) {
+          setReading(fallbackReading);
+          setReadingStatus("Using local guidance until the backend is connected.");
+          return;
+        }
+
+        setReading(null);
+        setReadingStatus("Soul Guru is unavailable. Please try again shortly.");
+        trackEvent("soul_wisdom_failed", { reason: "unavailable" });
       })
       .catch(() => {
-        if (!cancelled) setReading(fallbackReading);
+        if (!cancelled) {
+          if (LOCAL_AUTH_FALLBACK_ENABLED) {
+            setReading(fallbackReading);
+            setReadingStatus("Using local guidance until the backend is connected.");
+            return;
+          }
+          setReading(null);
+          setReadingStatus("Soul Guru is unavailable. Please try again shortly.");
+          trackEvent("soul_wisdom_failed", { reason: "network" });
+        }
       });
 
     return () => {
@@ -519,7 +563,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   }, [fallbackReading, todayKey, user]);
 
   async function saveAdvice() {
-    if (isSavingAdvice) return;
+    if (isSavingAdvice || !reading) return;
 
     const savedItem = {
       id: `saved-${Date.now()}`,
@@ -563,20 +607,20 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       <p className="eyebrow">Soul Guru</p>
       <h2>Words of Wisdom</h2>
       <article className="wisdom-panel">
-        <p>{reading.wisdom}</p>
+        <p className={reading ? "" : "wisdom-status"}>{reading?.wisdom || readingStatus}</p>
       </article>
       <div className="wisdom-cues" aria-label="Today's guidance cues">
         <div>
           <span>Inner weather</span>
-          <strong>{reading.innerWeather}</strong>
+          <strong>{reading?.innerWeather || "Syncing"}</strong>
         </div>
         <div>
           <span>Move</span>
-          <strong>{reading.todayMove}</strong>
+          <strong>{reading?.todayMove || "Wait for today's guidance"}</strong>
         </div>
         <div>
           <span>Release</span>
-          <strong>{reading.release}</strong>
+          <strong>{reading?.release || "Do not force an answer"}</strong>
         </div>
       </div>
       <div className="daily-focus">
@@ -588,7 +632,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         ))}
       </div>
       <div className="guidance-actions">
-        <button className="secondary-action calm-action" type="button" onClick={saveAdvice} disabled={isSavingAdvice}>
+        <button className="secondary-action calm-action" type="button" onClick={saveAdvice} disabled={isSavingAdvice || !reading}>
           <BadgeCheck size={18} aria-hidden="true" />
           {isSavingAdvice ? "Saving" : "Save Advice"}
         </button>
@@ -1730,6 +1774,9 @@ function readDailyReadingCache(user, dateKey) {
   try {
     const cached = JSON.parse(window.localStorage.getItem(getDailyReadingCacheKey(user, dateKey)) || "null");
     if (cached?.dateKey !== dateKey || cached?.promptVersion !== SOUL_READING_CACHE_VERSION || !cached?.reading) {
+      return null;
+    }
+    if (!LOCAL_AUTH_FALLBACK_ENABLED && (cached.stored === false || cached.source === "local-fallback")) {
       return null;
     }
     return {
