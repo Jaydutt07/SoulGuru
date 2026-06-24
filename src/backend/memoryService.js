@@ -9,14 +9,16 @@ export function isGuidanceMemoryConfigured(env = process.env) {
   return Boolean(env.OPENAI_API_KEY && env.PINECONE_API_KEY && env.PINECONE_HOST);
 }
 
-export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TOP_K }, env = process.env) {
+export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TOP_K }, env = process.env, deps = {}) {
   if (!isGuidanceMemoryConfigured(env) || !query) {
     return { configured: false, matches: [] };
   }
 
   try {
-    const vector = await createEmbedding(query, env);
-    const response = await fetch(`${normalizePineconeHost(env.PINECONE_HOST)}/query`, {
+    const makeEmbedding = deps.createEmbedding || createEmbedding;
+    const fetchImpl = deps.fetch || fetch;
+    const vector = await makeEmbedding(query, env);
+    const response = await fetchImpl(`${normalizePineconeHost(env.PINECONE_HOST)}/query`, {
       method: "POST",
       headers: pineconeHeaders(env),
       body: JSON.stringify({
@@ -55,16 +57,18 @@ export async function upsertGuidanceMemory({
   kind = "guidance",
   sourceId = "",
   metadata = {}
-}, env = process.env) {
+}, env = process.env, deps = {}) {
   if (!isGuidanceMemoryConfigured(env) || !text) {
     return { configured: false, upserted: false };
   }
 
   try {
+    const makeEmbedding = deps.createEmbedding || createEmbedding;
+    const fetchImpl = deps.fetch || fetch;
     const cleanText = String(text || "").replace(/\s+/g, " ").trim().slice(0, MAX_MEMORY_TEXT_CHARS);
-    const vector = await createEmbedding(cleanText, env);
+    const vector = await makeEmbedding(cleanText, env);
     const id = buildMemoryId({ user, kind, sourceId, text: cleanText });
-    const response = await fetch(`${normalizePineconeHost(env.PINECONE_HOST)}/vectors/upsert`, {
+    const response = await fetchImpl(`${normalizePineconeHost(env.PINECONE_HOST)}/vectors/upsert`, {
       method: "POST",
       headers: pineconeHeaders(env),
       body: JSON.stringify({

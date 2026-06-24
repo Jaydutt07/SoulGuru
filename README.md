@@ -87,6 +87,12 @@ Check Clerk auth behavior, including fail-closed required auth and backend ident
 npm run auth:check
 ```
 
+Check Pinecone/OpenAI memory behavior, hashed namespaces, sanitized metadata, and safe degradation:
+
+```bash
+npm run memory:check
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -171,6 +177,7 @@ The CI template checks:
 - `npm run soul:quality`
 - `npm run astrology:check`
 - `npm run auth:check`
+- `npm run memory:check`
 - `npm run soul:cache:check`
 - `npm run astro:check`
 - `npm run otp:check`
@@ -402,6 +409,7 @@ Before release:
 - Run `npm run public-env:check:strict`.
 - Run `npm run astrology:check`.
 - Run `npm run auth:check`.
+- Run `npm run memory:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.

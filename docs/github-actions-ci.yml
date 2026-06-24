@@ -41,6 +41,9 @@ jobs:
       - name: Verify auth contracts
         run: npm run auth:check
 
+      - name: Verify guidance memory contracts
+        run: npm run memory:check
+
       - name: Verify Soul Guru daily cache contract
         run: npm run soul:cache:check
 

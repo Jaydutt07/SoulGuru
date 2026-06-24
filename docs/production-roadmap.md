@@ -37,6 +37,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Offline Clerk auth contract checker with fail-closed required-auth behavior
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
+- Offline Pinecone/OpenAI memory contract checker for hashed namespaces, metadata sanitization, prompt-safe memory context, and degraded behavior
 - Server-backed More Guidance dashboard and saved advice persistence
 - Offline More Guidance subscription, daily-cache, and paid-memory contract checker
 - Production-gated local OTP fallback so demo login cannot silently replace backend OTP in release builds

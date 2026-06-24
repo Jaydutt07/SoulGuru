@@ -21,6 +21,7 @@
     "android:aab:release": "node scripts/build-android-release.mjs --format=aab",
     "mobile:check-backend": "node scripts/validate-mobile-backend.mjs",
     "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
+    "memory:check": "node scripts/check-memory-contracts.mjs",
     "more-guidance:check": "node scripts/check-more-guidance-contracts.mjs",
     "payments:check": "node scripts/check-payment-contracts.mjs",
     "otp:check": "node scripts/check-otp-contracts.mjs",
