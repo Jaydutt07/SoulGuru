@@ -199,7 +199,7 @@ async function readActiveSubscription(supabase, userKey) {
 
   if (error) {
     console.warn("Unable to check Astro Solves subscription", error.message);
-    return false;
+    throwHttpError("Astro Solves subscription could not be checked. Please try again.", 503);
   }
 
   return data?.id ? {
@@ -216,7 +216,7 @@ async function countStoredQuestions(supabase, userKey) {
 
   if (error) {
     console.warn("Unable to count Astro Solves questions", error.message);
-    return 0;
+    throwHttpError("Astro Solves allowance could not be checked. Please try again.", 503);
   }
 
   return count || 0;

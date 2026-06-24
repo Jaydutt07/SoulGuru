@@ -307,7 +307,7 @@ Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the prov
 
 `POST /api/astro-solve`
 
-Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. Production requires Supabase-backed counting and storage in `astro_solve_questions`; `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
+Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
 
 `POST /api/guidance-memory`
 

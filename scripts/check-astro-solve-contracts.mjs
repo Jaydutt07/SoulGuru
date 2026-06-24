@@ -219,6 +219,93 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
   ].every(Boolean));
 }
 
+async function checkSubscriptionReadFailureDoesNotCallOpenAI() {
+  const user = astroUser("subscription-read-failure");
+  const supabase = createFakeSupabase({
+    failSubscriptionSelect: true
+  });
+  const openAiRequests = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createAstroSolve({
+      user,
+      question: "Should I reopen an old relationship?"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Astro Solves subscription read failure does not call OpenAI", [
+    error?.statusCode === 503,
+    /subscription could not be checked/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert").length === 0
+  ].every(Boolean));
+}
+
+async function checkQuestionCountFailureDoesNotCallOpenAI() {
+  const user = astroUser("question-count-failure");
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    failQuestionCount: true
+  });
+  const openAiRequests = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createAstroSolve({
+      user,
+      question: "Why do I keep overthinking money?"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Astro Solves question count failure does not call OpenAI", [
+    error?.statusCode === 503,
+    /allowance could not be checked/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert").length === 0
+  ].every(Boolean));
+}
+
 async function checkStorageFailureDoesNotReturnAnswer() {
   const user = astroUser("storage-failure");
   const supabase = createFakeSupabase({
@@ -308,7 +395,13 @@ async function checkPersistedMemberAtLimitBlocksNineteenthQuestion() {
   ].every(Boolean));
 }
 
-function createFakeSupabase({ subscriptions = [], questions = [], failQuestionInsert = false } = {}) {
+function createFakeSupabase({
+  subscriptions = [],
+  questions = [],
+  failQuestionInsert = false,
+  failQuestionCount = false,
+  failSubscriptionSelect = false
+} = {}) {
   const state = {
     calls: [],
     subscriptions: new Map(),
@@ -316,7 +409,9 @@ function createFakeSupabase({ subscriptions = [], questions = [], failQuestionIn
     profiles: new Map(),
     nextProfileId: 1,
     nextQuestionId: questions.length + 1,
-    failQuestionInsert
+    failQuestionInsert,
+    failQuestionCount,
+    failSubscriptionSelect
   };
 
   for (const subscription of subscriptions) {
@@ -412,6 +507,12 @@ class FakeQuery {
 
   async maybeSingle() {
     if (this.table === "more_guidance_subscriptions") {
+      if (this.state.failSubscriptionSelect) {
+        return {
+          data: null,
+          error: { message: "contract subscription read failure" }
+        };
+      }
       const subscription = this.state.subscriptions.get(this.filters.user_key);
       if (!subscription) return { data: null, error: null };
       if (this.filters.status && subscription.status !== this.filters.status) return { data: null, error: null };
@@ -426,6 +527,12 @@ class FakeQuery {
 
   then(resolve, reject) {
     if (this.table === "astro_solve_questions" && this.selectOptions.count === "exact" && this.selectOptions.head === true) {
+      if (this.state.failQuestionCount) {
+        return Promise.resolve({
+          count: null,
+          error: { message: "contract count failure" }
+        }).then(resolve, reject);
+      }
       const count = this.state.questions.filter((question) => question.user_key === this.filters.user_key).length;
       return Promise.resolve({ count, error: null }).then(resolve, reject);
     }
@@ -487,6 +594,8 @@ async function main() {
   await checkExplicitLocalQuotaModeReturnsUnstoredAnswer();
   await checkClientOnlySubscriptionDoesNotExtendSupabaseQuota();
   await checkPersistedMemberGetsBonusAndStoresAnswer();
+  await checkSubscriptionReadFailureDoesNotCallOpenAI();
+  await checkQuestionCountFailureDoesNotCallOpenAI();
   await checkStorageFailureDoesNotReturnAnswer();
   await checkPersistedMemberAtLimitBlocksNineteenthQuestion();
 
