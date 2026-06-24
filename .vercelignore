@@ -1,0 +1,10 @@
+.env
+.env.local
+SoulGuru-debug.apk
+android
+dist
+node_modules
+*.apk
+*.keystore
+*.jks
+shared image (2).jpeg

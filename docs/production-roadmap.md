@@ -35,6 +35,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed More Guidance dashboard and saved advice persistence
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
 - Production readiness endpoint and CLI checks for backend env configuration
+- Vercel deployment config plus deployed backend smoke-test script
 - Astronomy-based birth/transit context replacing hash-only astrology
 - More Guidance page with 3-month tracking, reading history, and saved advice
 
@@ -49,8 +50,9 @@ This project is being built toward the stack shown in the product planning image
 7. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 8. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
 9. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
-10. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
-11. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-12. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-13. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-14. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+10. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
+11. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
+12. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+13. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+14. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+15. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

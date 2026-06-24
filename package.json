@@ -12,7 +12,8 @@
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../SoulGuru-debug.apk",
     "android:apk:backend": "node scripts/validate-mobile-backend.mjs && npm run android:apk",
     "mobile:check-backend": "node scripts/validate-mobile-backend.mjs",
-    "production:check": "node scripts/check-production-readiness.mjs"
+    "production:check": "node scripts/check-production-readiness.mjs",
+    "deployment:smoke": "node scripts/smoke-deployed-backend.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

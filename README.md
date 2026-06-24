@@ -59,6 +59,12 @@ Check server-side production readiness from local env:
 npm run production:check
 ```
 
+Smoke-test a deployed backend URL:
+
+```bash
+npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app
+```
+
 ## Supabase Setup
 
 Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. The core migrations create:
@@ -224,6 +230,7 @@ Before release:
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
+- Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:apk:backend`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
