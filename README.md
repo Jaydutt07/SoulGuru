@@ -59,6 +59,18 @@ Check server-side production readiness from local env:
 npm run production:check
 ```
 
+Smoke-test the local backend/API routes without spending OpenAI tokens:
+
+```bash
+npm run local:smoke
+```
+
+Run the same local smoke with live Soul Wisdom and Astro Solves AI calls:
+
+```bash
+npm run local:smoke:ai
+```
+
 Smoke-test a deployed backend URL:
 
 ```bash

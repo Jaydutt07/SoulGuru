@@ -36,6 +36,7 @@ This project is being built toward the stack shown in the product planning image
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
 - Local-LAN APK build helper for phone testing against the Mac dev backend
 - Production readiness endpoint and CLI checks for backend env configuration
+- Local backend smoke-test script for API contract checks before APK testing
 - Vercel deployment config plus deployed backend smoke-test script
 - Astronomy-based birth/transit context replacing hash-only astrology
 - Location-aware birth place resolution with timezone-safe chart dates
