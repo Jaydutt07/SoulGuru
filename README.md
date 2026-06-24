@@ -258,6 +258,8 @@ Current built debug artifact:
 SoulGuru-debug.apk
 ```
 
+The Android scripts auto-detect common Homebrew JDK and Android SDK paths. If your machine uses a custom install, set `JAVA_HOME`, `ANDROID_HOME`, and `ANDROID_SDK_ROOT` before building.
+
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
 Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
 
@@ -283,6 +285,25 @@ npm run android:apk:backend
 
 That command refuses to build if `VITE_API_BASE_URL` is missing, points at localhost, is not HTTPS, or fails `/api/health`.
 
+Signed release outputs:
+
+```bash
+npm run android:release:check
+npm run android:aab:release
+npm run android:apk:release
+```
+
+Use `android:aab:release` for Play Store submission and `android:apk:release` for a directly installable signed APK. The release scripts require a deployed HTTPS backend, a passing `/api/health`, and local Android signing variables:
+
+```bash
+ANDROID_KEYSTORE_PATH=/absolute/path/to/soulguru-release.jks
+ANDROID_KEYSTORE_PASSWORD=
+ANDROID_KEY_ALIAS=soulguru
+ANDROID_KEY_PASSWORD=
+```
+
+The release build wrapper loads these values from `.env` or shell env and passes them to Gradle only during the local build. Keep the keystore outside git; `npm run security:check` fails if APK/AAB artifacts or signing key material are tracked.
+
 ## Production Notes
 
 Before release:
@@ -293,9 +314,8 @@ Before release:
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
-- Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:apk:backend`.
+- Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
 - Configure Pinecone index and `PINECONE_HOST` for long-term guidance memory.
 - Add PostHog/Sentry public keys only where appropriate.
-- Replace debug APK with signed release APK/AAB.

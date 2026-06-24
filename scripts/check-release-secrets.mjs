@@ -3,18 +3,18 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
-const apkPath = getArgValue("--apk") || "SoulGuru-debug.apk";
+const artifactPath = getArgValue("--artifact") || getArgValue("--apk") || "SoulGuru-debug.apk";
 const findings = [];
 
 const trackedFiles = getTrackedFiles();
 for (const file of trackedFiles) {
   checkForbiddenTrackedPath(file);
   if (isTextLike(file)) {
-    scanTextFile(file, readTextFile(path.join(root, file)), { apk: false });
+    scanTextFile(file, readTextFile(path.join(root, file)), { mobileArtifact: false });
   }
 }
 
-scanApk(apkPath);
+scanMobileArtifact(artifactPath);
 
 if (findings.length > 0) {
   console.error("Release safety check failed:");
@@ -24,7 +24,7 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`Release safety check: pass (${trackedFiles.length} tracked files scanned${fs.existsSync(apkPath) ? `, ${apkPath} scanned` : ""}).`);
+console.log(`Release safety check: pass (${trackedFiles.length} tracked files scanned${fs.existsSync(artifactPath) ? `, ${artifactPath} scanned` : ""}).`);
 
 function getTrackedFiles() {
   const output = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" });
@@ -39,8 +39,8 @@ function checkForbiddenTrackedPath(file) {
       reason: "environment file is tracked"
     },
     {
-      test: (value) => value.endsWith(".apk"),
-      reason: "APK artifact is tracked"
+      test: (value) => /\.(apk|aab)$/i.test(value),
+      reason: "Android build artifact is tracked"
     },
     {
       test: (value) => value === "SoulGuru-debug.apk",
@@ -59,7 +59,7 @@ function checkForbiddenTrackedPath(file) {
       reason: "Capacitor synced web assets are tracked"
     },
     {
-      test: (value) => /\.(jks|keystore|p12|pfx)$/i.test(value),
+      test: (value) => /\.(jks|keystore|p12|pfx|pem)$/i.test(value),
       reason: "signing key material is tracked"
     }
   ];
@@ -71,11 +71,11 @@ function checkForbiddenTrackedPath(file) {
   }
 }
 
-function scanTextFile(file, text, { apk }) {
+function scanTextFile(file, text, { mobileArtifact }) {
   scanTokenPatterns(file, text);
   scanSensitiveAssignments(file, text);
-  if (apk) {
-    scanApkForbiddenNames(file, text);
+  if (mobileArtifact) {
+    scanMobileArtifactForbiddenNames(file, text);
   }
 }
 
@@ -106,7 +106,7 @@ function scanSensitiveAssignments(file, text) {
   }
 }
 
-function scanApkForbiddenNames(file, text) {
+function scanMobileArtifactForbiddenNames(file, text) {
   const forbiddenNames = [
     "OPENAI_API_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
@@ -120,11 +120,11 @@ function scanApkForbiddenNames(file, text) {
 
   const found = forbiddenNames.filter((name) => text.includes(name));
   if (found.length > 0) {
-    findings.push(`${file}: server-only env name(s) found in APK bundle: ${found.join(", ")}.`);
+    findings.push(`${file}: server-only env name(s) found in mobile bundle: ${found.join(", ")}.`);
   }
 }
 
-function scanApk(file) {
+function scanMobileArtifact(file) {
   if (!fs.existsSync(file)) return;
 
   const listing = execFileSync("unzip", ["-l", file], { encoding: "utf8" });
@@ -133,8 +133,9 @@ function scanApk(file) {
     .map((line) => line.trim().match(/\s(\S+)$/)?.[1])
     .filter(Boolean)
     .filter((entry) => {
-      return entry === "assets/capacitor.config.json" ||
-        (entry.startsWith("assets/public/") && /\.(html|js|json|css|map)$/i.test(entry));
+      const normalized = entry.replace(/^base\//, "");
+      return normalized === "assets/capacitor.config.json" ||
+        (normalized.startsWith("assets/public/") && /\.(html|js|json|css|map)$/i.test(normalized));
     });
 
   for (const entry of entries) {
@@ -142,7 +143,7 @@ function scanApk(file) {
       encoding: "utf8",
       maxBuffer: 30 * 1024 * 1024
     });
-    scanTextFile(`${file}!${entry}`, text, { apk: true });
+    scanTextFile(`${file}!${entry}`, text, { mobileArtifact: true });
   }
 }
 

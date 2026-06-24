@@ -2,8 +2,8 @@ import { loadEnv } from "vite";
 
 const mode = process.env.NODE_ENV || "production";
 const env = {
-  ...process.env,
-  ...loadEnv(mode, process.cwd(), "")
+  ...loadEnv(mode, process.cwd(), ""),
+  ...process.env
 };
 
 const apiBaseUrl = String(env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");

@@ -36,6 +36,7 @@ This project is being built toward the stack shown in the product planning image
 - Paid More Guidance deep reading generation with daily Supabase caching
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
 - Local-LAN APK build helper for phone testing against the Mac dev backend
+- Signed Android release APK/AAB scripts with keystore validation and artifact secret scanning
 - Production readiness endpoint and CLI checks for backend env configuration
 - Local backend smoke-test script for API contract checks before APK testing
 - Vercel deployment config plus deployed backend smoke-test script
@@ -57,8 +58,9 @@ This project is being built toward the stack shown in the product planning image
 10. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
 11. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
 12. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
-13. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
-14. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-15. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-16. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-17. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+13. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
+14. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
+15. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+16. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+17. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+18. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

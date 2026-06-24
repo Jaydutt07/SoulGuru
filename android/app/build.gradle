@@ -1,8 +1,34 @@
 apply plugin: 'com.android.application'
 
+def releaseSigningEnvNames = [
+    "ANDROID_KEYSTORE_PATH",
+    "ANDROID_KEYSTORE_PASSWORD",
+    "ANDROID_KEY_ALIAS",
+    "ANDROID_KEY_PASSWORD"
+]
+def releaseSigningEnv = releaseSigningEnvNames.collectEntries { name -> [(name): System.getenv(name)] }
+def releaseSigningConfigured = releaseSigningEnvNames.every { name -> releaseSigningEnv[name]?.trim() }
+def releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.toLowerCase().contains("release")
+} || System.getenv("ANDROID_REQUIRE_RELEASE_SIGNING") == "true"
+
+if (releaseBuildRequested && !releaseSigningConfigured) {
+    throw new GradleException("Missing Android release signing environment. Run npm run android:release:check, then build with npm run android:aab:release or npm run android:apk:release.")
+}
+
 android {
     namespace = "com.soulguru.app"
     compileSdk = rootProject.ext.compileSdkVersion
+    signingConfigs {
+        release {
+            if (releaseSigningConfigured) {
+                storeFile file(releaseSigningEnv.ANDROID_KEYSTORE_PATH)
+                storePassword releaseSigningEnv.ANDROID_KEYSTORE_PASSWORD
+                keyAlias releaseSigningEnv.ANDROID_KEY_ALIAS
+                keyPassword releaseSigningEnv.ANDROID_KEY_PASSWORD
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.soulguru.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -18,6 +44,9 @@ android {
     }
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
