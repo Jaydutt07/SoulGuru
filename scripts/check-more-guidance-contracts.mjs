@@ -1,9 +1,126 @@
 import {
   createMoreGuidanceReading,
-  DEEP_GUIDANCE_PROMPT_VERSION
+  DEEP_GUIDANCE_PROMPT_VERSION,
+  isLocalMoreGuidanceAllowed,
+  saveGuidance
 } from "../src/backend/guidanceService.js";
 
 const checks = [];
+
+async function checkLocalAccessRequiresExplicitFlag() {
+  const user = paidUser("local-access-default");
+  const openAiRequests = [];
+  let error = null;
+
+  try {
+    await createMoreGuidanceReading({
+      user: {
+        ...user,
+        soulGuruSubscription: {
+          active: true,
+          name: "Soul Guru + Astro Solve",
+          astroBonusQuestions: 15
+        }
+      },
+      subscription: {
+        active: true,
+        name: "Soul Guru + Astro Solve",
+        astroBonusQuestions: 15
+      }
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase: null,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("More Guidance local access requires explicit server flag", [
+    error?.statusCode === 503,
+    /Supabase is required/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    isLocalMoreGuidanceAllowed({ MORE_GUIDANCE_ALLOW_LOCAL_ACCESS: "true" }) === true,
+    isLocalMoreGuidanceAllowed({ MORE_GUIDANCE_ALLOW_LOCAL_ACCESS: "false" }) === false
+  ].every(Boolean));
+}
+
+async function checkExplicitLocalAccessReturnsUnstoredGuidance() {
+  const user = paidUser("local-access-enabled");
+
+  const result = await createMoreGuidanceReading({
+    user: {
+      ...user,
+      soulGuruSubscription: {
+        active: true,
+        name: "Soul Guru + Astro Solve",
+        astroBonusQuestions: 15
+      }
+    },
+    subscription: {
+      active: true,
+      name: "Soul Guru + Astro Solve",
+      astroBonusQuestions: 15
+    },
+    fallback: {
+      overview: "Mira, the local test map is about making one practical duty visible before it grows emotional weight. Give the day a finish line, reduce the explanation around sensitive conversations, and let one completed action restore trust in your timing. This fallback is intentionally available only when the server opts into local More Guidance access.",
+      thisWeek: "This week, protect one useful task from extra commentary. Shorten one reply and name one cost before agreeing.",
+      thisMonth: "This month, watch the same pressure return through different duties and give it one repeatable structure.",
+      practice: "For seven days, write one evening line about what became lighter because you handled it directly.",
+      focus: "Make the pattern visible",
+      watch: "Over-explaining under pressure"
+    }
+  }, {
+    MORE_GUIDANCE_ALLOW_LOCAL_ACCESS: "true",
+    MORE_GUIDANCE_DISABLE_OPENAI: "true"
+  }, {
+    supabase: null,
+    upsertGuidanceMemory: async () => ({ configured: false, upserted: false })
+  });
+
+  pushCheck("Explicit local More Guidance access returns unstored fallback", [
+    result.allowed === true,
+    result.cached === false,
+    result.stored === false,
+    result.source === "local-fallback",
+    result.promptVersion === DEEP_GUIDANCE_PROMPT_VERSION
+  ].every(Boolean));
+}
+
+async function checkLocalSaveGuidanceRequiresExplicitFlag() {
+  let error = null;
+  try {
+    await saveGuidance({
+      user: paidUser("local-save-default"),
+      sourceId: "saved-local-default",
+      reading: {
+        wisdom: "A short saved reading for contract coverage.",
+        innerWeather: "Focused",
+        todayMove: "Save one useful line",
+        release: "Drop the rest"
+      }
+    }, {}, {
+      supabase: null
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("Saved guidance local mode requires explicit server flag", [
+    error?.statusCode === 503,
+    /Supabase is required/.test(error?.message || "")
+  ].every(Boolean));
+}
 
 async function checkPersistedSubscriptionRequired() {
   const supabase = createFakeSupabase();
@@ -94,12 +211,58 @@ async function checkCachedPaidReadingBypassesOpenAI() {
   pushCheck("Cached paid guidance returns Supabase source", [
     result.allowed === true,
     result.cached === true,
+    result.stored === true,
     result.source === "supabase",
     result.guidance?.overview === cachedGuidance.overview,
     result.promptVersion === DEEP_GUIDANCE_PROMPT_VERSION,
     result.readingDate === date
   ].every(Boolean));
   pushCheck("Cached paid guidance bypasses OpenAI without API key", openAiCalls.length === 0);
+}
+
+async function checkPaidCacheReadFailureDoesNotCallOpenAI() {
+  const date = "2026-06-24";
+  const user = paidUser("read-failure-member");
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    failReadingSelect: true
+  });
+  const openAiRequests = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createMoreGuidanceReading({
+      user,
+      date
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("More Guidance cache read failure does not call OpenAI", [
+    error?.statusCode === 503,
+    /cache could not be checked/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    supabase.state.calls.filter((call) => call.table === "more_guidance_readings" && call.operation === "upsert").length === 0
+  ].every(Boolean));
 }
 
 async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
@@ -168,6 +331,7 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
     openAiRequests.length === 1,
     first.allowed === true,
     first.cached === false,
+    first.stored === true,
     first.source === "openai",
     first.model === "gpt-paid-contract",
     first.promptVersion === DEEP_GUIDANCE_PROMPT_VERSION,
@@ -191,6 +355,7 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
   pushCheck("Second paid same-day read uses cache without OpenAI", [
     second.allowed === true,
     second.cached === true,
+    second.stored === true,
     second.source === "supabase",
     second.guidance?.overview === first.guidance.overview,
     openAiRequests.length === 1,
@@ -205,14 +370,76 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
   ].every(Boolean));
 }
 
-function createFakeSupabase({ subscriptions = [], moreGuidanceReadings = [] } = {}) {
+async function checkPaidCacheWriteFailureDoesNotReturnReading() {
+  const date = "2026-06-24";
+  const user = paidUser("write-failure-member");
+  const guidanceJson = JSON.stringify({
+    overview: "The deeper pattern starts with the document you keep reopening without changing: effort is present, but the finish line keeps moving because approval has become part of the task. Mira, separate the work from the audience for one clean hour and let the result be ordinary enough to complete. In relationships, do not turn quick access into proof of care. In money and planning, write the real cost before saying yes.",
+    thisWeek: "This week, give one task a named finish line and protect it from extra commentary. Shorten the message and let consistency do the persuading.",
+    thisMonth: "This month, watch where the same demand returns through work, family, and private expectation. Build one visible habit around time, spending, or rest.",
+    practice: "For seven days, start with one written cost and one written limit. At night, record what became easier because the shape was clear.",
+    focus: "Finish before seeking approval",
+    watch: "Turning access into reassurance"
+  });
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    failReadingUpsert: true
+  });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createMoreGuidanceReading({
+      user,
+      date
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+      upsertGuidanceMemory: async (payload) => {
+        memoryUpserts.push(payload);
+        return { configured: false, upserted: false };
+      },
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: guidanceJson };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("More Guidance cache write failure does not return uncounted reading", [
+    error?.statusCode === 503,
+    /could not be cached/.test(error?.message || ""),
+    openAiRequests.length === 1,
+    memoryUpserts.length === 0,
+    supabase.state.calls.filter((call) => call.table === "more_guidance_readings" && call.operation === "upsert").length === 1
+  ].every(Boolean));
+}
+
+function createFakeSupabase({ subscriptions = [], moreGuidanceReadings = [], failReadingSelect = false, failReadingUpsert = false } = {}) {
   const state = {
     calls: [],
     subscriptions: new Map(),
     moreGuidanceReadings: new Map(),
     profiles: new Map(),
     nextProfileId: 1,
-    nextReadingId: 1
+    nextReadingId: 1,
+    failReadingSelect,
+    failReadingUpsert
   };
 
   for (const subscription of subscriptions) {
@@ -274,6 +501,14 @@ class FakeQuery {
     }
 
     if (this.table === "more_guidance_readings") {
+      if (this.state.failReadingUpsert) {
+        this.result = {
+          data: null,
+          error: { message: "contract paid cache failure" }
+        };
+        return this;
+      }
+
       const key = readingKey(payload);
       const existing = this.state.moreGuidanceReadings.get(key);
       const reading = {
@@ -299,6 +534,13 @@ class FakeQuery {
     }
 
     if (this.table === "more_guidance_readings") {
+      if (this.state.failReadingSelect) {
+        return {
+          data: null,
+          error: { message: "contract paid cache read failure" }
+        };
+      }
+
       const key = readingKey({
         user_key: this.filters.user_key,
         reading_date: this.filters.reading_date,
@@ -372,9 +614,14 @@ function printReport() {
 }
 
 async function main() {
+  await checkLocalAccessRequiresExplicitFlag();
+  await checkExplicitLocalAccessReturnsUnstoredGuidance();
+  await checkLocalSaveGuidanceRequiresExplicitFlag();
   await checkPersistedSubscriptionRequired();
   await checkCachedPaidReadingBypassesOpenAI();
+  await checkPaidCacheReadFailureDoesNotCallOpenAI();
   await checkPaidCacheMissWritesAndSecondReadUsesCache();
+  await checkPaidCacheWriteFailureDoesNotReturnReading();
 
   const failed = checks.filter((check) => !check.passed);
   printReport();

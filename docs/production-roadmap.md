@@ -59,6 +59,7 @@ This project is being built toward the stack shown in the product planning image
 - Production readiness contract checker requiring the full planned stack before `/api/readiness` returns ready
 - Production Soul Guru cache guard so daily AI readings require Supabase persistence
 - Production Astro Solves quota guard so real answers require Supabase persistence
+- Production More Guidance paid-access guard so deeper readings require persisted subscription and cache state
 - Live Supabase schema checker for migration/table/column contract verification
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing

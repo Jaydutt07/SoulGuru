@@ -865,9 +865,14 @@ function SubscriptionPage({ user, updateUser, onBack }) {
       .then((response) => response.json().then((data) => ({ ok: response.ok, status: response.status, data })).catch(() => ({ ok: false, status: response.status, data: null })))
       .then(({ ok, status, data }) => {
         if (cancelled) return;
-        if (ok && data?.guidance) {
+        if (ok && data?.guidance && (data.stored !== false || LOCAL_PAID_FALLBACK_ENABLED)) {
           setDeepGuidance(data.guidance);
           setDeepGuidanceStatus(data.cached ? "Deeper guidance synced." : "Deeper guidance ready.");
+          return;
+        }
+        if (ok && data?.guidance && data.stored === false) {
+          setDeepGuidance(null);
+          setDeepGuidanceStatus("Deeper guidance could not be saved. Please try again shortly.");
           return;
         }
         if (status === 402) {

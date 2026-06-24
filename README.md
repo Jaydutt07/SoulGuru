@@ -294,7 +294,7 @@ Server-only Pinecone memory route. It upserts saved guidance, daily readings, an
 
 `POST /api/more-guidance`
 
-Loads the More Guidance dashboard from Supabase, creates the paid deeper guidance map, and saves advice into `saved_guidance`. Deeper guidance is cached daily in `more_guidance_readings` when Supabase is configured, while local fallback behavior remains available during development. Production builds must keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
+Loads the More Guidance dashboard from Supabase, creates the paid deeper guidance map, and saves advice into `saved_guidance`. Production requires persisted subscription access and daily caching in `more_guidance_readings`; `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing. Production builds must also keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
 
 `GET /api/health`
 
@@ -314,10 +314,11 @@ RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 RAZORPAY_VERIFY_RATE_LIMIT=20
 PAYMENTS_ALLOW_LOCAL_ACTIVATION=false
+MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false
 MORE_GUIDANCE_PRICE_PAISE=49900
 ```
 
-Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false` outside isolated local testing. Real More Guidance purchases must be persisted in Supabase before the app unlocks paid guidance.
+Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false` and `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false` outside isolated local testing. Real More Guidance purchases must be persisted in Supabase before the app unlocks paid guidance.
 
 For confirmation emails:
 

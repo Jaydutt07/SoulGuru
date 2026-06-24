@@ -6,6 +6,7 @@ checkFullProductionStackIsReady();
 checkPartialStackIsNotReady();
 checkUncachedSoulWisdomIsNotReady();
 checkLocalAstroSolvesQuotaIsNotReady();
+checkLocalMoreGuidanceAccessIsNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -80,6 +81,20 @@ function checkUncachedSoulWisdomIsNotReady() {
     report.ok === false,
     soulCache?.status === "fail",
     soulCache?.missingEnv.includes("SOUL_WISDOM_ALLOW_UNCACHED=false")
+  ].every(Boolean));
+}
+
+function checkLocalMoreGuidanceAccessIsNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    MORE_GUIDANCE_ALLOW_LOCAL_ACCESS: "true"
+  });
+  const paidAccess = report.checks.find((check) => check.id === "moreGuidanceAccess");
+
+  pushCheck("Readiness rejects local More Guidance access mode", [
+    report.ok === false,
+    paidAccess?.status === "fail",
+    paidAccess?.missingEnv.includes("MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false")
   ].every(Boolean));
 }
 

@@ -8,6 +8,7 @@ checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
+checkProductionMoreGuidanceRequiresStoredBackendAnswer();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -43,6 +44,14 @@ function checkProductionAstroSolvesRequiresStoredBackendAnswer() {
     source.includes("if (response.ok && data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
     source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n        setSolveStatus(\"Astro Solves is unavailable. Please try again shortly.\");"),
     source.includes("trackEvent(\"astro_solve_failed\", { reason: \"not_stored\" });")
+  ].every(Boolean));
+}
+
+function checkProductionMoreGuidanceRequiresStoredBackendAnswer() {
+  pushCheck("Production More Guidance does not show unstored paid guidance", [
+    source.includes("if (ok && data?.guidance && (data.stored !== false || LOCAL_PAID_FALLBACK_ENABLED)) {"),
+    source.includes("if (ok && data?.guidance && data.stored === false) {"),
+    source.includes("setDeepGuidanceStatus(\"Deeper guidance could not be saved. Please try again shortly.\");")
   ].every(Boolean));
 }
 

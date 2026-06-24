@@ -63,6 +63,7 @@ function startViteServer({ host: serverHost, port: serverPort }) {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      MORE_GUIDANCE_ALLOW_LOCAL_ACCESS: "true",
       ...(includeAi ? {
         SOUL_WISDOM_ALLOW_UNCACHED: "true",
         ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "true"

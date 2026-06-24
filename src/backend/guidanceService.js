@@ -67,6 +67,13 @@ export async function saveGuidance(payload, env = process.env) {
     throw new Error("Guidance reading is required");
   }
 
+  if (!supabase && !isLocalMoreGuidanceAllowed(env)) {
+    throwHttpError(
+      "Supabase is required to save guidance. Set MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true only for isolated local testing.",
+      503
+    );
+  }
+
   if (!supabase) {
     await upsertGuidanceMemory({
       user,
@@ -140,6 +147,14 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
   const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
   const subscription = payload.subscription || user.soulGuruSubscription || {};
+
+  if (!supabase && !isLocalMoreGuidanceAllowed(env)) {
+    throwHttpError(
+      "Supabase is required to verify More Guidance membership. Set MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true only for isolated local testing.",
+      503
+    );
+  }
+
   const hasPersistedSubscription = await hasActiveSubscription(supabase, userKey);
   const isMember = supabase ? hasPersistedSubscription : Boolean(subscription.active);
 
@@ -153,7 +168,7 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   if (supabase) {
     const cached = await readCachedDeepGuidance(supabase, userKey, date);
     if (cached) {
-      return { ...cached, allowed: true, cached: true, source: "supabase" };
+      return { ...cached, allowed: true, cached: true, source: "supabase", stored: true };
     }
   }
 
@@ -196,6 +211,7 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
     guidance,
     astrologyContext,
     cached: false,
+    stored: false,
     source,
     model,
     promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
@@ -203,7 +219,7 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   };
 
   if (supabase) {
-    await writeCachedDeepGuidance(supabase, {
+    const cacheResult = await writeCachedDeepGuidance(supabase, {
       user,
       userKey,
       date,
@@ -212,6 +228,10 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
       astrologyContext,
       model
     });
+    if (!cacheResult.stored) {
+      throwHttpError("More Guidance reading could not be cached. Please try again.", 503);
+    }
+    result.stored = true;
   }
 
   await upsertMemory({
@@ -233,6 +253,10 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   }, env);
 
   return result;
+}
+
+export function isLocalMoreGuidanceAllowed(env = process.env) {
+  return String(env.MORE_GUIDANCE_ALLOW_LOCAL_ACCESS || "false").toLowerCase() === "true";
 }
 
 async function readSubscription(supabase, userKey) {
@@ -282,7 +306,7 @@ async function readCachedDeepGuidance(supabase, userKey, date) {
 
   if (error) {
     console.warn("Unable to read cached More Guidance reading", error.message);
-    return null;
+    throwHttpError("More Guidance daily cache could not be checked. Please try again.", 503);
   }
   if (!data?.guidance) return null;
 
@@ -316,7 +340,10 @@ async function writeCachedDeepGuidance(supabase, { user, userKey, date, timezone
 
   if (error) {
     console.warn("Unable to cache More Guidance reading", error.message);
+    return { stored: false, error: error.message };
   }
+
+  return { stored: true };
 }
 
 function buildMoreGuidanceInput({ user, context, date, memoryContext = "" }) {
@@ -538,6 +565,12 @@ function scrubAstrologyTerms(text) {
     "numerology",
     "karma"
   ].reduce((current, term) => current.replace(new RegExp(term, "gi"), "inner timing"), String(text || ""));
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }
 
 function firstName(name) {

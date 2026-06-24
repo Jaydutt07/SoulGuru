@@ -10,6 +10,7 @@ export function buildDeploymentReadiness(env = process.env) {
     ], "Configure Supabase and apply all migrations before production launch."),
     checkSoulWisdom(env),
     checkAstroSolves(env),
+    checkMoreGuidance(env),
     checkOtp(env),
     checkRazorpay(env),
     checkRequired(env, "rateLimit", "Upstash rate limiting", [
@@ -86,6 +87,23 @@ function checkSoulWisdom(env) {
     missingEnv,
     advice: missingEnv.length
       ? "Disable uncached Soul Guru mode so production readings are cached once per user per day."
+      : ""
+  };
+}
+
+function checkMoreGuidance(env) {
+  const localAccessEnabled = String(env.MORE_GUIDANCE_ALLOW_LOCAL_ACCESS || "false").toLowerCase() === "true";
+  const missingEnv = localAccessEnabled ? ["MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false"] : [];
+
+  return {
+    id: "moreGuidanceAccess",
+    label: "More Guidance paid access persistence",
+    severity: "critical",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Disable local More Guidance access so production paid readings require persisted subscription and cache state."
       : ""
   };
 }
