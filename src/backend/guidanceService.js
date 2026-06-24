@@ -307,7 +307,7 @@ async function readSubscription(supabase, userKey) {
 
   if (error) {
     console.warn("Unable to read More Guidance subscription", error.message);
-    return null;
+    throwHttpError("More Guidance subscription could not be checked. Please try again.", 503);
   }
 
   if (!data) return null;
@@ -455,7 +455,7 @@ async function readGuidanceHistory(supabase, userKey, limit = DEFAULT_LIMIT) {
 
   if (error) {
     console.warn("Unable to read guidance history", error.message);
-    return [];
+    throwHttpError("More Guidance reading history could not be loaded. Please try again.", 503);
   }
 
   return (data || []).map((item) => ({
@@ -477,7 +477,7 @@ async function readSavedGuidance(supabase, userKey, limit = DEFAULT_LIMIT) {
 
   if (error) {
     console.warn("Unable to read saved guidance", error.message);
-    return [];
+    throwHttpError("Saved guidance could not be loaded. Please try again.", 503);
   }
 
   return (data || []).map(mapSavedGuidance);

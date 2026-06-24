@@ -133,6 +133,54 @@ async function checkDashboardReturnsThreeMonthTracking() {
   ].every(Boolean));
 }
 
+async function checkDashboardReadFailuresReturnErrors() {
+  const user = paidUser("dashboard-read-failure");
+  const cases = [
+    {
+      label: "subscription",
+      options: { failSubscriptionSelect: true },
+      pattern: /subscription could not be checked/
+    },
+    {
+      label: "history",
+      options: { failHistorySelect: true },
+      pattern: /history could not be loaded/
+    },
+    {
+      label: "saved guidance",
+      options: { failSavedSelect: true },
+      pattern: /Saved guidance could not be loaded/
+    }
+  ];
+  const results = [];
+  const originalWarn = console.warn;
+
+  try {
+    console.warn = () => {};
+    for (const item of cases) {
+      let error = null;
+      try {
+        await getMoreGuidanceDashboard({
+          user,
+          limit: 5
+        }, {}, {
+          supabase: createFakeSupabase({
+            subscriptions: [activeSubscription(user.id)],
+            ...item.options
+          })
+        });
+      } catch (caughtError) {
+        error = caughtError;
+      }
+      results.push(error?.statusCode === 503 && item.pattern.test(error.message || ""));
+    }
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("More Guidance dashboard read failures do not return empty synced data", results.every(Boolean));
+}
+
 function checkSubscriptionTrackingLifecycle() {
   const subscription = {
     active: true,
@@ -220,6 +268,49 @@ async function checkPersistedSubscriptionRequired() {
   pushCheck("Supabase mode requires persisted More Guidance subscription", [
     result.allowed === false,
     /subscription is required/i.test(result.error || ""),
+    openAiRequests.length === 0,
+    supabase.state.calls.filter((call) => call.table === "more_guidance_readings" && call.operation === "upsert").length === 0
+  ].every(Boolean));
+}
+
+async function checkPaidSubscriptionReadFailureDoesNotCallOpenAI() {
+  const user = paidUser("paid-subscription-read-failure");
+  const supabase = createFakeSupabase({
+    failSubscriptionSelect: true
+  });
+  const openAiRequests = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createMoreGuidanceReading({
+      user,
+      date: "2026-06-24"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Paid More Guidance subscription read failure does not call OpenAI", [
+    error?.statusCode === 503,
+    /subscription could not be checked/.test(error?.message || ""),
     openAiRequests.length === 0,
     supabase.state.calls.filter((call) => call.table === "more_guidance_readings" && call.operation === "upsert").length === 0
   ].every(Boolean));
@@ -488,7 +579,15 @@ async function checkPaidCacheWriteFailureDoesNotReturnReading() {
   ].every(Boolean));
 }
 
-function createFakeSupabase({ subscriptions = [], moreGuidanceReadings = [], failReadingSelect = false, failReadingUpsert = false } = {}) {
+function createFakeSupabase({
+  subscriptions = [],
+  moreGuidanceReadings = [],
+  failReadingSelect = false,
+  failReadingUpsert = false,
+  failSubscriptionSelect = false,
+  failHistorySelect = false,
+  failSavedSelect = false
+} = {}) {
   const state = {
     calls: [],
     subscriptions: new Map(),
@@ -497,7 +596,10 @@ function createFakeSupabase({ subscriptions = [], moreGuidanceReadings = [], fai
     nextProfileId: 1,
     nextReadingId: 1,
     failReadingSelect,
-    failReadingUpsert
+    failReadingUpsert,
+    failSubscriptionSelect,
+    failHistorySelect,
+    failSavedSelect
   };
 
   for (const subscription of subscriptions) {
@@ -585,6 +687,12 @@ class FakeQuery {
 
   async maybeSingle() {
     if (this.table === "more_guidance_subscriptions") {
+      if (this.state.failSubscriptionSelect) {
+        return {
+          data: null,
+          error: { message: "contract subscription read failure" }
+        };
+      }
       return {
         data: this.state.subscriptions.get(this.filters.user_key) || null,
         error: null
@@ -614,6 +722,20 @@ class FakeQuery {
   }
 
   then(resolve, reject) {
+    if (this.table === "daily_soul_readings") {
+      const result = this.state.failHistorySelect
+        ? { data: null, error: { message: "contract history read failure" } }
+        : { data: [], error: null };
+      return Promise.resolve(result).then(resolve, reject);
+    }
+
+    if (this.table === "saved_guidance") {
+      const result = this.state.failSavedSelect
+        ? { data: null, error: { message: "contract saved read failure" } }
+        : { data: [], error: null };
+      return Promise.resolve(result).then(resolve, reject);
+    }
+
     return Promise.resolve(this.result).then(resolve, reject);
   }
 }
@@ -676,9 +798,11 @@ async function main() {
   await checkLocalAccessRequiresExplicitFlag();
   await checkExplicitLocalAccessReturnsUnstoredGuidance();
   await checkDashboardReturnsThreeMonthTracking();
+  await checkDashboardReadFailuresReturnErrors();
   checkSubscriptionTrackingLifecycle();
   await checkLocalSaveGuidanceRequiresExplicitFlag();
   await checkPersistedSubscriptionRequired();
+  await checkPaidSubscriptionReadFailureDoesNotCallOpenAI();
   await checkCachedPaidReadingBypassesOpenAI();
   await checkPaidCacheReadFailureDoesNotCallOpenAI();
   await checkPaidCacheMissWritesAndSecondReadUsesCache();
