@@ -180,7 +180,7 @@ Server-only Pinecone memory route. It upserts saved guidance, daily readings, an
 
 `POST /api/more-guidance`
 
-Loads the More Guidance dashboard from Supabase, creates the paid deeper guidance map, and saves advice into `saved_guidance`. Deeper guidance is cached daily in `more_guidance_readings` when Supabase is configured, while local fallback behavior remains available during development.
+Loads the More Guidance dashboard from Supabase, creates the paid deeper guidance map, and saves advice into `saved_guidance`. Deeper guidance is cached daily in `more_guidance_readings` when Supabase is configured, while local fallback behavior remains available during development. Production builds must keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
 
 `GET /api/health`
 

@@ -35,6 +35,7 @@ const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v5";
 const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v5";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
+const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
 initializeObservability();
@@ -725,17 +726,20 @@ function SubscriptionPage({ user, updateUser, onBack }) {
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [isActivating, setIsActivating] = useState(false);
   const serverSubscription = serverDashboard?.subscription?.active ? serverDashboard.subscription : null;
-  const subscription = serverSubscription || user.soulGuruSubscription;
+  const localSubscription = LOCAL_PAID_FALLBACK_ENABLED ? user.soulGuruSubscription : null;
+  const subscription = serverSubscription || localSubscription;
   const isActive = Boolean(subscription?.active);
   const startsAt = subscription?.startedAt ? new Date(subscription.startedAt) : new Date();
   const endsAt = subscription?.endsAt ? new Date(subscription.endsAt) : addMonths(startsAt, 3);
   const daysTotal = Math.max(1, Math.ceil((endsAt.getTime() - startsAt.getTime()) / 86400000));
   const daysLeft = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 86400000));
   const progress = Math.min(100, Math.max(0, Math.round(((daysTotal - daysLeft) / daysTotal) * 100)));
-  const guidanceHistory = mergeGuidanceItems(serverDashboard?.guidanceHistory || [], getCachedGuidanceHistory(user));
-  const savedGuidance = mergeGuidanceItems(serverDashboard?.savedGuidance || [], user.savedGuidance || []);
+  const localGuidanceHistory = LOCAL_PAID_FALLBACK_ENABLED ? getCachedGuidanceHistory(user) : [];
+  const localSavedGuidance = LOCAL_PAID_FALLBACK_ENABLED ? user.savedGuidance || [] : [];
+  const guidanceHistory = mergeGuidanceItems(serverDashboard?.guidanceHistory || [], localGuidanceHistory);
+  const savedGuidance = mergeGuidanceItems(serverDashboard?.savedGuidance || [], localSavedGuidance);
   const fallbackDeepGuidance = useMemo(() => buildLocalDeepGuidance(user), [user]);
-  const activeDeepGuidance = deepGuidance || fallbackDeepGuidance;
+  const activeDeepGuidance = deepGuidance || (LOCAL_PAID_FALLBACK_ENABLED ? fallbackDeepGuidance : null);
 
   useEffect(() => {
     let cancelled = false;
@@ -826,7 +830,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           soulGuruSubscription: subscription
         },
         context,
-        fallback: fallbackDeepGuidance
+        fallback: LOCAL_PAID_FALLBACK_ENABLED ? fallbackDeepGuidance : undefined
       })
     })
       .then((response) => response.json().then((data) => ({ ok: response.ok, status: response.status, data })).catch(() => ({ ok: false, status: response.status, data: null })))
@@ -841,13 +845,23 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           setDeepGuidanceStatus("Activate More Guidance to unlock the deeper map.");
           return;
         }
-        setDeepGuidance(fallbackDeepGuidance);
-        setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+        if (LOCAL_PAID_FALLBACK_ENABLED) {
+          setDeepGuidance(fallbackDeepGuidance);
+          setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+          return;
+        }
+        setDeepGuidance(null);
+        setDeepGuidanceStatus("Deeper guidance could not sync. Please try again shortly.");
       })
       .catch(() => {
         if (!cancelled) {
-          setDeepGuidance(fallbackDeepGuidance);
-          setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+          if (LOCAL_PAID_FALLBACK_ENABLED) {
+            setDeepGuidance(fallbackDeepGuidance);
+            setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+            return;
+          }
+          setDeepGuidance(null);
+          setDeepGuidanceStatus("Deeper guidance could not sync. Please try again shortly.");
         }
       });
 
@@ -1005,14 +1019,20 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           <article className="deep-guidance-panel">
             <h3>Deeper guidance map</h3>
             {deepGuidanceStatus && <p className="deep-guidance-status">{deepGuidanceStatus}</p>}
-            <div className="deep-guidance-cues">
-              <div><span>Focus</span><strong>{activeDeepGuidance.focus}</strong></div>
-              <div><span>Watch</span><strong>{activeDeepGuidance.watch}</strong></div>
-            </div>
-            <p><strong>Overview:</strong> {activeDeepGuidance.overview}</p>
-            <p><strong>This week:</strong> {activeDeepGuidance.thisWeek}</p>
-            <p><strong>This month:</strong> {activeDeepGuidance.thisMonth}</p>
-            <p><strong>Practice:</strong> {activeDeepGuidance.practice}</p>
+            {activeDeepGuidance ? (
+              <>
+                <div className="deep-guidance-cues">
+                  <div><span>Focus</span><strong>{activeDeepGuidance.focus}</strong></div>
+                  <div><span>Watch</span><strong>{activeDeepGuidance.watch}</strong></div>
+                </div>
+                <p><strong>Overview:</strong> {activeDeepGuidance.overview}</p>
+                <p><strong>This week:</strong> {activeDeepGuidance.thisWeek}</p>
+                <p><strong>This month:</strong> {activeDeepGuidance.thisMonth}</p>
+                <p><strong>Practice:</strong> {activeDeepGuidance.practice}</p>
+              </>
+            ) : (
+              <p>Your deeper guidance will appear here after the paid backend sync completes.</p>
+            )}
             <p><strong>Astro Solves:</strong> your plan includes 15 extra detailed questions for specific life situations.</p>
           </article>
 
