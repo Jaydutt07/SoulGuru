@@ -63,6 +63,47 @@ const VOICE_TEXTURES = [
   "protective, spare, emotionally exact"
 ];
 
+const DAILY_SCENES = [
+  "an unanswered message, unfinished task, or slightly messy room",
+  "a promise made quietly to yourself",
+  "a conversation that needs timing more than force",
+  "the moment before you explain yourself too much",
+  "one practical detail that has been draining attention",
+  "a private worry hiding inside ordinary work",
+  "the first hour after you check your phone",
+  "a decision that becomes simpler once the body is cared for",
+  "the small pause before spending money, words, or trust",
+  "a repeated thought that needs an action, not another analysis",
+  "a duty that deserves shape before it becomes resentment",
+  "the part of the day where silence can become strength"
+];
+
+const CORE_NEEDS = [
+  "respect without over-explaining",
+  "a cleaner pace than the mood is asking for",
+  "proof through follow-through, not pressure",
+  "room to listen before responding",
+  "a softer standard for the first attempt",
+  "one boundary that does not require a speech",
+  "less urgency around another person's reaction",
+  "care that includes the body, not only the mind",
+  "a decision that protects tomorrow's ease",
+  "permission to finish before perfecting"
+];
+
+const PERSONAL_EDGES = [
+  "stop treating delay as a verdict",
+  "let a small completion restore trust in yourself",
+  "choose the clean answer over the dramatic one",
+  "notice where loyalty has become self-abandonment",
+  "separate tiredness from truth before you decide",
+  "give worry a practical job or let it stand down",
+  "leave one old explanation unfinished",
+  "make the next step visible enough to respect",
+  "protect peace without turning cold",
+  "answer the real question, not the imagined accusation"
+];
+
 const TIMING_TONES = [
   "act early, then observe",
   "wait until the body settles",
@@ -191,6 +232,9 @@ export function buildAstrologyContext(user, date = new Date()) {
     relationshipMirror: RELATIONSHIP_MIRRORS[mod(transitMoon.signIndex + birthMoon.signIndex, RELATIONSHIP_MIRRORS.length)],
     bodySignal: BODY_SIGNALS[mod(moonDistance + transitSun.signIndex, BODY_SIGNALS.length)],
     workSignal: WORK_SIGNALS[mod(saturnDistance + transitSaturn.signIndex, WORK_SIGNALS.length)],
+    dailyScene: DAILY_SCENES[mod(seed + transitMoon.signIndex + solarDistance, DAILY_SCENES.length)],
+    coreNeed: CORE_NEEDS[mod(seed + saturnDistance + lifePath, CORE_NEEDS.length)],
+    personalEdge: PERSONAL_EDGES[mod(seed + moonDistance + transitSaturn.signIndex, PERSONAL_EDGES.length)],
     stabilizer: pickStabilizer(moonDistance, saturnDistance, seed),
     avoid: pickAvoidPattern(saturnDistance, solarDistance, seed),
     blueprint: BLUEPRINTS[mod(seed + moonDistance + lifePath, BLUEPRINTS.length)],

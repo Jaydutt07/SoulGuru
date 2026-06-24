@@ -4,6 +4,7 @@ You are the private daily mentor voice for SoulGuru.
 You receive a user's birth details and derived daily astrology signals. Use those signals silently as inspiration for timing, temperament, pressure points, emotional needs, and practical guidance. Never mention astrology, zodiac, moon sign, planets, houses, transits, charts, numerology, karma, predictions, or remedies.
 
 This is not a generic horoscope. It must read like a careful mentor noticed the user's exact inner weather for today.
+Every reading will be compared with other users' readings. If the cadence, opening, emotional lesson, or closing advice could be reused for another person without changes, rewrite it before returning JSON.
 
 Output valid JSON only:
 {
@@ -17,11 +18,14 @@ Wisdom paragraph rules:
 - 72 to 98 words.
 - Address the user by first name exactly once.
 - Use the requested blueprint, but do not make the blueprint visible.
-- Vary sentence shapes. Do not use a fixed four-sentence formula.
-- Make one concrete observation, one emotionally specific truth, and one practical action.
+- Vary sentence shapes and sentence count. Do not use a fixed four-sentence formula.
+- Use at least three silent signals, including one concrete scene or behavior.
+- Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
 - Include a grounded encouragement that does not sound like a slogan.
 - Write with warmth, precision, and quiet authority.
-- The opening line must feel specific to this user's day; never begin with a reusable horoscope-style setup.
+- The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", or a reusable horoscope-style setup.
+- Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
+- Use fresh verbs and images from ordinary life. No grand spiritual language.
 
 Avoid these phrases and close variants:
 - "you may feel"
@@ -59,6 +63,9 @@ Silent astrology-derived signals:
 - Relationship mirror: ${context.relationshipMirror}
 - Body/routine signal: ${context.bodySignal}
 - Work/creation signal: ${context.workSignal}
+- Concrete day scene: ${context.dailyScene}
+- Core need: ${context.coreNeed}
+- Personal edge: ${context.personalEdge}
 - Today's stabilizer: ${context.stabilizer}
 - Today's avoid pattern: ${context.avoid}
 - Writing blueprint: ${context.blueprint}
@@ -75,7 +82,8 @@ Create today's Words of Wisdom using the silent signals and any relevant memory.
 export function normalizeWisdomPayload(raw, fallback = createFallbackReading()) {
   const parsed = parseReading(raw);
   const source = parsed || (typeof raw === "object" && raw ? raw : {});
-  const wisdom = cleanWisdomText(source.wisdom || raw, fallback.wisdom, 100);
+  const cleanedWisdom = cleanWisdomText(source.wisdom || raw, fallback.wisdom, 100);
+  const wisdom = isLowQualityWisdom(cleanedWisdom) && fallback?.wisdom ? fallback.wisdom : cleanedWisdom;
   return {
     wisdom,
     innerWeather: cleanShortField(source.innerWeather, fallback.innerWeather),
@@ -108,6 +116,35 @@ export function cleanWisdomText(text, fallback = "", maxWords = 115) {
   }, normalized);
 
   return limitWords(scrubbed, maxWords);
+}
+
+export function isLowQualityWisdom(text) {
+  const normalized = String(text || "").toLowerCase();
+  if (!normalized.trim()) return true;
+
+  const bannedPatterns = [
+    /\byou may feel\b/,
+    /\btoday may bring\b/,
+    /\bthe pull between\b/,
+    /\btorn between\b/,
+    /\bold pull\b/,
+    /\bsteady action will speak\b/,
+    /\byour steadiness grows\b/,
+    /^today[, ]/,
+    /^you may\b/,
+    /^there is\b/,
+    /^this is a day\b/
+  ];
+
+  if (bannedPatterns.some((pattern) => pattern.test(normalized))) return true;
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length < 55) return true;
+
+  const repeatedGenericWords = ["calm", "steady", "clarity", "boundary", "energy", "truth", "honest"]
+    .filter((word) => (normalized.match(new RegExp(`\\b${word}\\b`, "g")) || []).length > 1);
+
+  return repeatedGenericWords.length > 1;
 }
 
 export function firstName(name) {

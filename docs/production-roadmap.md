@@ -29,6 +29,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
+- Server-backed More Guidance dashboard and saved advice persistence
 - Astronomy-based birth/transit context replacing hash-only astrology
 - More Guidance page with 3-month tracking, reading history, and saved advice
 
@@ -37,9 +38,10 @@ This project is being built toward the stack shown in the product planning image
 1. Create Supabase project and apply `supabase/migrations/001_initial_schema.sql`.
 2. Apply `supabase/migrations/002_payment_events.sql`.
 3. Apply `supabase/migrations/003_astro_solves_metadata.sql`.
-4. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-5. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-6. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-7. Add Resend transactional emails for OTP/account in addition to membership confirmations.
-8. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-9. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+4. Apply `supabase/migrations/004_saved_guidance_profile.sql`.
+5. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+6. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+7. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+8. Add Resend transactional emails for OTP/account in addition to membership confirmations.
+9. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+10. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

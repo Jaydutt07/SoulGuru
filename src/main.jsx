@@ -24,13 +24,13 @@ import "./styles.css";
 import { authFetch } from "./authClient.js";
 import { buildAstrologyContext, getSaadeSatiFromChart } from "./astrologyEngine.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
-import { cleanWisdomText, firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
+import { cleanWisdomText, firstName, isLowQualityWisdom, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
 const SESSION_KEY = "soulguru.session.v1";
-const SOUL_READING_CACHE_VERSION = "soul-wisdom-v2";
-const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v2";
-const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v2";
+const SOUL_READING_CACHE_VERSION = "soul-wisdom-v3";
+const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v3";
+const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v3";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
@@ -468,7 +468,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       savedGuidance: [savedItem, ...(current.savedGuidance || [])].slice(0, 30),
       guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
     }));
-    writeGuidanceMemory(user, reading, savedItem.id);
+    saveGuidanceToServer(user, reading, savedItem.id);
     trackEvent("guidance_saved");
   }
 
@@ -666,17 +666,66 @@ function AstroSolvesTab({ user, updateUser }) {
 }
 
 function SubscriptionPage({ user, updateUser, onBack }) {
+  const [serverDashboard, setServerDashboard] = useState(null);
+  const [dashboardStatus, setDashboardStatus] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [isActivating, setIsActivating] = useState(false);
-  const subscription = user.soulGuruSubscription;
+  const serverSubscription = serverDashboard?.subscription?.active ? serverDashboard.subscription : null;
+  const subscription = serverSubscription || user.soulGuruSubscription;
   const isActive = Boolean(subscription?.active);
   const startsAt = subscription?.startedAt ? new Date(subscription.startedAt) : new Date();
   const endsAt = subscription?.endsAt ? new Date(subscription.endsAt) : addMonths(startsAt, 3);
   const daysTotal = Math.max(1, Math.ceil((endsAt.getTime() - startsAt.getTime()) / 86400000));
   const daysLeft = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 86400000));
   const progress = Math.min(100, Math.max(0, Math.round(((daysTotal - daysLeft) / daysTotal) * 100)));
-  const guidanceHistory = getCachedGuidanceHistory(user);
-  const savedGuidance = user.savedGuidance || [];
+  const guidanceHistory = mergeGuidanceItems(serverDashboard?.guidanceHistory || [], getCachedGuidanceHistory(user));
+  const savedGuidance = mergeGuidanceItems(serverDashboard?.savedGuidance || [], user.savedGuidance || []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDashboardStatus("Syncing guidance...");
+
+    authFetch(getApiUrl("/api/more-guidance"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "dashboard",
+        limit: 10,
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          birthDate: user.birthDate,
+          birthTime: user.birthTime,
+          birthPlace: user.birthPlace
+        }
+      })
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.configured) {
+          setServerDashboard(data);
+          setDashboardStatus("Guidance synced.");
+          if (data.subscription?.active && !user.soulGuruSubscription?.active) {
+            updateUser((current) => ({
+              ...current,
+              soulGuruSubscription: data.subscription
+            }));
+          }
+          return;
+        }
+        setDashboardStatus("");
+      })
+      .catch(() => {
+        if (!cancelled) setDashboardStatus("");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [updateUser, user.birthDate, user.birthPlace, user.birthTime, user.email, user.id, user.name, user.phone, user.soulGuruSubscription?.active]);
 
   function activatePlan(metadata = {}) {
     const start = new Date();
@@ -797,6 +846,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
         {isActive ? "Subscription active" : isActivating ? "Opening checkout" : "Activate 3 months"}
       </button>
       {checkoutStatus && <p className="checkout-note">{checkoutStatus}</p>}
+      {dashboardStatus && <p className="checkout-note">{dashboardStatus}</p>}
 
       {isActive && (
         <>
@@ -1259,12 +1309,12 @@ function writeDailyReadingCache(user, dateKey, reading, meta = {}) {
   }
 }
 
-function writeGuidanceMemory(user, reading, sourceId) {
-  authFetch(getApiUrl("/api/guidance-memory"), {
+function saveGuidanceToServer(user, reading, sourceId) {
+  authFetch(getApiUrl("/api/more-guidance"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      action: "upsert",
+      action: "save-guidance",
       user: {
         id: user.id,
         name: user.name,
@@ -1274,13 +1324,8 @@ function writeGuidanceMemory(user, reading, sourceId) {
         birthTime: user.birthTime,
         birthPlace: user.birthPlace
       },
-      kind: "saved-guidance",
       sourceId,
-      text: reading.wisdom,
-      metadata: {
-        source: "soul-guru",
-        savedAt: new Date().toISOString()
-      }
+      reading
     })
   }).catch(() => {});
 }
@@ -1309,6 +1354,16 @@ function getCachedGuidanceHistory(user) {
   ].slice(0, 90);
 }
 
+function mergeGuidanceItems(primary, fallback) {
+  const seen = new Set();
+  return [...primary, ...fallback].filter((item) => {
+    const key = item.id || item.dateKey || item.date || item.reading?.wisdom || item.wisdom;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 90);
+}
+
 function getDailyWisdom(user, dateKey = getTodayKey()) {
   const context = buildAstrologyContext(user, buildDateFromKey(dateKey));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
@@ -1317,9 +1372,15 @@ function getDailyWisdom(user, dateKey = getTodayKey()) {
     buildBodyFirstWisdom,
     buildRelationshipFirstWisdom,
     buildQuietAuthorityWisdom,
-    buildPressureReleaseWisdom
+    buildPressureReleaseWisdom,
+    buildSceneFirstWisdom,
+    buildCoreNeedWisdom,
+    buildPersonalEdgeWisdom
   ];
-  const wisdom = builders[seed % builders.length](user, context);
+  let wisdom = builders[seed % builders.length](user, context);
+  if (isLowQualityWisdom(wisdom)) {
+    wisdom = builders[(seed + 1) % builders.length](user, context);
+  }
 
   return {
     wisdom: normalizeLocalWisdom(wisdom),
@@ -1330,23 +1391,35 @@ function getDailyWisdom(user, dateKey = getTodayKey()) {
 }
 
 function buildTaskFirstWisdom(user, context) {
-  return `${areaOpening(context.dailyArea)} ${firstName(user.name)}, the useful move is ${context.workSignal}, then let the result be ordinary before you judge it. ${capitalize(context.emotionalKnot)} can make a simple duty feel personal, so keep the day smaller than your mood wants. ${capitalize(context.bodySignal)}. Treat ${context.relationshipMirror} as information, not a final verdict, and leave ${context.avoid} outside the next decision.`;
+  return `${areaOpening(context.dailyArea)} ${firstName(user.name)}, put ${context.workSignal} where it can be seen, then stop asking the mood to approve it. ${capitalize(context.emotionalKnot)} can turn a simple duty into a private test. Use ${context.stabilizer}, keep ${context.avoid} away from the next decision, and let one finished detail make the day feel less negotiable.`;
 }
 
 function buildBodyFirstWisdom(user, context) {
-  return `${capitalize(context.bodySignal)} before you explain, decide, or reply. ${firstName(user.name)}, your day works better when ${context.stabilizer}; otherwise ${context.emotionalKnot} can borrow the steering wheel. ${areaOpening(context.dailyArea)} Give one practical task a clean finish, keep the conversation shorter than the worry around it, and let ${context.relationshipMirror} remind you that peace does not require instant access to every answer.`;
+  return `${capitalize(context.bodySignal)} before the day asks for explanations. ${firstName(user.name)}, ${context.innerWeather} becomes easier to trust when ${context.coreNeed} is treated as a real need, not a luxury. ${areaOpening(context.dailyArea)} Give one practical task a clean finish, keep the conversation shorter than the worry around it, and let ${context.relationshipMirror} guide your pace without taking over your worth.`;
 }
 
 function buildRelationshipFirstWisdom(user, context) {
-  return `${capitalize(context.relationshipMirror)}, and that matters today. ${firstName(user.name)}, ${context.innerWeather} is not a weakness, but it does need direction. ${areaOpening(context.dailyArea)} Do not spend the best part of the day managing ${context.avoid}; ${context.decisionGate} instead. The right pace will feel less dramatic, more usable, and easier to respect by tonight.`;
+  return `${capitalize(context.relationshipMirror)}, and that detail matters more than another long explanation. ${firstName(user.name)}, ${context.innerWeather} is not a weakness, but it does need direction. ${areaOpening(context.dailyArea)} Do not spend the best part of the day managing ${context.avoid}; ${context.decisionGate} instead. By tonight, the choice that felt plain may be the one you respect most.`;
 }
 
 function buildQuietAuthorityWisdom(user, context) {
-  return `${firstName(user.name)}, protect the part of the day that still belongs to you. ${areaOpening(context.dailyArea)} ${capitalize(context.timingTone)}, especially if ${context.emotionalKnot} starts making everything urgent. ${capitalize(context.workSignal)}. Then step back from ${context.avoid}; the cleaner choice is not the loudest one, it is the one you can still stand behind after the mood passes.`;
+  return `${firstName(user.name)}, protect the part of the day that still belongs to you. ${areaOpening(context.dailyArea)} ${capitalize(context.timingTone)}, especially if ${context.emotionalKnot} starts making everything urgent. ${capitalize(context.workSignal)}. Then step back from ${context.avoid}; the cleaner choice is not the loudest one, it is the one you can stand behind after the mood passes.`;
 }
 
 function buildPressureReleaseWisdom(user, context) {
-  return `${areaOpening(context.dailyArea)} ${capitalize(context.avoid)} will make the day heavier than it needs to be. ${firstName(user.name)}, use ${context.stabilizer} as your private rule. If a conversation starts pulling you into defense, remember that ${context.relationshipMirror}. Finish the visible task, feed the body before the difficult moment, and let one completed action answer the doubt that words keep reopening.`;
+  return `${areaOpening(context.dailyArea)} ${capitalize(context.avoid)} will make the day heavier than it needs to be. ${firstName(user.name)}, use ${context.stabilizer} as your private rule. If a conversation starts pulling you into defense, remember that ${context.relationshipMirror}. Finish the visible task, care for the body before the difficult moment, and let one completed action answer the doubt that words keep reopening.`;
+}
+
+function buildSceneFirstWisdom(user, context) {
+  return `${capitalize(context.dailyScene)} can show you exactly where attention is leaking. ${firstName(user.name)}, do not turn ${context.emotionalKnot} into the manager of the whole day. ${capitalize(context.personalEdge)} by making the next step physical: write it, send it, clean it, close it. When ${context.relationshipMirror}, respond with proportion. Your peace gets stronger when it has a shape.`;
+}
+
+function buildCoreNeedWisdom(user, context) {
+  return `${capitalize(context.coreNeed)} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Start with ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than another round of proving your intention.`;
+}
+
+function buildPersonalEdgeWisdom(user, context) {
+  return `${capitalize(context.personalEdge)} before the old rhythm collects more evidence. ${firstName(user.name)}, ${context.innerWeather} needs a practical container: ${context.stabilizer}. ${areaOpening(context.dailyArea)} If ${context.relationshipMirror}, let that soften your reaction without erasing your position. The day does not need a dramatic breakthrough; it needs one choice you can repeat without betraying yourself.`;
 }
 
 function areaOpening(area) {

@@ -4,7 +4,7 @@ import { buildSoulWisdomInput, normalizeWisdomPayload, SOUL_WISDOM_SYSTEM_PROMPT
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-const PROMPT_VERSION = "soul-wisdom-v2";
+const PROMPT_VERSION = "soul-wisdom-v3";
 
 export async function createDailySoulWisdom(payload, env = process.env) {
   const user = payload.user || {};

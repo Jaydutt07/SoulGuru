@@ -80,6 +80,10 @@ Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and 
 
 Server-only Pinecone memory route. It upserts saved guidance, daily readings, and Astro Solves answers, or searches relevant memories for future Soul Guru readings. If Pinecone is not configured, the route degrades safely without exposing keys to the app.
 
+`POST /api/more-guidance`
+
+Loads the More Guidance dashboard from Supabase and saves advice into `saved_guidance`. This gives the paid page server-backed subscription status, reading history, and saved advice when Supabase is configured, while preserving local fallback behavior during development.
+
 `GET /api/health`
 
 Basic API health check for deployment.
@@ -102,7 +106,7 @@ RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles.
 
 ## Observability
 
