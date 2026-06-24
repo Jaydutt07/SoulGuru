@@ -332,17 +332,44 @@ export function buildTransitDateForUser(user = {}, dateKey = new Date().toISOStr
 
 export function getSaadeSatiFromChart(user, date = new Date()) {
   const birthMoon = siderealBody("Moon", buildBirthDate(user, resolveBirthPlace(user.birthPlace, user)));
-  const transitSaturn = siderealBody("Saturn", date);
+  const today = new Date(date);
+  const transitSaturn = siderealBody("Saturn", today);
   const distance = signDistance(birthMoon.sign, transitSaturn.sign);
   const active = [12, 1, 2].includes(distance);
   const phaseIndex = distance === 12 ? 1 : distance === 1 ? 2 : distance === 2 ? 3 : 0;
   const phaseTitle = ["Outside Saade Sati", "Rising phase", "Peak phase", "Setting phase"][phaseIndex];
+  const moonIndex = birthMoon.signIndex;
+  const activeSignIndexes = [
+    mod(moonIndex - 1, SIDEREAL_SIGNS.length),
+    moonIndex,
+    mod(moonIndex + 1, SIDEREAL_SIGNS.length)
+  ];
+  const saturnTransit = getSaturnSignWindow(today);
+  const activeEndDate = active ? findNextSaturnConditionDate(today, (signIndex) => !activeSignIndexes.includes(signIndex)) : null;
+  const nextStartDate = active ? null : findNextSaturnConditionDate(today, (signIndex) => activeSignIndexes.includes(signIndex));
+
   return {
     active,
     phaseIndex,
     phaseTitle,
     moonSign: birthMoon.sign,
-    saturnSign: transitSaturn.sign
+    saturnSign: transitSaturn.sign,
+    saturnTransit,
+    activeEndDate,
+    nextStartDate
+  };
+}
+
+export function getSaturnSignWindow(date = new Date()) {
+  const current = siderealBody("Saturn", date);
+  const startDate = findSaturnSignBoundary(date, current.signIndex, -1);
+  const endDate = findSaturnSignBoundary(date, current.signIndex, 1);
+  return {
+    sign: current.sign,
+    signIndex: current.signIndex,
+    degree: current.degree,
+    startDate,
+    endDate
   };
 }
 
@@ -368,6 +395,94 @@ function geocentricLongitude(bodyName, date) {
   }
   const vector = Astronomy.GeoVector(Astronomy.Body[bodyName], date, true);
   return Astronomy.Ecliptic(vector).elon;
+}
+
+function findSaturnSignBoundary(date, targetSignIndex, direction) {
+  const stepMs = direction * 7 * 86400000;
+  const maxSteps = 220;
+  let inside = new Date(date);
+  let outside = new Date(date);
+
+  for (let step = 0; step < maxSteps; step += 1) {
+    const candidate = new Date(outside.getTime() + stepMs);
+    const signIndex = siderealBody("Saturn", candidate).signIndex;
+    if (signIndex !== targetSignIndex) {
+      return refineSaturnBoundary({
+        inside,
+        outside: candidate,
+        targetSignIndex,
+        direction
+      });
+    }
+    inside = candidate;
+    outside = candidate;
+  }
+
+  return new Date(date.getTime() + direction * 3 * 365 * 86400000);
+}
+
+function findNextSaturnConditionDate(date, condition) {
+  const start = new Date(date);
+  const stepMs = 30 * 86400000;
+  const maxSteps = 40 * 12;
+  let before = start;
+
+  for (let step = 1; step <= maxSteps; step += 1) {
+    const candidate = new Date(start.getTime() + step * stepMs);
+    const signIndex = siderealBody("Saturn", candidate).signIndex;
+    if (condition(signIndex)) {
+      return refineConditionBoundary({
+        before,
+        after: candidate,
+        condition
+      });
+    }
+    before = candidate;
+  }
+
+  return null;
+}
+
+function refineSaturnBoundary({ inside, outside, targetSignIndex, direction }) {
+  let low = direction > 0 ? inside : outside;
+  let high = direction > 0 ? outside : inside;
+  const minMs = 60 * 60 * 1000;
+
+  while (high.getTime() - low.getTime() > minMs) {
+    const middle = new Date((low.getTime() + high.getTime()) / 2);
+    const signIndex = siderealBody("Saturn", middle).signIndex;
+    if (signIndex === targetSignIndex) {
+      if (direction > 0) {
+        low = middle;
+      } else {
+        high = middle;
+      }
+    } else if (direction > 0) {
+      high = middle;
+    } else {
+      low = middle;
+    }
+  }
+
+  return high;
+}
+
+function refineConditionBoundary({ before, after, condition }) {
+  let low = before;
+  let high = after;
+  const minMs = 60 * 60 * 1000;
+
+  while (high.getTime() - low.getTime() > minMs) {
+    const middle = new Date((low.getTime() + high.getTime()) / 2);
+    const signIndex = siderealBody("Saturn", middle).signIndex;
+    if (condition(signIndex)) {
+      high = middle;
+    } else {
+      low = middle;
+    }
+  }
+
+  return high;
 }
 
 function buildBirthDate(user, birthPlace = resolveBirthPlace(user.birthPlace, user)) {

@@ -29,9 +29,9 @@ import { cleanWisdomText, firstName, isLowQualityWisdom, normalizeWisdomPayload 
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
 const SESSION_KEY = "soulguru.session.v1";
-const SOUL_READING_CACHE_VERSION = "soul-wisdom-v4";
-const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v4";
-const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v4";
+const SOUL_READING_CACHE_VERSION = "soul-wisdom-v5";
+const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v5";
+const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v5";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
@@ -43,32 +43,6 @@ const TABS = [
   { id: "shani", label: "Shani", Icon: Clock3 },
   { id: "numbers", label: "#Numbers", Icon: Hash },
   { id: "harmony", label: "Harmony", Icon: Heart }
-];
-
-const VEDIC_SIGNS = [
-  "Aries",
-  "Taurus",
-  "Gemini",
-  "Cancer",
-  "Leo",
-  "Virgo",
-  "Libra",
-  "Scorpio",
-  "Sagittarius",
-  "Capricorn",
-  "Aquarius",
-  "Pisces"
-];
-
-const SATURN_PERIODS = [
-  { sign: "Sagittarius", start: "2017-10-26", end: "2020-01-24" },
-  { sign: "Capricorn", start: "2020-01-24", end: "2023-01-17" },
-  { sign: "Aquarius", start: "2023-01-17", end: "2025-03-29" },
-  { sign: "Pisces", start: "2025-03-29", end: "2027-06-03" },
-  { sign: "Aries", start: "2027-06-03", end: "2029-08-08" },
-  { sign: "Taurus", start: "2029-08-08", end: "2032-05-31" },
-  { sign: "Gemini", start: "2032-05-31", end: "2034-07-13" },
-  { sign: "Cancer", start: "2034-07-13", end: "2036-08-27" }
 ];
 
 const MEMBERSHIP_PLANS = [
@@ -1078,7 +1052,7 @@ function ShaniTab({ user, updateUser }) {
   const memberPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === user.memberPlan);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    const timer = window.setInterval(() => setNow(new Date()), 60 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -1756,9 +1730,9 @@ function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezo
     buildCoreNeedWisdom,
     buildPersonalEdgeWisdom
   ];
-  let wisdom = builders[seed % builders.length](user, context);
+  let wisdom = buildSignatureWisdom(user, context, seed);
   if (isLowQualityWisdom(wisdom)) {
-    wisdom = builders[(seed + 1) % builders.length](user, context);
+    wisdom = builders[seed % builders.length](user, context);
   }
 
   return {
@@ -1767,6 +1741,53 @@ function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezo
     todayMove: toCue(context.decisionGate),
     release: toCue(context.avoid)
   };
+}
+
+function buildSignatureWisdom(user, context, seed) {
+  const name = firstName(user.name);
+  const detail = context.attentionAnchor || context.dailyScene || "one practical detail";
+  const scene = context.dailyScene || detail;
+  const action = context.decisionGate || context.mentorMove || context.stabilizer;
+  const body = context.bodySignal || "let the body settle before deciding";
+  const relation = context.relationalCaution || context.relationshipMirror;
+  const avoid = context.avoid || "over-explaining";
+  const need = context.coreNeed || context.innerWeather || "room to move slowly";
+  const work = context.workSignal || "complete the nearest useful task";
+  const edge = context.personalEdge || context.emotionalKnot;
+  const structures = [
+    [
+      `${capitalize(detail)} is carrying more emotion than the task itself.`,
+      `${name}, the useful question is not why it feels heavy; it is what can be made plain enough to finish.`,
+      `${capitalize(action)} before the mind starts asking for proof from every response.`,
+      `If ${relation}, leave a little space before replying.`,
+      `One clean completion will make the rest of the day less negotiable.`
+    ],
+    [
+      `${capitalize(scene)} points to the exact place where attention is leaking.`,
+      `Give it shape first, ${name}: ${work}, then step back from ${avoid}.`,
+      `${capitalize(need)} does not need a speech to be valid.`,
+      `A shorter answer, a named deadline, or a closed tab can protect more peace than another private debate.`
+    ],
+    [
+      `${capitalize(body)} before you trust the first explanation your mood offers.`,
+      `${name}, ${edge} can make a normal delay feel personal if the day stays too loose.`,
+      `Use ${action}, especially around ${context.dailyArea}.`,
+      `Keep care practical: fewer words, a clearer time, and one promise small enough to keep without resentment.`
+    ],
+    [
+      `${capitalize(detail)} needs a decision, not a bigger story.`,
+      `${name}, the tender part of today is ${need}, and it deserves protection without becoming withdrawal.`,
+      `Let ${action}; let ${relation}.`,
+      `By evening, respect yourself for what you handled directly, not for how perfectly you felt while doing it.`
+    ],
+    [
+      `${capitalize(scene)} is the small doorway into the larger pattern.`,
+      `Do not let ${avoid} spend the whole day for you, ${name}.`,
+      `${capitalize(work)}, then use ${body} before the conversation that could become heavier than it needs to be.`,
+      `A quiet limit kept cleanly will feel more loving than a long explanation given too late.`
+    ]
+  ];
+  return structures[mod(seed, structures.length)].join(" ");
 }
 
 function buildTaskFirstWisdom(user, context) {
@@ -1988,15 +2009,16 @@ function getWesternZodiac(dateString) {
 function getSaadeSatiReport(user, now) {
   const chartReport = getSaadeSatiFromChart(user, now);
   const moonSign = chartReport.moonSign;
-  const moonIndex = VEDIC_SIGNS.indexOf(moonSign);
-  const currentTransit = getCurrentSaturnTransit(now, chartReport.saturnSign);
-  const saturnIndex = VEDIC_SIGNS.indexOf(currentTransit.sign);
-  const previousSignIndex = mod(moonIndex - 1, 12);
-  const nextSignIndex = mod(moonIndex + 1, 12);
+  const currentTransit = chartReport.saturnTransit || {
+    sign: chartReport.saturnSign,
+    startDate: now,
+    endDate: addYears(now, 2)
+  };
+  const saturnSign = currentTransit.sign || chartReport.saturnSign;
   const phaseIndex = chartReport.phaseIndex;
 
   if (phaseIndex) {
-    const endPeriod = findTransitForSign(VEDIC_SIGNS[nextSignIndex], now) || currentTransit;
+    const endDate = parseDate(chartReport.activeEndDate || currentTransit.endDate || addYears(now, 2));
     const phaseTitles = ["", "Rising phase", "Peak phase", "Setting phase"];
     const experiences = [
       "",
@@ -2008,32 +2030,21 @@ function getSaadeSatiReport(user, now) {
       active: true,
       phaseIndex,
       phaseTitle: phaseTitles[phaseIndex],
-      endDate: parseDate(endPeriod.end),
-      endLabel: `Estimated completion: ${formatDate(endPeriod.end)}`,
-      summary: `Your calculated Moon sign is ${moonSign}, with Saturn currently in ${currentTransit.sign}. In this ${phaseTitles[phaseIndex].toLowerCase()}, ${experiences[phaseIndex]}. There is nothing to fear about Saade Sati. With steady remedies, practical discipline, and timely guidance, this period can pass with fewer struggles and more inner strength.`
+      endDate,
+      endLabel: `Estimated completion: ${formatDate(endDate)}`,
+      summary: `Your calculated Moon sign is ${moonSign}, with Saturn currently in ${saturnSign}. In this ${phaseTitles[phaseIndex].toLowerCase()}, ${experiences[phaseIndex]}. There is nothing to fear about Saade Sati. With steady remedies, practical discipline, and timely guidance, this period can pass with fewer struggles and more inner strength.`
     };
   }
 
-  const nextStartPeriod = findTransitForSign(VEDIC_SIGNS[previousSignIndex], now);
-  const nextStart = nextStartPeriod ? parseDate(nextStartPeriod.start) : addYears(now, 1);
+  const nextStart = parseDate(chartReport.nextStartDate || currentTransit.endDate || addYears(now, 1));
   return {
     active: false,
     phaseIndex: 0,
     phaseTitle: "Outside Saade Sati",
     endDate: nextStart,
-    endLabel: nextStartPeriod ? `Next watch begins around ${formatDate(nextStartPeriod.start)}` : "No near-term Saade Sati window found",
-    summary: `Your calculated Moon sign is ${moonSign}, and Saturn is currently in ${currentTransit.sign}. Saade Sati does not appear active right now. Keep your routine clean, repay obligations slowly, and treat discipline as protection rather than pressure.`
+    endLabel: chartReport.nextStartDate ? `Next watch begins around ${formatDate(nextStart)}` : `Current Saturn window changes around ${formatDate(nextStart)}`,
+    summary: `Your calculated Moon sign is ${moonSign}, and Saturn is currently in ${saturnSign}. Saade Sati does not appear active right now. Keep your routine clean, repay obligations slowly, and treat discipline as protection rather than pressure.`
   };
-}
-
-function getCurrentSaturnTransit(now, computedSign) {
-  return SATURN_PERIODS.find((period) => now >= parseDate(period.start) && now < parseDate(period.end))
-    || SATURN_PERIODS.find((period) => period.sign === computedSign && parseDate(period.end) > now)
-    || { sign: computedSign, start: now.toISOString().slice(0, 10), end: addYears(now, 2).toISOString().slice(0, 10) };
-}
-
-function findTransitForSign(sign, now) {
-  return SATURN_PERIODS.find((period) => period.sign === sign && parseDate(period.end) > now);
 }
 
 function getCountdown(endDate, now) {

@@ -1,10 +1,17 @@
 import OpenAI from "openai";
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
-import { buildSoulWisdomInput, createFallbackReading, normalizeWisdomPayload, SOUL_WISDOM_SYSTEM_PROMPT } from "../soulGuruPrompt.js";
+import {
+  buildSoulWisdomInput,
+  buildSoulWisdomRepairInput,
+  createFallbackReading,
+  isLowQualityWisdom,
+  normalizeWisdomPayload,
+  SOUL_WISDOM_SYSTEM_PROMPT
+} from "../soulGuruPrompt.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-const PROMPT_VERSION = "soul-wisdom-v4";
+const PROMPT_VERSION = "soul-wisdom-v5";
 
 export async function createDailySoulWisdom(payload, env = process.env) {
   const user = payload.user || {};
@@ -34,19 +41,33 @@ export async function createDailySoulWisdom(payload, env = process.env) {
   }, env);
   const memoryContext = buildMemoryContext(memory);
   const client = new OpenAI({ apiKey });
-  const response = await client.responses.create({
-    model,
-    instructions: SOUL_WISDOM_SYSTEM_PROMPT,
-    input: buildSoulWisdomInput({
-      user,
-      context: astrologyContext,
-      today: payload.today || date,
-      memoryContext
-    })
+  const promptInput = buildSoulWisdomInput({
+    user,
+    context: astrologyContext,
+    today: payload.today || date,
+    memoryContext
   });
+  let outputText = await requestSoulWisdom(client, model, promptInput);
+  let qualityAttempts = 1;
 
   const fallback = payload.fallback || createFallbackReading(buildServerFallbackWisdom(user, astrologyContext));
-  const reading = normalizeWisdomPayload(response.output_text, fallback);
+  const firstCandidate = normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom;
+  if (isLowQualityWisdom(firstCandidate)) {
+    outputText = await requestSoulWisdom(
+      client,
+      model,
+      buildSoulWisdomRepairInput({
+        user,
+        context: astrologyContext,
+        today: payload.today || date,
+        memoryContext,
+        rejectedWisdom: firstCandidate
+      })
+    );
+    qualityAttempts = 2;
+  }
+
+  const reading = normalizeWisdomPayload(outputText, fallback);
   const result = {
     reading,
     wisdom: reading.wisdom,
@@ -55,6 +76,11 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     model,
     promptVersion: PROMPT_VERSION,
     readingDate: date,
+    quality: {
+      attempts: qualityAttempts,
+      repaired: qualityAttempts > 1,
+      passed: !isLowQualityWisdom(reading.wisdom)
+    },
     memory: {
       configured: Boolean(memory.configured),
       used: Boolean(memoryContext),
@@ -88,6 +114,15 @@ export async function createDailySoulWisdom(payload, env = process.env) {
   }, env);
 
   return result;
+}
+
+async function requestSoulWisdom(client, model, input) {
+  const response = await client.responses.create({
+    model,
+    instructions: SOUL_WISDOM_SYSTEM_PROMPT,
+    input
+  });
+  return response.output_text;
 }
 
 async function readCachedReading(supabase, userKey, date) {

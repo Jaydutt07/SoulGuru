@@ -5,6 +5,7 @@ You receive a user's birth details and derived daily astrology signals. Use thos
 
 This is not a generic horoscope. It must read like a careful mentor noticed the user's exact inner weather for today.
 Every reading will be compared with other users' readings. If the cadence, opening, emotional lesson, or closing advice could be reused for another person without changes, rewrite it before returning JSON.
+Build a private fingerprint before writing: one ordinary object/scene, one specific emotional tension, one practical movement, and one relational caution from the silent signals. The final paragraph must express that fingerprint in natural language without naming the signals.
 
 Output valid JSON only:
 {
@@ -18,23 +19,30 @@ Wisdom paragraph rules:
 - 72 to 98 words.
 - Address the user by first name exactly once.
 - Use the requested blueprint, but do not make the blueprint visible.
-- Vary sentence shapes and sentence count. Do not use a fixed four-sentence formula.
+- Use 3 to 6 sentences. Vary sentence length and punctuation. Do not use a fixed four-sentence formula.
 - Use at least three silent signals, including one concrete scene or behavior.
 - Do not copy any silent signal phrase verbatim; translate the signal into fresh, natural language.
 - The wisdom paragraph, innerWeather, todayMove, and release must not reuse the same distinctive phrase.
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
 - Include a grounded encouragement that does not sound like a slogan.
 - Write with warmth, precision, and quiet authority.
-- The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", or a reusable horoscope-style setup.
+- The first 12 words must contain a concrete object, action, body cue, or daily situation.
+- Do not open with the user's name unless the blueprint absolutely requires it.
+- The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
+- Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
 
 Avoid these phrases and close variants:
 - "you may feel"
+- "you might feel"
+- "you could feel"
 - "today may bring"
+- "today asks"
 - "the pull between"
 - "torn between"
 - "choose one"
+- "part of you"
 - "old pull"
 - "steady action will speak"
 - "your steadiness grows"
@@ -93,6 +101,19 @@ Create today's Words of Wisdom using the silent signals and any relevant memory.
 `.trim();
 }
 
+export function buildSoulWisdomRepairInput({ user, context, today, memoryContext = "", rejectedWisdom = "" }) {
+  return `
+${buildSoulWisdomInput({ user, context, today, memoryContext })}
+
+Quality repair:
+The previous draft was rejected because it sounded reusable, horoscope-like, or too close to a repeated SoulGuru format.
+Rejected draft:
+${rejectedWisdom || "No draft text available."}
+
+Rewrite from scratch. Change the opening, sentence rhythm, emotional angle, and closing action. Keep the same JSON schema and all hidden-signal rules.
+`.trim();
+}
+
 export function normalizeWisdomPayload(raw, fallback = createFallbackReading()) {
   const parsed = parseReading(raw);
   const source = parsed || (typeof raw === "object" && raw ? raw : {});
@@ -138,9 +159,14 @@ export function isLowQualityWisdom(text) {
 
   const bannedPatterns = [
     /\byou may feel\b/,
+    /\byou might feel\b/,
+    /\byou could feel\b/,
     /\btoday may bring\b/,
+    /\btoday asks\b/,
     /\bthe pull between\b/,
     /\btorn between\b/,
+    /\ba part of you\b/,
+    /^part of you\b/,
     /\bold pull\b/,
     /\bsteady action will speak\b/,
     /\byour steadiness grows\b/,
@@ -154,8 +180,11 @@ export function isLowQualityWisdom(text) {
     /\bverdict on your worth\b/,
     /^today[, ]/,
     /^you may\b/,
+    /^you might\b/,
+    /^you could\b/,
     /^there is\b/,
-    /^this is a day\b/
+    /^this is a day\b/,
+    /^the day\b/
   ];
 
   if (bannedPatterns.some((pattern) => pattern.test(normalized))) return true;
