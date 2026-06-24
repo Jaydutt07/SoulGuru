@@ -32,6 +32,7 @@ This project is being built toward the stack shown in the product planning image
 - Resend helper for subscription confirmation emails
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
+- Offline Astro Solves quota, paid-bonus, storage, and memory contract checker
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Server-backed More Guidance dashboard and saved advice persistence

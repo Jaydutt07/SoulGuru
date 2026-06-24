@@ -3,9 +3,9 @@ import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngi
 import { upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-const PROMPT_VERSION = "astro-solve-v1";
-const BASE_FREE_ALLOWANCE = 3;
-const MEMBER_BONUS_ALLOWANCE = 15;
+export const ASTRO_SOLVE_PROMPT_VERSION = "astro-solve-v1";
+export const ASTRO_SOLVE_FREE_ALLOWANCE = 3;
+export const ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE = 15;
 
 const ASTRO_SOLVE_SYSTEM_PROMPT = `
 You are SoulGuru's Astro Solves mentor.
@@ -30,13 +30,15 @@ Rules:
 - No markdown, bullets, emojis, or text outside JSON.
 `.trim();
 
-export async function createAstroSolve(payload, env = process.env) {
+export async function createAstroSolve(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
   const question = String(payload.question || "").trim();
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const model = env.ASTRO_SOLVE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
   const userKey = buildUserKey(user);
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
+  const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
 
   if (!question) {
     throw new Error("Question is required");
@@ -57,7 +59,7 @@ export async function createAstroSolve(payload, env = process.env) {
   }
 
   const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(apiKey);
   const response = await client.responses.create({
     model,
     instructions: ASTRO_SOLVE_SYSTEM_PROMPT,
@@ -81,7 +83,7 @@ export async function createAstroSolve(payload, env = process.env) {
     astrologyContext,
     source: allowance.isMember ? "member" : "free",
     model,
-    promptVersion: PROMPT_VERSION,
+    promptVersion: ASTRO_SOLVE_PROMPT_VERSION,
     allowance: {
       ...allowance,
       used: allowance.used + 1,
@@ -102,13 +104,13 @@ export async function createAstroSolve(payload, env = process.env) {
     });
   }
 
-  await upsertGuidanceMemory({
+  await upsertMemory({
     user,
     kind: "astro-solve",
     sourceId: result.id,
     text: `Problem: ${question}\nRoot: ${answer.root}\nAstrology: ${answer.astrology}\nSolution: ${answer.solution}`,
     metadata: {
-      promptVersion: PROMPT_VERSION,
+      promptVersion: ASTRO_SOLVE_PROMPT_VERSION,
       source: result.source,
       model
     }
@@ -157,8 +159,8 @@ async function getAstroSolveAllowance({ supabase, userKey, payload }) {
   const subscription = payload.user?.soulGuruSubscription || payload.subscription || {};
   const persistedSubscription = await readActiveSubscription(supabase, userKey);
   const isMember = supabase ? Boolean(persistedSubscription) : Boolean(subscription.active);
-  const bonusQuestions = persistedSubscription?.astroBonusQuestions || Number(subscription.astroBonusQuestions || MEMBER_BONUS_ALLOWANCE);
-  const limit = BASE_FREE_ALLOWANCE + (isMember ? bonusQuestions : 0);
+  const bonusQuestions = persistedSubscription?.astroBonusQuestions || Number(subscription.astroBonusQuestions || ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE);
+  const limit = ASTRO_SOLVE_FREE_ALLOWANCE + (isMember ? bonusQuestions : 0);
   const used = supabase ? await countStoredQuestions(supabase, userKey) : Number(payload.priorCount || 0);
   return {
     limit,
@@ -186,7 +188,7 @@ async function readActiveSubscription(supabase, userKey) {
 
   return data?.id ? {
     id: data.id,
-    astroBonusQuestions: Number(data.astro_bonus_questions || MEMBER_BONUS_ALLOWANCE)
+    astroBonusQuestions: Number(data.astro_bonus_questions || ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE)
   } : null;
 }
 
@@ -216,7 +218,7 @@ async function storeAstroSolve(supabase, { user, userKey, question, answer, astr
       astrology_context: astrologyContext,
       source,
       model,
-      prompt_version: PROMPT_VERSION
+      prompt_version: ASTRO_SOLVE_PROMPT_VERSION
     });
 
   if (error) {
@@ -309,6 +311,10 @@ function buildUserKey(user) {
 function nullableNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
 
 function firstName(name) {

@@ -38,6 +38,9 @@ jobs:
       - name: Verify Soul Guru daily cache contract
         run: npm run soul:cache:check
 
+      - name: Verify Astro Solves contracts
+        run: npm run astro:check
+
       - name: Build web app
         run: npm run build
 

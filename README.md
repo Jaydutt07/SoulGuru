@@ -105,6 +105,12 @@ Check the daily Soul Guru cache contract without contacting OpenAI or Supabase:
 npm run soul:cache:check
 ```
 
+Check the Astro Solves allowance/storage contract without contacting OpenAI or Supabase:
+
+```bash
+npm run astro:check
+```
+
 Smoke-test the local backend/API routes without spending OpenAI tokens:
 
 ```bash
@@ -146,6 +152,7 @@ The CI template checks:
 
 - `npm run soul:quality`
 - `npm run soul:cache:check`
+- `npm run astro:check`
 - `npm run build`
 - `npm run public-env:check`
 - `npm run security:check`
@@ -377,6 +384,7 @@ Before release:
 - Run `npm run payments:check`.
 - Run `npm run more-guidance:check`.
 - Run `npm run soul:cache:check`.
+- Run `npm run astro:check`.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
 - Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
