@@ -7,6 +7,7 @@ import { searchGuidanceMemory, upsertGuidanceMemory } from "./src/backend/memory
 import { requestOtp, verifyOtp } from "./src/backend/otpService.js";
 import { createRazorpayOrder } from "./src/backend/payments.js";
 import { handleUserProfile } from "./src/backend/profileService.js";
+import { buildDeploymentReadiness } from "./src/backend/readinessService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
 import { parseJsonRequest, sendJson } from "./src/backend/request.js";
@@ -23,6 +24,20 @@ function soulGuruApiPlugin() {
           service: "SoulGuru API",
           time: new Date().toISOString()
         });
+      });
+
+      server.middlewares.use("/api/readiness", (req, res) => {
+        if (req.method !== "GET") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        const runtimeEnv = {
+          ...process.env,
+          ...env
+        };
+        const readiness = buildDeploymentReadiness(runtimeEnv);
+        sendJson(res, readiness.ok ? 200 : 503, readiness);
       });
 
       server.middlewares.use("/api/soul-wisdom", async (req, res) => {

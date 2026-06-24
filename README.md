@@ -53,6 +53,12 @@ Check a mobile backend URL before building a phone APK:
 npm run mobile:check-backend
 ```
 
+Check server-side production readiness from local env:
+
+```bash
+npm run production:check
+```
+
 ## Supabase Setup
 
 Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. The core migrations create:
@@ -105,6 +111,10 @@ Loads the More Guidance dashboard from Supabase and saves advice into `saved_gui
 `GET /api/health`
 
 Basic API health check for deployment.
+
+`GET /api/readiness`
+
+Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration.
 
 ## Payments And Emails
 
@@ -208,6 +218,7 @@ Before release:
 
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
+- Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:apk:backend`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
