@@ -208,6 +208,27 @@ const indexContract = [
   }
 ];
 
+const constraintContract = [
+  {
+    label: "Daily Soul Guru cache is unique per user/date/prompt",
+    table: "daily_soul_readings",
+    columns: ["user_key", "reading_date", "prompt_version"],
+    type: "UNIQUE"
+  },
+  {
+    label: "More Guidance cache is unique per user/date/prompt",
+    table: "more_guidance_readings",
+    columns: ["user_key", "reading_date", "prompt_version"],
+    type: "UNIQUE"
+  },
+  {
+    label: "Payment webhook events are idempotent by provider event id",
+    table: "payment_events",
+    columns: ["provider_event_id"],
+    type: "PRIMARY KEY"
+  }
+];
+
 const missingEnv = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((key) => !hasEnv(env, key));
 if (missingEnv.length > 0) {
   const report = buildReport({
@@ -287,7 +308,11 @@ async function checkSchemaRpcContract() {
   }
 
   const indexes = data?.indexes || {};
-  return indexContract.map((item) => checkIndex(item, indexes[item.name]));
+  const constraints = data?.constraints || {};
+  return [
+    ...indexContract.map((item) => checkIndex(item, indexes[item.name])),
+    ...constraintContract.map((item) => checkConstraint(item, constraints))
+  ];
 }
 
 function checkIndex(item, indexDefinition) {
@@ -316,8 +341,30 @@ function checkIndex(item, indexDefinition) {
   };
 }
 
+function checkConstraint(item, constraints) {
+  const match = Object.entries(constraints || {}).find(([, constraint]) => (
+    String(constraint?.table || "") === item.table
+    && String(constraint?.type || "").toUpperCase() === item.type
+    && sameColumns(constraint?.columns || [], item.columns)
+  ));
+  const passed = Boolean(match);
+
+  return {
+    type: "constraint",
+    name: match?.[0] || "",
+    label: item.label,
+    status: passed ? "pass" : "fail",
+    table: item.table,
+    columns: item.columns,
+    constraintType: item.type,
+    error: passed
+      ? ""
+      : `${item.table} is missing required ${item.type.toLowerCase()} constraint on (${item.columns.join(", ")}).`
+  };
+}
+
 function buildReport({ status, checks, missingEnv }) {
-  const expectedChecks = schemaContract.length + indexContract.length;
+  const expectedChecks = schemaContract.length + indexContract.length + constraintContract.length;
   const projectHost = safeHost(env.SUPABASE_URL);
   return {
     service: "SoulGuru Supabase schema",
@@ -380,6 +427,16 @@ function normalizeIndexDefinition(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function sameColumns(actual, expected) {
+  const left = Array.isArray(actual) ? actual.map(normalizeIdentifier) : [];
+  const right = expected.map(normalizeIdentifier);
+  return left.length === right.length && right.every((column, index) => left[index] === column);
+}
+
+function normalizeIdentifier(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
 function hasEnv(source, name) {

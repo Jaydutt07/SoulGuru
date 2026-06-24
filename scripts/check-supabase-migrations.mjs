@@ -12,7 +12,8 @@ const requiredMigrationFiles = [
   "007_birth_place_resolution.sql",
   "008_more_guidance_readings.sql",
   "009_unique_subscription_provider_ids.sql",
-  "010_schema_contract_rpc.sql"
+  "010_schema_contract_rpc.sql",
+  "011_schema_contract_constraints.sql"
 ];
 
 const schemaContract = [
@@ -257,6 +258,8 @@ function checkCriticalDefaults() {
     contains("create or replace function public.soulguru_schema_contract()"),
     contains("returns jsonb"),
     contains("from pg_indexes"),
+    contains("from information_schema.key_column_usage"),
+    contains("'constraints'"),
     contains("grant execute on function public.soulguru_schema_contract() to service_role"),
     contains("revoke all on function public.soulguru_schema_contract() from anon"),
     contains("revoke all on function public.soulguru_schema_contract() from authenticated")
