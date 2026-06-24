@@ -1,15 +1,17 @@
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export async function handleUserProfile(payload, env = process.env) {
+const PROFILE_SELECT = "id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone, birth_timezone_offset_minutes, birth_place_resolved_label, birth_place_resolution_source, created_at, updated_at";
+
+export async function handleUserProfile(payload, env = process.env, deps = {}) {
   const action = payload.action || "upsert";
   if (action === "lookup") {
-    return lookupUserProfile(payload, env);
+    return lookupUserProfile(payload, env, deps);
   }
-  return upsertUserProfile(payload, env);
+  return upsertUserProfile(payload, env, deps);
 }
 
-export async function lookupUserProfile(payload, env = process.env) {
-  const supabase = createSupabaseAdmin(env);
+export async function lookupUserProfile(payload, env = process.env, deps = {}) {
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   if (!supabase) {
     return {
       configured: false,
@@ -27,7 +29,7 @@ export async function lookupUserProfile(payload, env = process.env) {
 
   const query = supabase
     .from("user_profiles")
-    .select("id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone, birth_timezone_offset_minutes, birth_place_resolved_label, birth_place_resolution_source, created_at, updated_at")
+    .select(PROFILE_SELECT)
     .limit(1);
 
   const { data, error } = await applyProfileLookupFilter(query, { phone, email, authUserId }).maybeSingle();
@@ -42,9 +44,9 @@ export async function lookupUserProfile(payload, env = process.env) {
   };
 }
 
-export async function upsertUserProfile(payload, env = process.env) {
+export async function upsertUserProfile(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
 
   if (!supabase) {
     return {
@@ -63,13 +65,33 @@ export async function upsertUserProfile(payload, env = process.env) {
     throw new Error("Birth date is required");
   }
 
+  if (profile.auth_user_id && profile.phone) {
+    const mergedProfile = await mergeExistingPhoneProfile(supabase, profile);
+    if (mergedProfile) {
+      return {
+        configured: true,
+        profile: mapProfile(mergedProfile)
+      };
+    }
+  }
+
   const { data, error } = await supabase
     .from("user_profiles")
     .upsert(profile, { onConflict: conflictTarget })
-    .select("id, auth_user_id, phone, email, full_name, birth_date, birth_time, birth_place, birth_latitude, birth_longitude, birth_timezone, birth_timezone_offset_minutes, birth_place_resolved_label, birth_place_resolution_source, created_at, updated_at")
+    .select(PROFILE_SELECT)
     .maybeSingle();
 
   if (error) {
+    if (error.code === "23505" && profile.auth_user_id && profile.phone) {
+      const mergedProfile = await mergeExistingPhoneProfile(supabase, profile, { requireExisting: true });
+      if (mergedProfile) {
+        return {
+          configured: true,
+          profile: mapProfile(mergedProfile)
+        };
+      }
+    }
+
     throw new Error(`Unable to save user profile: ${error.message}`);
   }
 
@@ -77,6 +99,44 @@ export async function upsertUserProfile(payload, env = process.env) {
     configured: true,
     profile: mapProfile(data)
   };
+}
+
+async function mergeExistingPhoneProfile(supabase, profile, { requireExisting = false } = {}) {
+  const { data: existing, error: readError } = await supabase
+    .from("user_profiles")
+    .select(PROFILE_SELECT)
+    .eq("phone", profile.phone)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(`Unable to load existing phone profile: ${readError.message}`);
+  }
+  if (!existing) {
+    if (requireExisting) {
+      throw new Error("Profile conflict could not be resolved");
+    }
+    return null;
+  }
+
+  if (existing.auth_user_id && existing.auth_user_id !== profile.auth_user_id) {
+    throwHttpError("This phone number is already linked to another account", 409);
+  }
+
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .update(profile)
+    .eq("id", existing.id)
+    .select(PROFILE_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "23505") {
+      throwHttpError("This phone number is already linked to another account", 409);
+    }
+    throw new Error(`Unable to merge user profile: ${error.message}`);
+  }
+
+  return data;
 }
 
 function applyProfileLookupFilter(query, { phone, email, authUserId }) {
@@ -166,4 +226,14 @@ function normalizeTime(time) {
 function nullableNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }

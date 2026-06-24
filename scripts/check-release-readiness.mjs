@@ -21,6 +21,7 @@ await runStep("Environment manifest contract", "npm", ["run", "env:check"]);
 await runStep("Astrology engine contract", "npm", ["run", "astrology:check"]);
 await runStep("Harmony compatibility contract", "npm", ["run", "compatibility:check"]);
 await runStep("Auth contract checks", "npm", ["run", "auth:check"]);
+await runStep("User profile contract checks", "npm", ["run", "profile:check"]);
 await runStep("Guidance memory contract checks", "npm", ["run", "memory:check"]);
 await runStep("Rate limit contract checks", "npm", ["run", "rate-limit:check"]);
 await runStep("Production readiness contract checks", "npm", ["run", "readiness:check"]);

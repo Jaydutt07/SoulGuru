@@ -103,6 +103,12 @@ Check Clerk auth behavior and production client login rules, including fail-clos
 npm run auth:check
 ```
 
+Check backend user profile persistence, lookup, and OTP-phone-to-auth account merging:
+
+```bash
+npm run profile:check
+```
+
 Check Pinecone/OpenAI memory behavior, hashed namespaces, sanitized metadata, and safe degradation:
 
 ```bash
