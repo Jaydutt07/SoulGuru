@@ -44,6 +44,9 @@ jobs:
       - name: Check for committed secrets and artifacts
         run: npm run security:check
 
+      - name: Verify Razorpay payment contracts
+        run: npm run payments:check
+
       - name: Smoke-test local API routes
         run: npm run local:smoke
 

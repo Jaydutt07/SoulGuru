@@ -27,6 +27,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional Upstash-backed rate limit helper for paid/AI endpoints
 - Razorpay order route and signature-verified webhook route
 - Razorpay checkout return verification before local subscription activation
+- Offline Razorpay order, checkout signature, and webhook contract checker
 - Resend helper for subscription confirmation emails
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
@@ -64,11 +65,12 @@ This project is being built toward the stack shown in the product planning image
 11. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
 12. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
 13. Run `npm run public-env:check:strict`.
-14. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
-15. Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
-16. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
-17. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
-18. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-19. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-20. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-21. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+14. Run `npm run payments:check`.
+15. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
+16. Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
+17. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
+18. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
+19. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+20. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+21. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+22. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

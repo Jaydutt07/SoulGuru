@@ -87,6 +87,12 @@ Check tracked files and the local debug APK for accidentally exposed secrets or 
 npm run security:check
 ```
 
+Check the Razorpay payment/signature contract without contacting Razorpay or writing to Supabase:
+
+```bash
+npm run payments:check
+```
+
 Smoke-test the local backend/API routes without spending OpenAI tokens:
 
 ```bash
@@ -130,6 +136,7 @@ The CI template checks:
 - `npm run build`
 - `npm run public-env:check`
 - `npm run security:check`
+- `npm run payments:check`
 - `npm run local:smoke`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
@@ -353,6 +360,7 @@ Before release:
 - Run `npm run public-env:check:strict`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
+- Run `npm run payments:check`.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
 - Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.

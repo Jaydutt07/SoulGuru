@@ -18,6 +18,7 @@
     "android:aab:release": "node scripts/build-android-release.mjs --format=aab",
     "mobile:check-backend": "node scripts/validate-mobile-backend.mjs",
     "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
+    "payments:check": "node scripts/check-payment-contracts.mjs",
     "public-env:check": "node scripts/check-public-env.mjs",
     "public-env:check:strict": "node scripts/check-public-env.mjs --strict",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",
