@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="SoulGuru">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#eaf9f7" />
+      <stop offset="0.48" stop-color="#b8efea" />
+      <stop offset="1" stop-color="#218d96" />
+    </linearGradient>
+    <linearGradient id="mark" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#dffaf5" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#sky)" />
+  <path d="M0 71c13-10 25-10 38 0s25 10 38 0 25-10 44 0v49H0Z" fill="#42c4c8" opacity=".7" />
+  <path d="M0 87c13-10 25-10 38 0s25 10 38 0 25-10 44 0v33H0Z" fill="#1e8795" opacity=".72" />
+  <path d="M34 39c12-16 40-16 52 0 10 14 5 35-26 51-31-16-36-37-26-51Z" fill="url(#mark)" opacity=".94" />
+  <path d="M48 51c4-5 9-8 12-8s8 3 12 8" fill="none" stroke="#237f8e" stroke-linecap="round" stroke-width="5" />
+  <path d="M46 66h28" stroke="#237f8e" stroke-linecap="round" stroke-width="5" />
+</svg>

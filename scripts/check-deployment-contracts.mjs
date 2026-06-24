@@ -3,6 +3,8 @@ import fs from "node:fs";
 const checks = [];
 const vercel = readJson("vercel.json");
 const vercelIgnore = readLines(".vercelignore");
+const indexHtml = readFile("index.html");
+const manifest = readJson("public/manifest.webmanifest");
 
 checkVercelBuildConfig();
 checkVercelApiFunctionConfig();
@@ -10,6 +12,9 @@ checkVercelSecurityHeaders();
 checkVercelCacheHeaders();
 checkVercelSpaRewrite();
 checkVercelIgnoreSafety();
+checkAppShellMetadata();
+checkPwaManifest();
+checkInstallAssets();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -99,6 +104,57 @@ function checkVercelIgnoreSafety() {
   pushCheck("Vercel deploy uploads exclude local secrets, native builds, and release artifacts", missing.length === 0, missing);
 }
 
+function checkAppShellMetadata() {
+  const requiredSnippets = [
+    "<title>SoulGuru | Personal Daily Guidance</title>",
+    "name=\"description\"",
+    "name=\"theme-color\" content=\"#a9dbe4\"",
+    "rel=\"manifest\" href=\"/manifest.webmanifest\"",
+    "rel=\"icon\" type=\"image/svg+xml\" href=\"/icons/soulguru-icon.svg\"",
+    "rel=\"apple-touch-icon\" href=\"/icons/apple-touch-icon.png\"",
+    "property=\"og:title\" content=\"SoulGuru | Personal Daily Guidance\"",
+    "name=\"twitter:card\" content=\"summary\""
+  ];
+  const missing = requiredSnippets.filter((snippet) => !indexHtml.includes(snippet));
+
+  pushCheck("App shell exposes production install and share metadata", missing.length === 0, missing);
+}
+
+function checkPwaManifest() {
+  const icons = Array.isArray(manifest?.icons) ? manifest.icons : [];
+  const iconMap = new Map(icons.map((icon) => [icon.src, icon]));
+  const required = [
+    manifest?.name === "SoulGuru",
+    manifest?.short_name === "SoulGuru",
+    manifest?.start_url === "/",
+    manifest?.scope === "/",
+    manifest?.display === "standalone",
+    manifest?.orientation === "portrait",
+    manifest?.theme_color === "#a9dbe4",
+    manifest?.background_color === "#f6fbfa",
+    iconMap.get("/icons/soulguru-icon-192.png")?.sizes === "192x192",
+    iconMap.get("/icons/soulguru-icon-512.png")?.sizes === "512x512",
+    iconMap.get("/icons/soulguru-icon-512.png")?.purpose?.includes("maskable")
+  ];
+
+  pushCheck("PWA manifest describes the SoulGuru mobile install surface", required.every(Boolean), [
+    "Expected manifest name, standalone portrait display, brand colors, and 192/512 maskable icons."
+  ]);
+}
+
+function checkInstallAssets() {
+  const requiredFiles = [
+    "public/icons/soulguru-icon.svg",
+    "public/icons/soulguru-icon-192.png",
+    "public/icons/soulguru-icon-512.png",
+    "public/icons/apple-touch-icon.png",
+    "public/robots.txt"
+  ];
+  const missing = requiredFiles.filter((file) => !fileExists(file));
+
+  pushCheck("Install icons and crawl policy assets exist", missing.length === 0, missing);
+}
+
 function findHeaderSet(source) {
   const rules = Array.isArray(vercel?.headers) ? vercel.headers : [];
   return rules.find((rule) => rule.source === source)?.headers || [];
@@ -116,6 +172,22 @@ function readJson(file) {
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     return null;
+  }
+}
+
+function readFile(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function fileExists(file) {
+  try {
+    return fs.statSync(file).isFile();
+  } catch {
+    return false;
   }
 }
 
