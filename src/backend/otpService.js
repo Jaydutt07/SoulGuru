@@ -5,17 +5,19 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 const DEFAULT_EXPIRY_MINUTES = 10;
 const DEFAULT_MAX_ATTEMPTS = 5;
 
-export async function requestOtp(payload, env = process.env) {
+export async function requestOtp(payload, env = process.env, deps = {}) {
   const phone = normalizePhone(payload.phone || payload.user?.phone);
   const email = normalizeEmail(payload.email || payload.user?.email);
   const purpose = String(payload.purpose || "login").trim() || "login";
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+  const createCode = deps.createOtpCode || createOtpCode;
+  const deliver = deps.deliverOtp || deliverOtp;
 
   if (!isValidPhone(phone)) {
     throw createHttpError("A valid phone number is required", 400);
   }
 
-  const code = createOtpCode();
+  const code = createCode();
   const expiresAt = new Date(Date.now() + getExpiryMinutes(env) * 60 * 1000).toISOString();
 
   if (!supabase) {
@@ -28,7 +30,7 @@ export async function requestOtp(payload, env = process.env) {
     };
   }
 
-  const delivery = await deliverOtp({ phone, email, code, purpose }, env);
+  const delivery = await deliver({ phone, email, code, purpose }, env);
   const { data, error } = await supabase
     .from("auth_otp_challenges")
     .insert({
@@ -59,8 +61,8 @@ export async function requestOtp(payload, env = process.env) {
   };
 }
 
-export async function verifyOtp(payload, env = process.env) {
-  const supabase = createSupabaseAdmin(env);
+export async function verifyOtp(payload, env = process.env, deps = {}) {
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   if (!supabase) {
     return {
       configured: false,
@@ -249,4 +251,8 @@ function createHttpError(message, statusCode) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
 }

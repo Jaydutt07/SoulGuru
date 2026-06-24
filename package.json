@@ -21,6 +21,7 @@
     "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
     "more-guidance:check": "node scripts/check-more-guidance-contracts.mjs",
     "payments:check": "node scripts/check-payment-contracts.mjs",
+    "otp:check": "node scripts/check-otp-contracts.mjs",
     "public-env:check": "node scripts/check-public-env.mjs",
     "public-env:check:strict": "node scripts/check-public-env.mjs --strict",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",

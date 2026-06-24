@@ -41,6 +41,9 @@ jobs:
       - name: Verify Astro Solves contracts
         run: npm run astro:check
 
+      - name: Verify OTP contracts
+        run: npm run otp:check
+
       - name: Build web app
         run: npm run build
 
