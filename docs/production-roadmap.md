@@ -27,6 +27,7 @@ This project is being built toward the stack shown in the product planning image
 - Resend helper for subscription confirmation emails
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
+- Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Astronomy-based birth/transit context replacing hash-only astrology
 - More Guidance page with 3-month tracking, reading history, and saved advice
 
@@ -36,7 +37,7 @@ This project is being built toward the stack shown in the product planning image
 2. Apply `supabase/migrations/002_payment_events.sql`.
 3. Apply `supabase/migrations/003_astro_solves_metadata.sql`.
 4. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-5. Add Clerk auth and map Clerk user IDs to `user_profiles.auth_user_id`.
+5. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
 6. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
 7. Add Resend transactional emails for OTP/account in addition to membership confirmations.
 8. Configure Sentry, PostHog, and Upstash production environment variables.

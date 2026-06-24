@@ -1,3 +1,4 @@
+import { applyVerifiedIdentity } from "../src/backend/auth.js";
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
 import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
@@ -9,7 +10,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const payload = await parseJsonRequest(req);
+    const parsedPayload = await parseJsonRequest(req);
+    const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, process.env);
     const rate = await checkRateLimit({
       env: process.env,
       key: buildRateLimitKey(req, payload.user),
@@ -24,8 +26,8 @@ export default async function handler(req, res) {
     }
 
     const result = await createDailySoulWisdom(payload, process.env);
-    sendJson(res, 200, { ...result, rate });
+    sendJson(res, 200, { ...result, rate, auth });
   } catch (error) {
-    sendJson(res, 500, { error: error.message || "Unable to create guidance" });
+    sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create guidance" });
   }
 }

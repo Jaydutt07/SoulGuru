@@ -112,6 +112,20 @@ VITE_SENTRY_TRACES_SAMPLE_RATE=0.1
 
 The frontend avoids sending phone numbers or email addresses to analytics.
 
+## Clerk Auth
+
+The local app keeps the demo OTP flow for quick testing. In production, configure Clerk and set:
+
+```bash
+VITE_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+CLERK_REQUIRE_AUTH=true
+CLERK_JWT_AUDIENCE=
+CLERK_AUTHORIZED_PARTIES=
+```
+
+When `CLERK_SECRET_KEY` is present, backend routes verify Bearer tokens and use Clerk's user ID as `auth_user_id`. When `CLERK_REQUIRE_AUTH=true`, AI and payment routes reject unauthenticated requests.
+
 ## Android APK
 
 Debug APK output:
@@ -135,7 +149,7 @@ Before release:
 
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
-- Connect Clerk auth to production OTP and pass verified user identity into backend requests.
+- Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
 - Add PostHog/Sentry public keys only where appropriate.
 - Replace debug APK with signed release APK/AAB.

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { applyVerifiedIdentity } from "./src/backend/auth.js";
 import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { createRazorpayOrder } from "./src/backend/payments.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
@@ -31,7 +32,8 @@ function soulGuruApiPlugin() {
             ...process.env,
             ...env
           };
-          const payload = await parseJsonRequest(req);
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
           const rate = await checkRateLimit({
             env: runtimeEnv,
             key: buildRateLimitKey(req, payload.user),
@@ -46,9 +48,9 @@ function soulGuruApiPlugin() {
           }
 
           const result = await createDailySoulWisdom(payload, runtimeEnv);
-          sendJson(res, 200, { ...result, rate });
+          sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, 500, { error: error.message || "Unable to create guidance" });
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create guidance" });
         }
       });
 
@@ -63,7 +65,8 @@ function soulGuruApiPlugin() {
             ...process.env,
             ...env
           };
-          const payload = await parseJsonRequest(req);
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
           const rate = await checkRateLimit({
             env: runtimeEnv,
             key: buildRateLimitKey(req, payload.user),
@@ -78,9 +81,9 @@ function soulGuruApiPlugin() {
           }
 
           const order = await createRazorpayOrder(payload, runtimeEnv);
-          sendJson(res, 200, order);
+          sendJson(res, 200, { ...order, auth });
         } catch (error) {
-          sendJson(res, 500, { error: error.message || "Unable to create order" });
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create order" });
         }
       });
 
@@ -95,7 +98,8 @@ function soulGuruApiPlugin() {
             ...process.env,
             ...env
           };
-          const payload = await parseJsonRequest(req);
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
           const rate = await checkRateLimit({
             env: runtimeEnv,
             key: buildRateLimitKey(req, payload.user),
@@ -110,9 +114,9 @@ function soulGuruApiPlugin() {
           }
 
           const result = await createAstroSolve(payload, runtimeEnv);
-          sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate });
+          sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, 500, { error: error.message || "Unable to create Astro Solves answer" });
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create Astro Solves answer" });
         }
       });
     }

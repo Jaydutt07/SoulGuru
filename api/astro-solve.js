@@ -1,3 +1,4 @@
+import { applyVerifiedIdentity } from "../src/backend/auth.js";
 import { createAstroSolve } from "../src/backend/astroSolveService.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
 import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
@@ -9,7 +10,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const payload = await parseJsonRequest(req);
+    const parsedPayload = await parseJsonRequest(req);
+    const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, process.env);
     const rate = await checkRateLimit({
       env: process.env,
       key: buildRateLimitKey(req, payload.user),
@@ -25,8 +27,8 @@ export default async function handler(req, res) {
 
     const result = await createAstroSolve(payload, process.env);
     const statusCode = result.allowed === false ? 402 : 200;
-    sendJson(res, statusCode, { ...result, rate });
+    sendJson(res, statusCode, { ...result, rate, auth });
   } catch (error) {
-    sendJson(res, 500, { error: error.message || "Unable to create Astro Solves answer" });
+    sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create Astro Solves answer" });
   }
 }

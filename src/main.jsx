@@ -21,6 +21,7 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
+import { authFetch } from "./authClient.js";
 import { buildAstrologyContext, getSaadeSatiFromChart } from "./astrologyEngine.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
 import { cleanWisdomText, firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
@@ -410,7 +411,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
 
     setReading(fallbackReading);
 
-    fetch(getApiUrl("/api/soul-wisdom"), {
+    authFetch(getApiUrl("/api/soul-wisdom"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -533,7 +534,7 @@ function AstroSolvesTab({ user, updateUser }) {
     try {
       const context = buildAstrologyContext(user);
       const fallback = generateProblemInsight(question, user, solvedProblems.length);
-      const response = await fetch(getApiUrl("/api/astro-solve"), {
+      const response = await authFetch(getApiUrl("/api/astro-solve"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -703,7 +704,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
     trackEvent("more_guidance_checkout_started");
 
     try {
-      const response = await fetch(getApiUrl("/api/create-razorpay-order"), {
+      const response = await authFetch(getApiUrl("/api/create-razorpay-order"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
