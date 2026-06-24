@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { SERVER_ONLY_ENV_KEYS } from "../src/backend/envManifest.js";
 
 const root = process.cwd();
 const artifactPath = getArgValue("--artifact") || getArgValue("--apk") || "SoulGuru-debug.apk";
@@ -107,18 +108,7 @@ function scanSensitiveAssignments(file, text) {
 }
 
 function scanMobileArtifactForbiddenNames(file, text) {
-  const forbiddenNames = [
-    "OPENAI_API_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "RAZORPAY_KEY_SECRET",
-    "RAZORPAY_WEBHOOK_SECRET",
-    "OTP_HASH_SECRET",
-    "PINECONE_API_KEY",
-    "UPSTASH_REDIS_REST_TOKEN",
-    "CLERK_SECRET_KEY"
-  ];
-
-  const found = forbiddenNames.filter((name) => text.includes(name));
+  const found = SERVER_ONLY_ENV_KEYS.filter((name) => text.includes(name));
   if (found.length > 0) {
     findings.push(`${file}: server-only env name(s) found in mobile bundle: ${found.join(", ")}.`);
   }

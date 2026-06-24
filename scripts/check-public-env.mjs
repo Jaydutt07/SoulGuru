@@ -1,4 +1,5 @@
 import { loadEnv } from "vite";
+import { PUBLIC_ENV_ALLOWLIST, SERVER_ONLY_ENV_KEYS } from "../src/backend/envManifest.js";
 
 const args = new Set(process.argv.slice(2));
 const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
@@ -9,34 +10,8 @@ const env = {
   ...process.env
 };
 
-const allowedPublicKeys = new Set([
-  "VITE_API_BASE_URL",
-  "VITE_CLERK_PUBLISHABLE_KEY",
-  "VITE_DEMO_PAYMENTS",
-  "VITE_LOCAL_AUTH_FALLBACK",
-  "VITE_LOCAL_PAID_FALLBACK",
-  "VITE_POSTHOG_HOST",
-  "VITE_POSTHOG_KEY",
-  "VITE_SENTRY_DSN",
-  "VITE_SENTRY_TRACES_SAMPLE_RATE",
-  "VITE_SUPABASE_ANON_KEY",
-  "VITE_SUPABASE_URL"
-]);
-
-const serverOnlyKeys = [
-  "ANDROID_KEYSTORE_PASSWORD",
-  "ANDROID_KEY_PASSWORD",
-  "CLERK_SECRET_KEY",
-  "OPENAI_API_KEY",
-  "OTP_HASH_SECRET",
-  "OTP_SMS_WEBHOOK_TOKEN",
-  "PINECONE_API_KEY",
-  "RAZORPAY_KEY_SECRET",
-  "RAZORPAY_WEBHOOK_SECRET",
-  "RESEND_API_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-  "UPSTASH_REDIS_REST_TOKEN"
-];
+const allowedPublicKeys = new Set(PUBLIC_ENV_ALLOWLIST);
+const serverOnlyKeys = SERVER_ONLY_ENV_KEYS;
 
 const publicKeys = Object.keys(env)
   .filter((key) => key.startsWith("VITE_"))

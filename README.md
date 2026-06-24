@@ -79,6 +79,12 @@ npm run public-env:check
 npm run public-env:check:strict
 ```
 
+Check `.env.example`, production fallback defaults, and the public env allowlist against the app env manifest:
+
+```bash
+npm run env:check
+```
+
 Check chart/transit calculation, place resolution, timezone handling, and Saade Sati windows:
 
 ```bash
@@ -221,6 +227,7 @@ The ready-to-use GitHub Actions workflow template lives at `docs/github-actions-
 The CI template checks:
 
 - `npm run soul:quality`
+- `npm run env:check`
 - `npm run astrology:check`
 - `npm run auth:check`
 - `npm run memory:check`
