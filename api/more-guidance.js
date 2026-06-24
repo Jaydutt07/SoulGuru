@@ -1,5 +1,5 @@
 import { applyVerifiedIdentity } from "../src/backend/auth.js";
-import { getMoreGuidanceDashboard, saveGuidance } from "../src/backend/guidanceService.js";
+import { createMoreGuidanceReading, getMoreGuidanceDashboard, saveGuidance } from "../src/backend/guidanceService.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
 import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
 
@@ -28,6 +28,12 @@ export default async function handler(req, res) {
     if (payload.action === "save-guidance") {
       const result = await saveGuidance(payload, process.env);
       sendJson(res, 200, { ...result, rate, auth });
+      return;
+    }
+
+    if (payload.action === "deep-guidance") {
+      const result = await createMoreGuidanceReading(payload, process.env);
+      sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate, auth });
       return;
     }
 

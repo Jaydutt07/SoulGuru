@@ -743,7 +743,9 @@ function AstroSolvesTab({ user, updateUser }) {
 
 function SubscriptionPage({ user, updateUser, onBack }) {
   const [serverDashboard, setServerDashboard] = useState(null);
+  const [deepGuidance, setDeepGuidance] = useState(null);
   const [dashboardStatus, setDashboardStatus] = useState("");
+  const [deepGuidanceStatus, setDeepGuidanceStatus] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [isActivating, setIsActivating] = useState(false);
   const serverSubscription = serverDashboard?.subscription?.active ? serverDashboard.subscription : null;
@@ -756,6 +758,8 @@ function SubscriptionPage({ user, updateUser, onBack }) {
   const progress = Math.min(100, Math.max(0, Math.round(((daysTotal - daysLeft) / daysTotal) * 100)));
   const guidanceHistory = mergeGuidanceItems(serverDashboard?.guidanceHistory || [], getCachedGuidanceHistory(user));
   const savedGuidance = mergeGuidanceItems(serverDashboard?.savedGuidance || [], user.savedGuidance || []);
+  const fallbackDeepGuidance = useMemo(() => buildLocalDeepGuidance(user), [user]);
+  const activeDeepGuidance = deepGuidance || fallbackDeepGuidance;
 
   useEffect(() => {
     let cancelled = false;
@@ -808,6 +812,73 @@ function SubscriptionPage({ user, updateUser, onBack }) {
       cancelled = true;
     };
   }, [updateUser, user.birthDate, user.birthLatitude, user.birthLongitude, user.birthPlace, user.birthPlaceResolutionSource, user.birthPlaceResolvedLabel, user.birthTime, user.birthTimezone, user.birthTimezoneOffsetMinutes, user.email, user.id, user.name, user.phone, user.soulGuruSubscription?.active]);
+
+  useEffect(() => {
+    if (!isActive) {
+      setDeepGuidance(null);
+      setDeepGuidanceStatus("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    const dateKey = getTodayKey(new Date(), user.birthTimezone || undefined);
+    const context = buildAstrologyContext(user, buildDateFromKey(dateKey, user));
+    setDeepGuidanceStatus("Preparing deeper guidance...");
+
+    authFetch(getApiUrl("/api/more-guidance"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "deep-guidance",
+        date: dateKey,
+        timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
+        subscription,
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          birthDate: user.birthDate,
+          birthTime: user.birthTime,
+          birthPlace: user.birthPlace,
+          birthLatitude: user.birthLatitude,
+          birthLongitude: user.birthLongitude,
+          birthTimezone: user.birthTimezone,
+          birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+          birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+          birthPlaceResolutionSource: user.birthPlaceResolutionSource,
+          soulGuruSubscription: subscription
+        },
+        context,
+        fallback: fallbackDeepGuidance
+      })
+    })
+      .then((response) => response.json().then((data) => ({ ok: response.ok, status: response.status, data })).catch(() => ({ ok: false, status: response.status, data: null })))
+      .then(({ ok, status, data }) => {
+        if (cancelled) return;
+        if (ok && data?.guidance) {
+          setDeepGuidance(data.guidance);
+          setDeepGuidanceStatus(data.cached ? "Deeper guidance synced." : "Deeper guidance ready.");
+          return;
+        }
+        if (status === 402) {
+          setDeepGuidanceStatus("Activate More Guidance to unlock the deeper map.");
+          return;
+        }
+        setDeepGuidance(fallbackDeepGuidance);
+        setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDeepGuidance(fallbackDeepGuidance);
+          setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackDeepGuidance, isActive, subscription, user]);
 
   function activatePlan(metadata = {}) {
     const start = new Date();
@@ -957,8 +1028,15 @@ function SubscriptionPage({ user, updateUser, onBack }) {
 
           <article className="deep-guidance-panel">
             <h3>Deeper guidance map</h3>
-            <p><strong>This week:</strong> revisit the daily Move cue and finish it before opening a new emotional loop.</p>
-            <p><strong>This month:</strong> save readings that repeat a theme. Repeated advice is where the growth work is hiding.</p>
+            {deepGuidanceStatus && <p className="deep-guidance-status">{deepGuidanceStatus}</p>}
+            <div className="deep-guidance-cues">
+              <div><span>Focus</span><strong>{activeDeepGuidance.focus}</strong></div>
+              <div><span>Watch</span><strong>{activeDeepGuidance.watch}</strong></div>
+            </div>
+            <p><strong>Overview:</strong> {activeDeepGuidance.overview}</p>
+            <p><strong>This week:</strong> {activeDeepGuidance.thisWeek}</p>
+            <p><strong>This month:</strong> {activeDeepGuidance.thisMonth}</p>
+            <p><strong>Practice:</strong> {activeDeepGuidance.practice}</p>
             <p><strong>Astro Solves:</strong> your plan includes 15 extra detailed questions for specific life situations.</p>
           </article>
 
@@ -1649,6 +1727,20 @@ function mergeGuidanceItems(primary, fallback) {
     seen.add(key);
     return true;
   }).slice(0, 90);
+}
+
+function buildLocalDeepGuidance(user) {
+  const dateKey = getTodayKey(new Date(), user.birthTimezone || undefined);
+  const context = buildAstrologyContext(user, buildDateFromKey(dateKey, user));
+  const name = firstName(user.name);
+  return {
+    overview: `${name}, the deeper pattern right now is about giving ${context.dailyArea} a cleaner shape before it turns into pressure. ${capitalize(context.attentionAnchor || context.dailyScene)} deserves a direct action, not another private debate. Let ${context.mentorMove || context.stabilizer} become the rule for the next few days. In relationships, ${context.relationalCaution || context.relationshipMirror}; in work, ${context.workSignal}. This is how guidance becomes real: one repeatable rhythm, one honest limit, and one task finished before the mood gets to rename the whole day.`,
+    thisWeek: `This week, start with ${context.bodySignal}, then protect the practical task that has enough information already. Keep replies shorter than the worry around them, and let one completed action restore trust in your timing.`,
+    thisMonth: `This month, save the readings that repeat a theme. If the same pressure appears through different people or duties, treat it as a pattern asking for structure instead of a problem asking for panic.`,
+    practice: `For seven days, write one evening line: what became lighter because I handled it directly? Let that record become proof you can return to yourself.`,
+    focus: toCue(context.mentorMove || context.stabilizer),
+    watch: toCue(context.avoid)
+  };
 }
 
 function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined)) {

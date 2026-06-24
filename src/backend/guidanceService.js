@@ -1,7 +1,33 @@
-import { upsertGuidanceMemory } from "./memoryService.js";
+import OpenAI from "openai";
+import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
+import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
+const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v1";
+
+const MORE_GUIDANCE_SYSTEM_PROMPT = `
+You are SoulGuru's paid More Guidance mentor.
+
+Use the supplied birth details, daily astrology-derived context, and prior guidance memory silently. Do not mention astrology, zodiac, planets, charts, transits, numerology, karma, predictions, or remedies. This is deeper mentorship, not a horoscope.
+
+Output valid JSON only:
+{
+  "overview": "110 to 150 words",
+  "thisWeek": "55 to 85 words",
+  "thisMonth": "55 to 85 words",
+  "practice": "35 to 65 words",
+  "focus": "5 to 12 words",
+  "watch": "5 to 12 words"
+}
+
+Rules:
+- Address the user by first name exactly once in overview.
+- Make the guidance specific enough to feel paid: name a pattern, a cost, a practical shift, and a relationship/work caution.
+- Keep a calm mentor tone: warm, direct, adult, and emotionally exact.
+- Do not repeat the daily Words of Wisdom paragraph; expand the direction into a fuller map.
+- Do not use vague spiritual language, grand promises, fear, disclaimers, markdown, bullets, emojis, or text outside JSON.
+`.trim();
 
 export async function getMoreGuidanceDashboard(payload, env = process.env) {
   const user = payload.user || {};
@@ -103,6 +129,109 @@ export async function saveGuidance(payload, env = process.env) {
   };
 }
 
+export async function createMoreGuidanceReading(payload, env = process.env) {
+  const user = payload.user || {};
+  const userKey = buildUserKey(user);
+  const date = payload.date || new Date().toISOString().slice(0, 10);
+  const timezone = payload.timezone || user.birthTimezone || "Asia/Kolkata";
+  const model = env.MORE_GUIDANCE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
+  const supabase = createSupabaseAdmin(env);
+  const subscription = payload.subscription || user.soulGuruSubscription || {};
+  const hasPersistedSubscription = await hasActiveSubscription(supabase, userKey);
+  const isMember = supabase ? hasPersistedSubscription : Boolean(subscription.active);
+
+  if (!isMember) {
+    return {
+      allowed: false,
+      error: "More Guidance subscription is required"
+    };
+  }
+
+  if (supabase) {
+    const cached = await readCachedDeepGuidance(supabase, userKey, date);
+    if (cached) {
+      return { ...cached, allowed: true, cached: true, source: "supabase" };
+    }
+  }
+
+  const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
+  const fallback = normalizeDeepGuidance(payload.fallback || buildFallbackDeepGuidance(user, astrologyContext));
+  let guidance = fallback;
+  let source = "local-fallback";
+
+  const openAiDisabled = String(env.MORE_GUIDANCE_DISABLE_OPENAI || "false").toLowerCase() === "true";
+  if (env.OPENAI_API_KEY && !openAiDisabled) {
+    const memory = await searchGuidanceMemory({
+      user,
+      query: [
+        "more guidance",
+        date,
+        astrologyContext.dailyArea,
+        astrologyContext.emotionalKnot,
+        astrologyContext.decisionGate,
+        astrologyContext.attentionAnchor
+      ].filter(Boolean).join(" | "),
+      topK: Number(env.PINECONE_TOP_K || 4)
+    }, env);
+    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+    const response = await client.responses.create({
+      model,
+      instructions: MORE_GUIDANCE_SYSTEM_PROMPT,
+      input: buildMoreGuidanceInput({
+        user,
+        context: astrologyContext,
+        date,
+        memoryContext: buildMemoryContext(memory)
+      })
+    });
+    guidance = normalizeDeepGuidance(response.output_text, fallback);
+    source = "openai";
+  }
+
+  const result = {
+    allowed: true,
+    guidance,
+    astrologyContext,
+    cached: false,
+    source,
+    model,
+    promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
+    readingDate: date
+  };
+
+  if (supabase) {
+    await writeCachedDeepGuidance(supabase, {
+      user,
+      userKey,
+      date,
+      timezone,
+      guidance,
+      astrologyContext,
+      model
+    });
+  }
+
+  await upsertGuidanceMemory({
+    user,
+    kind: "more-guidance-reading",
+    sourceId: `${date}-${DEEP_GUIDANCE_PROMPT_VERSION}`,
+    text: [
+      guidance.overview,
+      guidance.thisWeek,
+      guidance.thisMonth,
+      guidance.practice
+    ].filter(Boolean).join("\n"),
+    metadata: {
+      readingDate: date,
+      promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
+      source,
+      model
+    }
+  }, env);
+
+  return result;
+}
+
 async function readSubscription(supabase, userKey) {
   const { data, error } = await supabase
     .from("more_guidance_subscriptions")
@@ -131,6 +260,95 @@ async function readSubscription(supabase, userKey) {
     providerSubscriptionId: data.provider_subscription_id,
     metadata: data.metadata || {}
   };
+}
+
+async function hasActiveSubscription(supabase, userKey) {
+  if (!supabase) return false;
+  const subscription = await readSubscription(supabase, userKey);
+  return Boolean(subscription?.active);
+}
+
+async function readCachedDeepGuidance(supabase, userKey, date) {
+  const { data, error } = await supabase
+    .from("more_guidance_readings")
+    .select("id, guidance, astrology_context, model, prompt_version, reading_date, created_at")
+    .eq("user_key", userKey)
+    .eq("reading_date", date)
+    .eq("prompt_version", DEEP_GUIDANCE_PROMPT_VERSION)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Unable to read cached More Guidance reading", error.message);
+    return null;
+  }
+  if (!data?.guidance) return null;
+
+  return {
+    id: data.id,
+    guidance: normalizeDeepGuidance(data.guidance),
+    astrologyContext: data.astrology_context,
+    model: data.model,
+    promptVersion: data.prompt_version,
+    readingDate: data.reading_date,
+    createdAt: data.created_at
+  };
+}
+
+async function writeCachedDeepGuidance(supabase, { user, userKey, date, timezone, guidance, astrologyContext, model }) {
+  const userProfileId = await upsertUserProfile(supabase, user);
+  const { error } = await supabase
+    .from("more_guidance_readings")
+    .upsert({
+      user_profile_id: userProfileId,
+      user_key: userKey,
+      reading_date: date,
+      timezone,
+      guidance,
+      astrology_context: astrologyContext,
+      model,
+      prompt_version: DEEP_GUIDANCE_PROMPT_VERSION
+    }, {
+      onConflict: "user_key,reading_date,prompt_version"
+    });
+
+  if (error) {
+    console.warn("Unable to cache More Guidance reading", error.message);
+  }
+}
+
+function buildMoreGuidanceInput({ user, context, date, memoryContext = "" }) {
+  return `
+User:
+- First name: ${firstName(user.name)}
+- Birth date: ${user.birthDate}
+- Birth time: ${user.birthTime || "unknown"}
+- Birth place: ${user.birthPlace || "unknown"}
+- Resolved birth location: ${formatBirthLocation(context.birthLocation, user)}
+- Reading date: ${date}
+
+Silent astrology-derived signals:
+- Solar temperament: ${context.sign} / ${context.element}
+- Emotional rhythm: ${context.moonSign}
+- Life path pressure: ${context.lifePath}
+- Daily area: ${context.dailyArea}
+- Inner weather: ${context.innerWeather}
+- Emotional knot: ${context.emotionalKnot}
+- Decision gate: ${context.decisionGate}
+- Attention anchor: ${context.attentionAnchor}
+- Mentor move: ${context.mentorMove}
+- Relational caution: ${context.relationalCaution}
+- Closing permission: ${context.closingPermission}
+- Body/routine signal: ${context.bodySignal}
+- Work/creation signal: ${context.workSignal}
+- Stabilizer: ${context.stabilizer}
+- Avoid pattern: ${context.avoid}
+
+Private guidance memory:
+${memoryContext || "No prior memory is available."}
+
+Task:
+Create the paid More Guidance reading. Make it deeper than the free daily Words of Wisdom, useful for the next week and month, and still private about the astrology behind it.
+`.trim();
 }
 
 async function readGuidanceHistory(supabase, userKey, limit = DEFAULT_LIMIT) {
@@ -235,6 +453,101 @@ function normalizeReading(reading) {
     todayMove: String(reading.todayMove || "").trim(),
     release: String(reading.release || "").trim()
   };
+}
+
+function normalizeDeepGuidance(raw, fallback = buildFallbackDeepGuidance()) {
+  const parsed = parseJson(raw);
+  const source = parsed || (typeof raw === "object" && raw ? raw : {});
+  return {
+    overview: cleanField(source.overview, fallback.overview, 170),
+    thisWeek: cleanField(source.thisWeek, fallback.thisWeek, 100),
+    thisMonth: cleanField(source.thisMonth, fallback.thisMonth, 100),
+    practice: cleanField(source.practice, fallback.practice, 75),
+    focus: cleanShortField(source.focus, fallback.focus),
+    watch: cleanShortField(source.watch, fallback.watch)
+  };
+}
+
+function buildFallbackDeepGuidance(user = {}, context = {}) {
+  const name = firstName(user.name);
+  const area = context.dailyArea || "responsibility, timing, and emotional steadiness";
+  const anchor = context.attentionAnchor || "one practical detail that keeps returning";
+  const move = context.mentorMove || context.stabilizer || "make the promise smaller and keep it completely";
+  const caution = context.relationalCaution || context.relationshipMirror || "do not turn another person's uncertainty into your assignment";
+  const avoid = context.avoid || "over-explaining";
+  const body = context.bodySignal || "let the body settle before choosing words";
+  const work = context.workSignal || "make the action plain enough to complete";
+
+  return {
+    overview: `${name}, the deeper pattern is not that you lack direction; it is that ${area} can become heavier when ${anchor} stays unnamed. This phase asks you to reduce the emotional noise around ordinary duties. Start by giving the day one visible finish line, then protect it from ${avoid}. In relationships, ${caution}; in work, ${work}. You do not need a dramatic breakthrough to feel guided. You need a repeatable rhythm that proves your care without draining your center.`,
+    thisWeek: `This week, ${move}. Notice where your first reaction tries to become the whole plan. Keep replies shorter, name the practical cost before saying yes, and let one completed task rebuild trust in your timing.`,
+    thisMonth: `This month, watch the themes that repeat in saved readings. If the same pressure returns through different people, treat it as a pattern asking for structure. Build one habit around sleep, money, work, or communication and keep it visible.`,
+    practice: `For seven days, begin with ${body}. Before sleep, write one line: what became lighter because I handled it directly? Let that record become your proof.`,
+    focus: "Make guidance visible through routine",
+    watch: "Over-explaining before the body settles"
+  };
+}
+
+function parseJson(raw) {
+  if (typeof raw === "object" && raw) return raw;
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function cleanField(text, fallback, maxWords) {
+  const cleaned = String(text || fallback || "")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return limitWords(scrubAstrologyTerms(cleaned || fallback), maxWords);
+}
+
+function cleanShortField(text, fallback) {
+  return cleanField(text, fallback, 12).replace(/[.!?]+$/g, "");
+}
+
+function limitWords(text, maxWords) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return String(text || "");
+  return `${words.slice(0, maxWords).join(" ").replace(/[,:;]+$/, "")}.`;
+}
+
+function scrubAstrologyTerms(text) {
+  return [
+    "astrology",
+    "zodiac",
+    "moon sign",
+    "planet",
+    "transit",
+    "chart",
+    "horoscope",
+    "numerology",
+    "karma"
+  ].reduce((current, term) => current.replace(new RegExp(term, "gi"), "inner timing"), String(text || ""));
+}
+
+function firstName(name) {
+  return String(name || "friend").trim().split(/\s+/)[0] || "friend";
+}
+
+function formatBirthLocation(location, user) {
+  if (!location?.label) return user.birthPlace || "unknown";
+  const details = [
+    location.timezone,
+    location.source ? `${location.source} resolution` : ""
+  ].filter(Boolean).join(", ");
+  return details ? `${location.label} (${details})` : location.label;
 }
 
 function buildUserKey(user) {

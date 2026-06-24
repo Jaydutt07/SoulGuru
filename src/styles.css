@@ -652,6 +652,41 @@ button:disabled {
   color: #4c6870;
 }
 
+.deep-guidance-status {
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.deep-guidance-cues {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.deep-guidance-cues div {
+  min-height: 4.7rem;
+  border: 1px solid rgba(23, 50, 58, 0.08);
+  border-radius: 0.9rem;
+  background: rgba(23, 107, 115, 0.06);
+  padding: 0.7rem;
+}
+
+.deep-guidance-cues span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.deep-guidance-cues strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.25;
+}
+
 .progress-track {
   height: 0.7rem;
   overflow: hidden;

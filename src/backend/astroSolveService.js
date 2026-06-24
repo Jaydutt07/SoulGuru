@@ -155,8 +155,10 @@ Create the Astro Solves answer now.
 
 async function getAstroSolveAllowance({ supabase, userKey, payload }) {
   const subscription = payload.user?.soulGuruSubscription || payload.subscription || {};
-  const isMember = Boolean(subscription.active) || (await hasActiveSubscription(supabase, userKey));
-  const limit = BASE_FREE_ALLOWANCE + (isMember ? Number(subscription.astroBonusQuestions || MEMBER_BONUS_ALLOWANCE) : 0);
+  const persistedSubscription = await readActiveSubscription(supabase, userKey);
+  const isMember = supabase ? Boolean(persistedSubscription) : Boolean(subscription.active);
+  const bonusQuestions = persistedSubscription?.astroBonusQuestions || Number(subscription.astroBonusQuestions || MEMBER_BONUS_ALLOWANCE);
+  const limit = BASE_FREE_ALLOWANCE + (isMember ? bonusQuestions : 0);
   const used = supabase ? await countStoredQuestions(supabase, userKey) : Number(payload.priorCount || 0);
   return {
     limit,
@@ -166,11 +168,11 @@ async function getAstroSolveAllowance({ supabase, userKey, payload }) {
   };
 }
 
-async function hasActiveSubscription(supabase, userKey) {
+async function readActiveSubscription(supabase, userKey) {
   if (!supabase) return false;
   const { data, error } = await supabase
     .from("more_guidance_subscriptions")
-    .select("id")
+    .select("id, astro_bonus_questions")
     .eq("user_key", userKey)
     .eq("status", "active")
     .gt("ends_at", new Date().toISOString())
@@ -182,7 +184,10 @@ async function hasActiveSubscription(supabase, userKey) {
     return false;
   }
 
-  return Boolean(data?.id);
+  return data?.id ? {
+    id: data.id,
+    astroBonusQuestions: Number(data.astro_bonus_questions || MEMBER_BONUS_ALLOWANCE)
+  } : null;
 }
 
 async function countStoredQuestions(supabase, userKey) {

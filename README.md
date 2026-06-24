@@ -128,7 +128,7 @@ Server-only Pinecone memory route. It upserts saved guidance, daily readings, an
 
 `POST /api/more-guidance`
 
-Loads the More Guidance dashboard from Supabase and saves advice into `saved_guidance`. This gives the paid page server-backed subscription status, reading history, and saved advice when Supabase is configured, while preserving local fallback behavior during development.
+Loads the More Guidance dashboard from Supabase, creates the paid deeper guidance map, and saves advice into `saved_guidance`. Deeper guidance is cached daily in `more_guidance_readings` when Supabase is configured, while local fallback behavior remains available during development.
 
 `GET /api/health`
 
@@ -167,7 +167,7 @@ OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps.
 
 ## Observability
 

@@ -32,6 +32,7 @@ try {
   await checkReadiness();
   await checkProfileLookup();
   await checkMoreGuidanceDashboard();
+  await checkMoreGuidanceDeep();
   await maybeCheckOtpRequest();
   await maybeCheckSoulWisdom();
   await maybeCheckAstroSolve();
@@ -60,7 +61,10 @@ process.exit(exitCode);
 function startViteServer({ host: serverHost, port: serverPort }) {
   const child = spawn("npm", ["run", "dev", "--", "--host", serverHost, "--port", serverPort, "--strictPort"], {
     cwd: process.cwd(),
-    env: process.env,
+    env: {
+      ...process.env,
+      ...(includeAi ? {} : { MORE_GUIDANCE_DISABLE_OPENAI: "true" })
+    },
     stdio: ["ignore", "pipe", "pipe"]
   });
 
@@ -159,6 +163,46 @@ async function checkMoreGuidanceDashboard() {
     passed,
     status: result.status,
     detail: passed ? `Dashboard configured=${Boolean(result.body.configured)}.` : "Expected dashboard history arrays."
+  });
+}
+
+async function checkMoreGuidanceDeep() {
+  const result = await requestJson("POST", "/api/more-guidance", {
+    action: "deep-guidance",
+    date: "2026-06-24",
+    timezone: "Asia/Kolkata",
+    subscription: {
+      active: true,
+      name: "Soul Guru + Astro Solve",
+      astroBonusQuestions: 15
+    },
+    user: {
+      ...smokeUser(),
+      soulGuruSubscription: {
+        active: true,
+        name: "Soul Guru + Astro Solve",
+        astroBonusQuestions: 15
+      }
+    },
+    fallback: {
+      overview: "Smoke, the deeper pattern is about making one practical duty visible before it turns into emotional noise. Give the day a clear finish line, keep over-explaining away from sensitive conversations, and let one completed action rebuild trust in your timing. This paid map should feel fuller than a daily cue while still staying grounded in ordinary choices, body rhythm, work focus, and cleaner relationship timing.",
+      thisWeek: "This week, protect the first useful task from distraction. Shorten one reply, name one cost before saying yes, and let a small completed promise carry more weight than another long explanation.",
+      thisMonth: "This month, watch what repeats in saved readings. If the same pressure returns through different duties, treat it as a pattern asking for structure, not a reason to panic.",
+      practice: "For seven days, write one evening line about what became lighter because you handled it directly.",
+      focus: "Make the pattern visible",
+      watch: "Over-explaining under pressure"
+    }
+  });
+  const guidance = result.body?.guidance || {};
+  const passed = result.status === 200 && Boolean(guidance.overview && guidance.thisWeek && guidance.thisMonth && guidance.practice);
+  pushCheck({
+    id: "more-guidance-deep",
+    label: "More Guidance deep reading",
+    passed,
+    status: result.status,
+    detail: passed
+      ? `${result.body.source || "unknown"} guidance returned for ${result.body.readingDate || "requested date"}.`
+      : result.body?.error || "Expected deep guidance fields."
   });
 }
 
