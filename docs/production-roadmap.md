@@ -79,6 +79,7 @@ This project is being built toward the stack shown in the product planning image
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing
 - Vercel deployment config plus deployed backend smoke-test script for health, readiness, profile lookup, More Guidance dashboard, and Shani dashboard
+- Vercel security/cache headers for browser hardening, no-store API responses, and immutable asset caching
 - Strict deployed backend smoke contract so production-ready checks require authenticated protected POST routes
 - Combined release readiness runner for local and strict production preflight checks
 - Workflow-ready GitHub Actions CI template for web/API contracts, local smoke, Soul Guru diversity gates, APK build, and APK secret scanning
@@ -103,7 +104,7 @@ This project is being built toward the stack shown in the product planning image
 - Razorpay webhook activation for Shani remedy memberships with provider-payment idempotency
 - Service-role Supabase schema contract RPC for live index verification
 - Live Supabase uniqueness checks for daily Soul Guru cache, More Guidance cache, and payment event idempotency
-- Vercel deployment contract checker for build settings, API route duration, SPA rewrites, and upload exclusions
+- Vercel deployment contract checker for build settings, API route duration, security/cache headers, SPA rewrites, and upload exclusions
 
 ## Next Implementation Steps
 
