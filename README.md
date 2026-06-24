@@ -44,6 +44,12 @@ Required for APK builds that should call the deployed backend:
 VITE_API_BASE_URL=https://your-vercel-app.vercel.app
 ```
 
+Check a mobile backend URL before building a phone APK:
+
+```bash
+npm run mobile:check-backend
+```
+
 ## Supabase Setup
 
 Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. `001_initial_schema.sql` creates:
@@ -164,7 +170,15 @@ SoulGuru-debug.apk
 ```
 
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
-Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a release APK/AAB. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
+Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
+
+Use this command for the APK you want to test on a phone after Vercel is deployed:
+
+```bash
+npm run android:apk:backend
+```
+
+That command refuses to build if `VITE_API_BASE_URL` is missing, points at localhost, is not HTTPS, or fails `/api/health`.
 
 ## Production Notes
 
@@ -172,6 +186,7 @@ Before release:
 
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
+- Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:apk:backend`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
 - Configure Pinecone index and `PINECONE_HOST` for long-term guidance memory.
