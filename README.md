@@ -106,7 +106,10 @@ Smoke-test a deployed backend URL:
 
 ```bash
 npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app
+npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready
 ```
+
+The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, and the More Guidance dashboard contract without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. If production Clerk auth is required, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN` to validate protected POST routes.
 
 ## Continuous Integration
 
@@ -342,7 +345,7 @@ Before release:
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
-- Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
+- Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.

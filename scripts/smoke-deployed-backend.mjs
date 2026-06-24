@@ -2,6 +2,7 @@ const args = new Set(process.argv.slice(2));
 const rawBaseUrl = getArgValue("--url") || process.env.VITE_API_BASE_URL || process.env.API_BASE_URL || "";
 const expectReady = args.has("--expect-ready");
 const outputJson = args.has("--json");
+const authToken = getArgValue("--auth-token") || process.env.DEPLOYMENT_SMOKE_AUTH_TOKEN || "";
 const baseUrl = rawBaseUrl.trim().replace(/\/$/, "");
 
 if (!baseUrl) {
@@ -28,6 +29,8 @@ const report = {
 
 await checkHealth();
 await checkReadiness();
+await checkProfileLookup();
+await checkMoreGuidanceDashboard();
 
 if (outputJson) {
   console.log(JSON.stringify(report, null, 2));
@@ -69,18 +72,95 @@ async function checkReadiness() {
   });
 }
 
-async function requestJson(path) {
+async function checkProfileLookup() {
+  const result = await requestJson("/api/user-profile", {
+    method: "POST",
+    body: {
+      action: "lookup",
+      phone: "+15550000000",
+      email: "deployment-smoke@soulguru.local"
+    }
+  });
+
+  if (isAuthRequired(result)) {
+    pushCheck({
+      id: "user-profile-auth",
+      label: "User profile API",
+      passed: true,
+      status: result.status,
+      detail: "Route is reachable and requires authentication. Provide --auth-token to validate the full profile lookup body."
+    });
+    return;
+  }
+
+  const configured = result.body?.configured;
+  const passed = result.status === 200 && typeof configured === "boolean" && (!expectReady || configured === true);
+  pushCheck({
+    id: "user-profile",
+    label: "User profile API",
+    passed,
+    status: result.status,
+    detail: passed
+      ? `Profile lookup contract returned configured=${configured}.`
+      : expectReady
+        ? "Expected profile lookup to be backed by configured Supabase."
+        : "Expected profile lookup to return 200 with configured metadata."
+  });
+}
+
+async function checkMoreGuidanceDashboard() {
+  const result = await requestJson("/api/more-guidance", {
+    method: "POST",
+    body: {
+      action: "dashboard",
+      limit: 3,
+      user: smokeUser()
+    }
+  });
+
+  if (isAuthRequired(result)) {
+    pushCheck({
+      id: "more-guidance-auth",
+      label: "More Guidance dashboard API",
+      passed: true,
+      status: result.status,
+      detail: "Route is reachable and requires authentication. Provide --auth-token to validate the full dashboard body."
+    });
+    return;
+  }
+
+  const configured = result.body?.configured;
+  const hasArrays = Array.isArray(result.body?.guidanceHistory) && Array.isArray(result.body?.savedGuidance);
+  const passed = result.status === 200 && hasArrays && typeof configured === "boolean" && (!expectReady || configured === true);
+  pushCheck({
+    id: "more-guidance-dashboard",
+    label: "More Guidance dashboard API",
+    passed,
+    status: result.status,
+    detail: passed
+      ? `Dashboard contract returned configured=${configured}.`
+      : expectReady
+        ? "Expected More Guidance dashboard to be backed by configured Supabase."
+        : "Expected dashboard to return 200 with guidanceHistory and savedGuidance arrays."
+  });
+}
+
+async function requestJson(path, { method = "GET", body: requestBody } = {}) {
   const url = `${baseUrl}${path}`;
   try {
     const response = await fetch(url, {
+      method,
       headers: {
-        Accept: "application/json"
-      }
+        Accept: "application/json",
+        ...(requestBody ? { "Content-Type": "application/json" } : {}),
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+      },
+      ...(requestBody ? { body: JSON.stringify(requestBody) } : {})
     });
-    const body = await response.json().catch(() => null);
+    const responseBody = await response.json().catch(() => null);
     return {
       status: response.status,
-      body
+      body: responseBody
     };
   } catch (error) {
     return {
@@ -89,6 +169,26 @@ async function requestJson(path) {
       error: error.message
     };
   }
+}
+
+function isAuthRequired(result) {
+  return result.status === 401 && /auth/i.test(String(result.body?.error || ""));
+}
+
+function smokeUser() {
+  return {
+    id: "deployment-smoke",
+    name: "Deployment Smoke",
+    phone: "+15550000000",
+    email: "deployment-smoke@soulguru.local",
+    birthDate: "1992-02-14",
+    birthTime: "08:30",
+    birthPlace: "Mumbai, India",
+    birthLatitude: 19.076,
+    birthLongitude: 72.8777,
+    birthTimezone: "Asia/Kolkata",
+    birthTimezoneOffsetMinutes: 330
+  };
 }
 
 function pushCheck(check) {
