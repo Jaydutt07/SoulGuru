@@ -53,6 +53,8 @@ Check a mobile backend URL before building a phone APK:
 npm run mobile:check-backend
 ```
 
+The mobile backend check validates HTTPS, rejects localhost/private LAN hosts unless explicitly allowed, checks `/api/health`, and requires deployed `/api/readiness` to be ready. For local or staging phone tests against an intentionally incomplete backend, run `node scripts/validate-mobile-backend.mjs --allow-not-ready`.
+
 Check server-side production readiness from local env:
 
 ```bash
@@ -141,6 +143,12 @@ Check the paid More Guidance subscription/cache contract without contacting Open
 npm run more-guidance:check
 ```
 
+Check the mobile backend validator contract with local mock backends:
+
+```bash
+npm run mobile:backend:check
+```
+
 Check the daily Soul Guru cache contract without contacting OpenAI or Supabase:
 
 ```bash
@@ -214,6 +222,7 @@ The CI template checks:
 - `npm run security:check`
 - `npm run payments:check`
 - `npm run more-guidance:check`
+- `npm run mobile:backend:check`
 - `npm run local:smoke`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
@@ -406,7 +415,7 @@ Use this command for the APK you want to test on a phone after Vercel is deploye
 npm run android:apk:backend
 ```
 
-That command refuses to build if `VITE_API_BASE_URL` is missing, points at localhost, is not HTTPS, or fails `/api/health`.
+That command refuses to build if `VITE_API_BASE_URL` is missing, points at localhost, is not HTTPS, fails `/api/health`, or reports a non-ready `/api/readiness` payload. Use `npm run android:apk:local` for LAN phone testing before production services are configured.
 
 Signed release outputs:
 
@@ -446,6 +455,7 @@ Before release:
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.
 - Run `npm run more-guidance:check`.
+- Run `npm run mobile:backend:check`.
 - Run `npm run soul:cache:check`.
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.

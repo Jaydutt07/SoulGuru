@@ -10,6 +10,8 @@ const apiBaseUrl = String(env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "")
 const allowLocalhost = process.argv.includes("--allow-localhost");
 const allowLan = process.argv.includes("--allow-lan");
 const skipHealth = process.argv.includes("--skip-health");
+const skipReadiness = process.argv.includes("--skip-readiness");
+const allowNotReady = process.argv.includes("--allow-not-ready");
 
 if (!apiBaseUrl) {
   fail("VITE_API_BASE_URL is required for a backend-connected mobile build.");
@@ -56,7 +58,9 @@ if (!skipHealth) {
   }
 }
 
-console.log(`Mobile backend check passed: ${apiBaseUrl}`);
+const readiness = skipReadiness ? { skipped: true } : await checkReadiness(apiBaseUrl, { allowNotReady });
+
+console.log(`Mobile backend check passed: ${apiBaseUrl}${readiness.skipped ? "" : ` (${readiness.status})`}`);
 
 function fail(message) {
   console.error(`Mobile backend check failed: ${message}`);
@@ -78,4 +82,43 @@ function isPrivateHost(hostname) {
     (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
     (parts[0] === 192 && parts[1] === 168)
   );
+}
+
+async function checkReadiness(baseUrl, { allowNotReady: shouldAllowNotReady }) {
+  const readinessUrl = `${baseUrl}/api/readiness`;
+  const response = await fetch(readinessUrl).catch((error) => {
+    fail(`Unable to reach backend readiness check at ${readinessUrl}: ${error.message}`);
+  });
+  const body = await response.json().catch(() => null);
+  const validPayload = [200, 503].includes(response?.status) && typeof body?.ok === "boolean";
+
+  if (!validPayload) {
+    fail(`Backend readiness check at ${readinessUrl} did not return the expected readiness payload.`);
+  }
+
+  if (!body.ok && !shouldAllowNotReady) {
+    const missing = summarizeMissingReadiness(body);
+    fail([
+      `Backend readiness is ${body.status || "not ready"}.`,
+      missing ? `Missing production configuration: ${missing}.` : "",
+      "Use --allow-not-ready only for local/staging phone tests; production APKs must use a ready backend."
+    ].filter(Boolean).join(" "));
+  }
+
+  if (!body.ok) {
+    console.warn(`Mobile backend readiness warning: ${body.status || "not ready"}.`);
+  }
+
+  return {
+    ok: body.ok,
+    status: body.status || (body.ok ? "ready" : "needs_configuration")
+  };
+}
+
+function summarizeMissingReadiness(body) {
+  return (body?.checks || [])
+    .filter((check) => check.status === "fail")
+    .map((check) => check.id || check.label)
+    .filter(Boolean)
+    .join(", ");
 }

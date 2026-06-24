@@ -48,6 +48,7 @@ This project is being built toward the stack shown in the product planning image
 - Production-gated local paid fallback so More Guidance unlocks from server payment/subscription state
 - Paid More Guidance deep reading generation with daily Supabase caching
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
+- Mobile backend readiness guard that requires deployed `/api/readiness` to be ready before production phone builds
 - Local-LAN APK build helper for phone testing against the Mac dev backend
 - Signed Android release APK/AAB scripts with keystore validation and artifact secret scanning
 - Production readiness endpoint and CLI checks for backend env configuration
