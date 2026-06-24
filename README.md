@@ -217,7 +217,7 @@ Run the same local smoke with live Soul Wisdom and Astro Solves AI calls:
 npm run local:smoke:ai
 ```
 
-Check Soul Guru reading quality, word count, banned repeated phrasing, and similarity across five profiles:
+Check Soul Guru reading quality, word count, banned repeated phrasing, repeated paragraph structure, and similarity across five profiles:
 
 ```bash
 npm run soul:quality
@@ -366,7 +366,7 @@ Loads the More Guidance dashboard from Supabase, including subscription status, 
 
 `POST /api/shani-guidance`
 
-Loads the Shani/Saade Sati dashboard and verifies Shani remedy membership from Supabase. The Pandit action requires an active row in `shani_remedy_memberships`, refuses to call OpenAI before membership is verified, and saves every paid answer to `shani_pandit_messages` before production displays it. `SHANI_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing; production keeps Pandit locked until a persisted membership exists.
+Loads the Shani/Saade Sati dashboard and verifies Shani remedy membership from Supabase. Active members receive a server-owned guide map with phase focus, next-seven-days guidance, monthly action, daily practices, renewal timing, and Pandit history. The Pandit action requires an active row in `shani_remedy_memberships`, refuses to call OpenAI before membership is verified, and saves every paid answer to `shani_pandit_messages` before production displays it. `SHANI_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing; production keeps the guide map and Pandit locked until a persisted membership exists.
 
 `GET /api/health`
 

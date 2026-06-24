@@ -50,11 +50,15 @@ export async function getShaniDashboard(payload, env = process.env, deps = {}) {
       configured: false,
       report,
       membership: null,
+      remedyMap: null,
       panditHistory: []
     };
   }
 
   const membership = await readActiveShaniMembership(supabase, userKey, now);
+  const remedyMap = membership?.active
+    ? buildShaniRemedyMap({ user, report, membership, now })
+    : null;
   const panditHistory = membership?.active
     ? await readPanditHistory(supabase, userKey, Number(payload.limit || 8))
     : [];
@@ -63,6 +67,7 @@ export async function getShaniDashboard(payload, env = process.env, deps = {}) {
     configured: true,
     report,
     membership,
+    remedyMap,
     panditHistory
   };
 }
@@ -198,6 +203,52 @@ export function buildShaniReport(user, now = new Date()) {
   };
 }
 
+export function buildShaniRemedyMap({ user = {}, report = {}, membership = {}, now = new Date() } = {}) {
+  const phase = getPhaseGuidance(report.phaseIndex);
+  const pressure = getMemberPressure(report);
+  const planName = membership.planName || membership.planId || "Shani remedy";
+  const endsAt = parseDate(membership.endsAt || addMonths(now, 3));
+  const generatedAt = parseDate(now).toISOString();
+
+  return {
+    planName,
+    generatedAt,
+    phase: {
+      title: report.phaseTitle || "Shani discipline window",
+      summary: phase.summary,
+      pressure
+    },
+    nextSevenDays: {
+      focus: phase.weekFocus,
+      action: phase.weekAction,
+      caution: phase.weekCaution
+    },
+    nextMonth: {
+      focus: phase.monthFocus,
+      action: phase.monthAction,
+      marker: `Review this map again before ${formatDate(addDays(now, 30))}.`
+    },
+    dailyPractices: [
+      {
+        title: "Morning duty",
+        text: "Finish one delayed responsibility before adding a new promise."
+      },
+      {
+        title: "Speech restraint",
+        text: "Keep replies slower, shorter, and free of punishment."
+      },
+      {
+        title: "Saturday seva",
+        text: "Offer quiet service, clean one neglected space, and avoid public display."
+      }
+    ],
+    renewal: {
+      daysLeft: Math.max(0, Math.ceil((endsAt.getTime() - parseDate(now).getTime()) / 86400000)),
+      endsAt: endsAt.toISOString()
+    }
+  };
+}
+
 async function readActiveShaniMembership(supabase, userKey, now = new Date()) {
   const { data, error } = await supabase
     .from("shani_remedy_memberships")
@@ -300,6 +351,54 @@ function normalizeLocalMembership(membership = {}) {
     endsAt: membership.endsAt || addYears(new Date(), 1).toISOString(),
     provider: membership.provider || "local"
   };
+}
+
+function getPhaseGuidance(phaseIndex) {
+  if (phaseIndex === 1) {
+    return {
+      summary: "The work is preparation: simplify obligations before pressure becomes visible.",
+      weekFocus: "Clear old promises and make routines less negotiable.",
+      weekAction: "Choose one duty that keeps returning, finish it in daylight, and tell fewer people about the effort.",
+      weekCaution: "Do not confuse early pressure with punishment; treat it as a request for order.",
+      monthFocus: "Build a visible structure around sleep, money, work, or family duty.",
+      monthAction: "Track one repeating delay for four Saturdays and close it through action, not worry."
+    };
+  }
+  if (phaseIndex === 2) {
+    return {
+      summary: "The work is maturity: decisions, identity, and patience need clean conduct.",
+      weekFocus: "Reduce ego reactions and let completed work speak first.",
+      weekAction: "Before any hard conversation, finish one practical task and let the body settle.",
+      weekCaution: "Avoid proving yourself through harsh words, sudden exits, or dramatic promises.",
+      monthFocus: "Separate real responsibility from pride disguised as responsibility.",
+      monthAction: "Keep a weekly record of what became lighter because you handled it directly."
+    };
+  }
+  if (phaseIndex === 3) {
+    return {
+      summary: "The work is completion: lessons close gently when discipline stays consistent.",
+      weekFocus: "Close loops without reopening old emotional negotiations.",
+      weekAction: "Choose one pending obligation, complete the next honest step, and do not seek applause for it.",
+      weekCaution: "Do not drop discipline just because relief begins to appear.",
+      monthFocus: "Turn the lesson into a rule you can carry after this period.",
+      monthAction: "Name one boundary, one duty, and one habit that must remain after pressure reduces."
+    };
+  }
+  return {
+    summary: "The work is protection: keep discipline clean before heavier periods arrive.",
+    weekFocus: "Strengthen routine, repayment, speech, and service while pressure is low.",
+    weekAction: "Make Saturday a reset point: clean one space, serve quietly, and finish one small obligation.",
+    weekCaution: "Do not wait for crisis before becoming organized.",
+    monthFocus: "Build strength before the next Saturn window asks for it.",
+    monthAction: "Review money, sleep, work promises, and family duties once a week without fear."
+  };
+}
+
+function getMemberPressure(report = {}) {
+  if (report.active) {
+    return `Moon in ${report.moonSign || "your chart"} and Saturn in ${report.saturnSign || "the current transit"} point to pressure around patience, responsibility, and cleaner timing.`;
+  }
+  return `Saade Sati is not active now, so the useful work is prevention: order, repayment, humility, and steady service.`;
 }
 
 function buildPanditInput({ user, question, report, membership }) {
@@ -426,6 +525,18 @@ function parseDate(value) {
 function addYears(date, years) {
   const next = new Date(date);
   next.setFullYear(next.getFullYear() + years);
+  return next;
+}
+
+function addMonths(date, months) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
   return next;
 }
 

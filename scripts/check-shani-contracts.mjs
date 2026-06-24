@@ -1,4 +1,5 @@
 import {
+  buildShaniRemedyMap,
   createPanditGuidance,
   getShaniDashboard,
   isLocalShaniAccessAllowed,
@@ -18,9 +19,46 @@ async function checkDashboardWorksWithoutMembershipBackend() {
   pushCheck("Shani dashboard returns Saade Sati report without local paid unlock", [
     result.configured === false,
     result.membership === null,
+    result.remedyMap === null,
     Array.isArray(result.panditHistory),
     typeof result.report?.phaseTitle === "string",
     typeof result.report?.summary === "string"
+  ].every(Boolean));
+}
+
+async function checkDashboardReturnsMemberRemedyMap() {
+  const user = shaniUser("dashboard-member");
+  const result = await getShaniDashboard({
+    user,
+    limit: 5
+  }, {}, {
+    supabase: createFakeSupabase({
+      memberships: [activeMembership(user.id)]
+    }),
+    now: new Date("2026-06-24T00:00:00.000Z")
+  });
+
+  pushCheck("Active Shani membership returns member remedy map", [
+    result.configured === true,
+    result.membership?.active === true,
+    result.remedyMap?.phase?.title === result.report.phaseTitle,
+    result.remedyMap?.nextSevenDays?.focus,
+    result.remedyMap?.nextMonth?.action,
+    result.remedyMap?.dailyPractices?.length === 3,
+    Number.isInteger(result.remedyMap?.renewal?.daysLeft),
+    Array.isArray(result.panditHistory)
+  ].every(Boolean));
+
+  const directMap = buildShaniRemedyMap({
+    user,
+    report: result.report,
+    membership: result.membership,
+    now: new Date("2026-06-24T00:00:00.000Z")
+  });
+  pushCheck("Shani remedy map is deterministic for the same member and report", [
+    directMap.phase.title === result.remedyMap.phase.title,
+    directMap.nextSevenDays.focus === result.remedyMap.nextSevenDays.focus,
+    directMap.dailyPractices.length === result.remedyMap.dailyPractices.length
   ].every(Boolean));
 }
 
@@ -405,6 +443,7 @@ function printReport() {
 
 async function main() {
   await checkDashboardWorksWithoutMembershipBackend();
+  await checkDashboardReturnsMemberRemedyMap();
   await checkLocalAccessRequiresExplicitFlag();
   await checkPersistedMembershipRequired();
   await checkMembershipReadFailureDoesNotCallOpenAI();

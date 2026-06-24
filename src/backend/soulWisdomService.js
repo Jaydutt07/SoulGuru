@@ -12,7 +12,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v7";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v8";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
@@ -63,7 +63,8 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
 
   const fallback = payload.fallback || createFallbackReading(buildServerFallbackWisdom(user, astrologyContext));
   const firstCandidate = normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom;
-  if (isLowQualityWisdom(firstCandidate)) {
+  const firstCandidateIssues = getSoulWisdomContractIssues(firstCandidate, user);
+  if (firstCandidateIssues.length) {
     outputText = await requestSoulWisdom(
       client,
       model,
@@ -72,13 +73,17 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
         context: astrologyContext,
         today: payload.today || date,
         memoryContext,
-        rejectedWisdom: firstCandidate
+        rejectedWisdom: firstCandidate,
+        rejectionReason: firstCandidateIssues.join("; ")
       })
     );
     qualityAttempts = 2;
   }
 
-  const reading = normalizeWisdomPayload(outputText, fallback);
+  let reading = normalizeWisdomPayload(outputText, fallback);
+  if (getSoulWisdomContractIssues(reading.wisdom, user).length) {
+    reading = fallback;
+  }
   const result = {
     reading,
     wisdom: reading.wisdom,
@@ -91,7 +96,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     quality: {
       attempts: qualityAttempts,
       repaired: qualityAttempts > 1,
-      passed: !isLowQualityWisdom(reading.wisdom)
+      passed: !getSoulWisdomContractIssues(reading.wisdom, user).length
     },
     memory: {
       configured: Boolean(memory.configured),
@@ -233,6 +238,36 @@ function buildMemoryQuery({ user, astrologyContext, date }) {
     astrologyContext.stabilizer,
     astrologyContext.avoid
   ].filter(Boolean).join(" | ");
+}
+
+function getSoulWisdomContractIssues(wisdom, user) {
+  const text = String(wisdom || "");
+  const issues = [];
+  const wordCount = words(text).length;
+  if (isLowQualityWisdom(text)) {
+    issues.push("matched low-quality or repeated phrasing rules");
+  }
+  if (wordCount < 72 || wordCount > 100) {
+    issues.push(`expected 72-100 words, got ${wordCount}`);
+  }
+  const nameCount = countWord(text, firstName(user.name));
+  if (nameCount !== 1) {
+    issues.push(`expected first name exactly once, got ${nameCount}`);
+  }
+  return issues;
+}
+
+function countWord(text, word) {
+  const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
+  return (String(text || "").match(pattern) || []).length;
+}
+
+function words(text) {
+  return String(text || "").split(/\s+/).filter(Boolean);
+}
+
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function firstName(name) {

@@ -46,7 +46,7 @@ async function checkUncachedModeRequiresExplicitFlag() {
 async function checkExplicitUncachedModeReturnsUnstoredReading() {
   const user = soulUser("uncached-enabled");
   const wisdomJson = JSON.stringify({
-    wisdom: "The notebook beside your cup is asking for a smaller promise than the one your mind keeps building. Tara, write the sentence that names the real task, then leave the larger worry outside the room for one hour. The sensitive point is not effort; it is the way pressure keeps pretending to be preparation. Finish one thing that can be verified today, and let the rest wait without earning more attention.",
+    wisdom: "The notebook beside your cup gives the day one practical place to begin. Tara, the pressure is not lack of effort; it is the way a private worry keeps dressing itself as preparation. Write the sentence that names the real task, then give the next hour to the smallest visible finish. Keep the answer warm but brief if someone pulls for more. By evening, trust the completed detail more than the argument still asking for attention.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Name the real task",
     release: "Stop rehearsing the larger worry"
@@ -191,7 +191,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     birthPlace: "Kochi"
   };
   const wisdomJson = JSON.stringify({
-    wisdom: "An unopened notebook beside the charger is the clue: your mind has been keeping a decision half lit because finishing it would make the next request real. Leela, give that thought a place on paper before lunch, then close every extra tab that turns it into a performance. The sensitive point today is not whether you care enough; it is whether care has a shape. Answer one practical thing cleanly, and let the mood catch up later.",
+    wisdom: "The notebook near the kitchen counter gives the unfinished decision a place to land. Leela, care needs a shape before the next request turns into performance. Put the deadline on paper before lunch, then close the extra notes that keep making the task feel ceremonial. If someone wants certainty from you, answer with timing instead of defense. A finished practical detail will settle more of the room than another perfect explanation. Keep the promise small enough to keep completely.",
     innerWeather: "Sensitive but ready to act",
     todayMove: "Write the decision before lunch",
     release: "Close every extra tab"
@@ -290,7 +290,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const wisdomJson = JSON.stringify({
-    wisdom: "The glass of water near the paper is enough of a beginning for the day. Tara, make the first action plain before the worry turns it into a performance. The pressure underneath this is not weakness; it is the habit of measuring care by how much tension you can carry. Finish the visible task, leave one sentence unsent, and give your body proof that progress does not need drama.",
+    wisdom: "The glass of water near the paper gives the morning a plain beginning. Tara, make the first action visible before worry turns the whole day into a performance. The pressure underneath this is not weakness; it is the habit of measuring care by how much tension you can carry. Finish the useful task, leave one sentence unsent, and give your body proof that progress does not need drama. Let the quiet after that count as part of the work.",
     innerWeather: "Focused under private pressure",
     todayMove: "Finish the visible task",
     release: "Leave one sentence unsent"

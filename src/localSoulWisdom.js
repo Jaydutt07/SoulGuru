@@ -46,13 +46,22 @@ export function getDailyFocus(user, dateKey = getTodayKey(new Date(), user.birth
 function buildSignatureWisdom(user, context, seed) {
   const name = firstName(user.name);
   const scene = sceneSeed(context, seed);
-  return [
-    openingLine(scene, context, seed),
-    nameLine(name, context, seed + 3),
-    actionLine(context, seed + 7),
-    relationLine(name, context, seed + 13),
-    closingLine(context, seed + 19, name)
-  ].join(" ");
+  const opening = openingLine(scene, context, seed);
+  const nameInsight = nameLine(name, context, seed + 3);
+  const action = actionLine(context, seed + 7);
+  const relation = relationLine(name, context, seed + 13);
+  const closing = closingLine(context, seed + 19, name);
+  const plans = [
+    [opening, nameInsight, action, relation, closing],
+    [opening, action, nameInsight, relation, closing],
+    [opening, relation, nameInsight, action, closing],
+    [opening, nameInsight, relation, action, closing],
+    [opening, `${nameInsight} ${action}`, relation, closing],
+    [opening, action, relation, nameInsight, closing]
+  ];
+  const planIndex = mod(seed + stableHash(`${name}|${context.openingScene}|${context.dailyArea}|${context.coreNeed}`), plans.length);
+
+  return plans[planIndex].join(" ");
 }
 
 function buildTaskFirstWisdom(user, context) {
@@ -80,11 +89,11 @@ function buildSceneFirstWisdom(user, context) {
 }
 
 function buildCoreNeedWisdom(user, context) {
-  return `${sceneSeed(context)} shows why ${context.coreNeed} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Start with ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than proving your intention again.`;
+  return `${sceneSeed(context)} shows why ${context.coreNeed} is not too much to ask from this day. ${firstName(user.name)}, the risk is not sensitivity; it is letting ${context.avoid} decide how much of yourself to spend. Give the body first priority: ${context.bodySignal}, then ${context.decisionGate}. A small, well-kept limit will protect more progress than proving your intention again.`;
 }
 
 function buildPersonalEdgeWisdom(user, context) {
-  return `${sceneSeed(context)} is where the old rhythm tries to collect evidence. ${firstName(user.name)}, ${context.innerWeather} needs a practical container: ${context.stabilizer}. ${capitalize(context.personalEdge)} before the day turns it into a verdict. If ${context.relationshipMirror}, let that soften your reaction without erasing your position. The day does not need a dramatic breakthrough; it needs one choice you can repeat without betraying yourself.`;
+  return `${sceneSeed(context)} is where the old rhythm tries to collect evidence. ${firstName(user.name)}, ${context.innerWeather} needs a practical container: ${context.stabilizer}. ${capitalize(context.personalEdge)} before the day turns it into a verdict. If ${context.relationshipMirror}, let that soften your reaction without erasing your position. A repeatable choice matters more than a dramatic breakthrough.`;
 }
 
 function areaOpening(area) {
@@ -131,35 +140,36 @@ function sceneSeed(context, seed = stableHash(`${context.openingScene}-${context
 function openingLine(scene, context, seed) {
   const lowerScene = lowerFirst(scene);
   const lines = [
-    `${scene}: today's pressure is small enough to handle once it is named.`,
-    `${scene}: the day has become louder than the task itself.`,
-    `Start with ${lowerScene}; attention wants a cleaner container.`,
+    `Before you pass ${lowerScene} again, let the pressure become smaller and named.`,
+    `When your attention lands on ${lowerScene}, separate the task from the story around it.`,
+    `Keep ${lowerScene} in view long enough for attention to find a cleaner container.`,
     `Notice ${lowerScene} before the mind turns it into a private test.`,
-    `${scene}: effort needs shape here, not more intensity.`,
+    `${scene} can return the day to something practical and touchable.`,
     `Use ${lowerScene} as the first honest reset before negotiating with the mood.`,
-    `${scene}: this is small enough to handle without making it a verdict.`,
-    `Let ${lowerScene} bring the day back from theory into something you can touch.`
+    `A small reset around ${lowerScene} can keep the moment from becoming a verdict.`,
+    `Let ${lowerScene} mark the first repair, not the whole meaning of the day.`
   ];
-  return pickLine(lines, seed, scene, context.dailyArea);
+  return pickLine(lines, seed, scene, context.dailyArea, context.coreNeed, context.personalEdge);
 }
 
 function nameLine(name, context, seed) {
   const edge = fragment(context.personalEdge || context.emotionalKnot || "turning a workable moment into a verdict");
   const need = fragment(context.coreNeed || context.innerWeather || "room to move slowly");
   const area = context.dailyArea || "the part of life asking for attention";
+  const edgeInstruction = capitalize(edge);
   const lines = [
-    `${name}, the sensitive point is ${edge}, not a failure of discipline.`,
+    `${name}, ${edgeInstruction} before ${area} starts sounding like a test of discipline.`,
     `${name}, ${need} deserves practical protection before ${area} gets noisy.`,
     `${name}, the pressure around ${area} is not asking for a perfect mood; it is asking for one clean shape.`,
     `${name}, keep ${need} specific, or the whole day will start sounding like the same problem.`,
-    `${name}, the real work is to work with the pattern of ${edge} without making it a measure of your worth.`,
+    `${name}, ${edgeInstruction}; the goal is movement without turning the moment into a measure of worth.`,
     `${name}, do not let a delay around ${area} decide the tone of your whole day.`,
-    `${name}, ${area} needs a practical container while ${edge} tries to enlarge the moment.`,
+    `${name}, give ${area} a practical container while you practice this: ${edge}.`,
     `${name}, protect ${need} with one observable choice instead of another internal argument.`,
-    `${name}, today gets easier when ${edge} is treated as a signal, not a sentence.`,
+    `${name}, ${edgeInstruction}. Treat that as a signal, not a sentence.`,
     `${name}, separate ${need} from the noise around ${area} before you answer anything urgent.`,
     `${name}, there is a real need underneath this: ${need}, and it deserves ordinary support.`,
-    `${name}, do not let ${edge} make ${area} heavier than it has to be.`
+    `${name}, ${edgeInstruction} before ${area} becomes heavier than it has to be.`
   ];
   return pickLine(lines, seed, name, need, edge, area);
 }
@@ -170,20 +180,20 @@ function actionLine(context, seed) {
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
-    `Start with this: ${action}, then leave the larger story alone for one hour.`,
-    `Make the next useful task visible: ${work}. Pair it with this instruction: ${action}.`,
-    `Use this body checkpoint first: ${body}. Then keep this pattern out of the room: ${avoid}.`,
+    `For the next hour, ${action}. Leave the larger story alone until that is done.`,
+    `Make the next useful task visible. ${capitalize(work)}. Pair it with one plain instruction. ${capitalize(action)}.`,
+    `Check the body first. ${capitalize(body)}. Keep the habit of ${avoid} out of the room.`,
     `Give the next hour one visible edge: ${action}, no extra proving required.`,
     `Let ${work} become the anchor, then refuse the habit of reopening every possibility.`,
     `Before the day scatters, ${action}; the mood can catch up after the action has form.`,
-    `Shrink the decision until it can be done today: ${action}.`,
-    `Treat the body cue as useful data: ${sentence(body)} Then complete the nearest piece of work without dramatizing it.`,
-    `Make ${work} the first proof of care, then stop negotiating with the mood.`,
-    `Give ${action} a time and a place, so it cannot keep floating around as pressure.`,
-    `Let ${body} come before the decision; after that, handle the practical part directly.`,
-    `Reduce the work to one visible movement: ${work}. The rest can wait its turn.`
+    `Shrink the decision until it can be done today. ${capitalize(action)}.`,
+    `Treat the body cue as useful data. ${capitalize(body)}. Then complete the nearest piece of work without dramatizing it.`,
+    `${capitalize(work)} can become the first proof of care; stop negotiating with the mood after that.`,
+    `Give the action a time and a place. ${capitalize(action)}.`,
+    `Let the body lead the timing. ${capitalize(body)}. Handle the practical part after that.`,
+    `Reduce the work to one visible movement. ${capitalize(work)}. The rest can wait its turn.`
   ];
-  return pickLine(lines, seed, action, work, body, avoid, context.dailyArea);
+  return pickLine(lines, seed, action, work, body, avoid, context.dailyArea, context.openingScene, context.coreNeed);
 }
 
 function relationLine(name, context, seed) {
@@ -337,14 +347,14 @@ function sceneVariants(raw) {
 function closingLine(context, seed, salt = "") {
   const lines = [
     "A completed detail will change the room before it changes the whole mood.",
-    "Let the day respect one clean finish before it asks for more certainty.",
+    "One clean finish can stand in for the certainty the mind keeps requesting.",
     "By evening, measure the day by what you handled plainly, not by how perfectly you felt.",
     "The useful proof today is a kept limit, a finished task, or one reply with no extra weight.",
     `Let ${fragment(context.closingPermission || "one small finish be enough")} before you reopen the larger question.`,
     "A plain finish will do more for your confidence than another hour of private negotiation.",
     "Your nervous system needs evidence, so give it one action that stays done.",
     "Leave the day with one less loose end and one fewer explanation than usual.",
-    "The day does not need to become impressive; it needs to become honest and workable.",
+    "Plain and workable will serve you better than impressive.",
     "Protect the small repair, then let silence do some of the healing.",
     "You will trust yourself more after a kept promise than after a perfect explanation.",
     "One ordinary repair is enough to remind the day that you are participating.",

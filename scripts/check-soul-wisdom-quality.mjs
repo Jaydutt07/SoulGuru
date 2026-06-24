@@ -19,6 +19,7 @@ const maxWords = Number(getArgValue("--max-words") || 100);
 const maxSimilarity = Number(getArgValue("--max-similarity") || 0.24);
 const cases = getSoulWisdomQualityCases(caseSet);
 const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || defaultMaxSceneRepeats(cases.length));
+const maxStructureRepeats = Number(getArgValue("--max-structure-repeats") || defaultMaxStructureRepeats(cases.length));
 
 const started = performance.now();
 const localResults = cases.map((user) => evaluateReading({
@@ -44,9 +45,13 @@ for (const group of groups) {
   }
 
   const repeatedScenes = buildSceneRepeats(group.results).filter((item) => item.category !== "general" && item.count > maxSceneRepeats);
+  const repeatedStructures = buildStructureRepeats(group.results).filter((item) => item.count > maxStructureRepeats);
   const deviceOpenings = group.results.filter((item) => item.openingSceneCategory === "device");
   if (repeatedScenes.length) {
     failures.push(`${group.source}: repeated opening scene category ${repeatedScenes.map((item) => `${item.category}=${item.count}`).join(", ")}.`);
+  }
+  if (repeatedStructures.length) {
+    failures.push(`${group.source}: repeated paragraph structure ${repeatedStructures.map((item) => `${item.signature}=${item.count}`).join(", ")}.`);
   }
   if (deviceOpenings.length > 1) {
     failures.push(`${group.source}: device/message imagery opened ${deviceOpenings.length} readings.`);
@@ -105,9 +110,11 @@ function evaluateReading({ user, source, result }) {
   const openingSentence = firstSentence(wisdom);
   const openingSceneCategory = classifyScene(openingSentence);
   const expectedSceneCategory = classifyScene(expectedOpeningScene);
+  const sentences = splitSentences(wisdom);
   const failures = [];
   const wordCount = words(wisdom).length;
   const nameCount = countWord(wisdom, firstName(user.name));
+  const nameSentenceIndex = sentences.findIndex((sentence) => countWord(sentence, firstName(user.name)) > 0);
 
   if (wordCount < minWords || wordCount > maxWords) {
     failures.push(`expected ${minWords}-${maxWords} words, got ${wordCount}.`);
@@ -139,6 +146,8 @@ function evaluateReading({ user, source, result }) {
     quality: result.quality || null,
     openingSceneCategory,
     expectedOpeningScene,
+    sentenceCount: sentences.length,
+    structureSignature: buildStructureSignature(sentences, nameSentenceIndex),
     opening: words(wisdom).slice(0, 9).join(" "),
     wisdom,
     failures
@@ -151,7 +160,7 @@ function printGroup(group, similarity) {
   console.log(`Cases: ${group.results.length}; max similarity: ${maxPair.score} (${maxPair.pair})`);
   for (const item of group.results) {
     const repair = item.quality?.attempts ? ` attempts=${item.quality.attempts}` : "";
-    console.log(`- ${item.name}: ${item.wordCount} words${repair}; scene=${item.openingSceneCategory}; opening="${item.opening}"`);
+    console.log(`- ${item.name}: ${item.wordCount} words${repair}; scene=${item.openingSceneCategory}; structure=${item.structureSignature}; opening="${item.opening}"`);
   }
 }
 
@@ -161,6 +170,14 @@ function buildSceneRepeats(results) {
     counts.set(item.openingSceneCategory, (counts.get(item.openingSceneCategory) || 0) + 1);
   }
   return [...counts].map(([category, count]) => ({ category, count }));
+}
+
+function buildStructureRepeats(results) {
+  const counts = new Map();
+  for (const item of results) {
+    counts.set(item.structureSignature, (counts.get(item.structureSignature) || 0) + 1);
+  }
+  return [...counts].map(([signature, count]) => ({ signature, count }));
 }
 
 function buildSimilarity(results) {
@@ -224,6 +241,39 @@ function firstSentence(text) {
   return match?.[1] || words(text).slice(0, 18).join(" ");
 }
 
+function splitSentences(text) {
+  return String(text || "")
+    .trim()
+    .match(/[^.!?]+[.!?]+/g)
+    ?.map((sentence) => sentence.trim()) || [];
+}
+
+function buildStructureSignature(sentences, nameSentenceIndex) {
+  if (!sentences.length) return "empty";
+  const opening = sentenceOpeningBucket(sentences[0]);
+  const last = sentenceOpeningBucket(sentences[sentences.length - 1]);
+  const imperativeCount = sentences.filter((sentence) => sentenceOpeningBucket(sentence) === "imperative").length;
+  const colonOpening = /^[^.!?]{0,90}:/.test(sentences[0]) ? "colon" : "woven";
+  return `${sentences.length}s/name${nameSentenceIndex}/${colonOpening}/${opening}/${imperativeCount}i/${last}`;
+}
+
+function sentenceOpeningBucket(sentence) {
+  const normalized = String(sentence || "").toLowerCase().trim();
+  if (/^(begin|notice|use|make|give|keep|do|take|finish|protect|respond|leave|put|treat|reduce|shrink|answer|decline|wait|walk|eat|drink)\b/.test(normalized)) {
+    return "imperative";
+  }
+  if (/^(before|after|by evening|if|when|where|with)\b/.test(normalized)) {
+    return "condition";
+  }
+  if (/^[a-z]+,\b/.test(normalized)) {
+    return "name";
+  }
+  if (/^(a|an|the|one|your|that|this)\b/.test(normalized)) {
+    return "scene";
+  }
+  return "statement";
+}
+
 function countWord(text, word) {
   const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
   return (String(text || "").match(pattern) || []).length;
@@ -260,6 +310,10 @@ function escapeRegex(value) {
 
 function defaultMaxSceneRepeats(caseCount) {
   return caseCount <= 5 ? 2 : Math.ceil(caseCount * 0.35);
+}
+
+function defaultMaxStructureRepeats(caseCount) {
+  return caseCount <= 5 ? 1 : Math.ceil(caseCount * 0.25);
 }
 
 function getArgValue(name) {

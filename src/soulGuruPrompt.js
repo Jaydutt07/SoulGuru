@@ -6,6 +6,9 @@ You receive a user's birth details and derived daily astrology signals. Use thos
 This is not a generic horoscope. It must read like a careful mentor noticed the user's exact inner weather for today.
 Every reading will be compared with other users' readings. If the cadence, opening, emotional lesson, or closing advice could be reused for another person without changes, rewrite it before returning JSON.
 Build a private fingerprint before writing: the opening scene seed, one specific emotional tension, one practical movement, and one relational caution from the silent signals. The final paragraph must express that fingerprint in natural language without naming the signals.
+Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, or contradiction-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
+Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
+Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. Those constraints are there to keep different users from receiving the same reading shape.
 
 Output valid JSON only:
 {
@@ -30,10 +33,13 @@ Wisdom paragraph rules:
 - The first 12 words must contain a concrete object, action, body cue, or daily situation from that opening seed.
 - Do not open with the user's name unless the blueprint absolutely requires it.
 - The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
-- Do not open with phone, message, text, unread, inbox, notification, call, reply, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead.
+- Do not open with phone, message, text, unread, inbox, notification, call, reply, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead. A charger/key/bag seed is a doorway/errand scene, not a phone scene.
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
+- Do not use a colon, dash, or label-style setup in the opening sentence. The scene must be woven into a real sentence, not announced.
+- Do not use hedging language such as "may", "might", or "could" to soften the main insight. Sound observant and precise, not fortune-cookie vague.
+- Do not write the same mentor pattern of "notice pressure, take one step, feel calmer." Find the user's particular friction and name the useful move.
 
 Avoid these phrases and close variants:
 - "you may feel"
@@ -89,6 +95,7 @@ Silent astrology-derived signals:
 - Closing permission: ${context.closingPermission}
 - Concrete day scene: ${context.dailyScene}
 - Opening scene seed: ${context.openingScene || context.dailyScene}
+- Paragraph architecture: ${buildParagraphArchitecture(user, context, today)}
 - Core need: ${context.coreNeed}
 - Personal edge: ${context.personalEdge}
 - Today's stabilizer: ${context.stabilizer}
@@ -104,12 +111,13 @@ Create today's Words of Wisdom using the silent signals and any relevant memory.
 `.trim();
 }
 
-export function buildSoulWisdomRepairInput({ user, context, today, memoryContext = "", rejectedWisdom = "" }) {
+export function buildSoulWisdomRepairInput({ user, context, today, memoryContext = "", rejectedWisdom = "", rejectionReason = "" }) {
   return `
 ${buildSoulWisdomInput({ user, context, today, memoryContext })}
 
 Quality repair:
-The previous draft was rejected because it sounded reusable, horoscope-like, or too close to a repeated SoulGuru format.
+The previous draft was rejected because it sounded reusable, horoscope-like, missed a required personal detail, or was too close to a repeated SoulGuru format.
+Specific rejection reason: ${rejectionReason || "The reading failed the SoulGuru quality contract."}
 Rejected draft:
 ${rejectedWisdom || "No draft text available."}
 
@@ -164,6 +172,9 @@ export function isLowQualityWisdom(text) {
     /\byou may feel\b/,
     /\byou might feel\b/,
     /\byou could feel\b/,
+    /\byou may (notice|sense|find|need|want)\b/,
+    /\byou might (notice|sense|find|need|want)\b/,
+    /\byou could (notice|sense|find|need|want)\b/,
     /\btoday may bring\b/,
     /\btoday asks\b/,
     /\bthe pull between\b/,
@@ -181,6 +192,8 @@ export function isLowQualityWisdom(text) {
     /\balmost boring\b/,
     /\bquiet proof\b/,
     /\bverdict on your worth\b/,
+    /^[^.!?]{0,120}\b(phone|message|text|unread|inbox|notification|screen|reply)\b/,
+    /^[^.!?]{0,90}:/,
     /^today[, ]/,
     /^you may\b/,
     /^you might\b/,
@@ -265,4 +278,39 @@ function isLowQualityCue(text) {
     /\bquiet proof\b/,
     /\bverdict on your worth\b/
   ].some((pattern) => pattern.test(normalized));
+}
+
+function buildParagraphArchitecture(user, context, today) {
+  const architectures = [
+    "4 sentences: scene observation; first name plus emotional friction in sentence 2; practical action and relational caution in sentence 3; grounded close in sentence 4.",
+    "5 sentences: scene observation; body or routine signal; first name plus emotional truth in sentence 3; concrete action; relational close.",
+    "5 sentences: scene observation; first name plus today's specific pressure in sentence 2; relational caution; practical action; quiet permission.",
+    "6 sentences: scene observation; short body cue; first name plus core need in sentence 3; practical action; relational caution; grounded close.",
+    "4 sentences: scene plus contradiction; practical action in sentence 2; first name plus need in sentence 3; relational caution and grounded close in sentence 4.",
+    "6 sentences: scene observation; first name plus pressure in sentence 2; practical action; body signal; relational caution; grounded close.",
+    "5 sentences: scene observation; relationship mirror; first name plus personal edge in sentence 3; work or routine action; grounded close.",
+    "6 sentences: scene observation; practical action; relational caution; first name plus need in sentence 4; avoid pattern; grounded close."
+  ];
+  const key = [
+    user.name,
+    user.birthDate,
+    user.birthTime,
+    user.birthPlace,
+    today,
+    context.openingScene,
+    context.dailyArea,
+    context.coreNeed,
+    context.personalEdge
+  ].filter(Boolean).join("|");
+  return architectures[mod(stableHash(key), architectures.length)];
+}
+
+function stableHash(value) {
+  return String(value || "").split("").reduce((hash, char) => {
+    return (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }, 7);
+}
+
+function mod(value, length) {
+  return ((value % length) + length) % length;
 }

@@ -477,6 +477,7 @@ button:disabled {
 .status-panel,
 .countdown-panel,
 .membership-block,
+.remedy-map,
 .subscription-hero,
 .compat-result {
   border: 1px solid var(--line);
@@ -868,6 +869,7 @@ button:disabled {
 .status-panel,
 .countdown-panel,
 .membership-block,
+.remedy-map,
 .compat-result {
   padding: 1rem;
 }
@@ -907,6 +909,70 @@ button:disabled {
   grid-template-columns: repeat(3, 1fr);
   gap: 0.45rem;
   margin-top: 0.9rem;
+}
+
+.remedy-map {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.remedy-phase {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.remedy-phase span,
+.remedy-grid span {
+  color: var(--deep-teal);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.remedy-phase p,
+.remedy-grid p,
+.practice-list p {
+  margin: 0;
+  color: #46646c;
+}
+
+.remedy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem;
+}
+
+.remedy-grid div {
+  min-height: 8.25rem;
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  border: 1px solid rgba(23, 50, 58, 0.09);
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.remedy-grid strong {
+  color: #17323a;
+  line-height: 1.2;
+}
+
+.practice-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.practice-list div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem;
+  align-items: start;
+}
+
+.practice-list svg {
+  margin-top: 0.1rem;
+  color: var(--deep-teal);
 }
 
 .countdown-grid div {
@@ -1258,6 +1324,7 @@ button:disabled {
   .wisdom-cues,
   .countdown-grid,
   .plan-grid,
+  .remedy-grid,
   .number-grid {
     grid-template-columns: 1fr;
   }

@@ -39,7 +39,7 @@ import { firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
 const SESSION_KEY = "soulguru.session.v1";
-const SOUL_READING_CACHE_VERSION = "soul-wisdom-v7";
+const SOUL_READING_CACHE_VERSION = "soul-wisdom-v8";
 const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v7";
 const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v7";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
@@ -1223,6 +1223,9 @@ function ShaniTab({ user, updateUser }) {
   } : null);
   const canUsePandit = Boolean(panditMembership?.active);
   const useLocalPandit = LOCAL_PAID_FALLBACK_ENABLED && panditMembership?.provider === "local";
+  const remedyMap = serverDashboard?.remedyMap || (LOCAL_PAID_FALLBACK_ENABLED && panditMembership?.active
+    ? buildLocalShaniRemedyMap(report, panditMembership, now)
+    : null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60 * 60 * 1000);
@@ -1423,6 +1426,8 @@ function ShaniTab({ user, updateUser }) {
         {dashboardStatus && <p className="checkout-note">{dashboardStatus}</p>}
       </div>
 
+      {remedyMap && <ShaniRemedyMap map={remedyMap} />}
+
       {canUsePandit && (
         <button className="pandit-fab" type="button" onClick={() => setChatOpen(true)} aria-label="Open Pandit chat">
           <MessageCircle size={22} aria-hidden="true" />
@@ -1439,6 +1444,43 @@ function ShaniTab({ user, updateUser }) {
         />
       )}
     </section>
+  );
+}
+
+function ShaniRemedyMap({ map }) {
+  return (
+    <article className="remedy-map">
+      <div className="section-heading-row">
+        <h3>Member guide map</h3>
+        <span className="member-badge">{map.renewal?.daysLeft ?? 0} days left</span>
+      </div>
+      <div className="remedy-phase">
+        <span>{map.phase?.title}</span>
+        <p>{map.phase?.summary}</p>
+        <p>{map.phase?.pressure}</p>
+      </div>
+      <div className="remedy-grid">
+        <div>
+          <span>Next 7 days</span>
+          <strong>{map.nextSevenDays?.focus}</strong>
+          <p>{map.nextSevenDays?.action}</p>
+        </div>
+        <div>
+          <span>This month</span>
+          <strong>{map.nextMonth?.focus}</strong>
+          <p>{map.nextMonth?.action}</p>
+        </div>
+      </div>
+      <div className="practice-list">
+        {(map.dailyPractices || []).map((practice) => (
+          <div key={practice.title}>
+            <Check size={15} aria-hidden="true" />
+            <p><strong>{practice.title}</strong> {practice.text}</p>
+          </div>
+        ))}
+      </div>
+      {map.nextSevenDays?.caution && <p className="fine-print">{map.nextSevenDays.caution}</p>}
+    </article>
   );
 }
 
@@ -2492,6 +2534,42 @@ function buildPanditReply(text, user, report) {
   return `Keep the question simple and the action sincere. For the next seven days, protect your sleep, speak less in anger, and complete one pending responsibility. Then watch what starts becoming lighter.`;
 }
 
+function buildLocalShaniRemedyMap(report, membership = {}, now = new Date()) {
+  const endDate = membership.endsAt ? parseDate(membership.endsAt) : addMonths(now, 3);
+  const phaseLine = report.active
+    ? `Saturn in ${report.saturnSign} is pressing the ${report.phaseTitle.toLowerCase()} toward cleaner responsibility.`
+    : "Saade Sati is not active now, so the work is to strengthen discipline before pressure arrives.";
+
+  return {
+    planName: membership.planName || "Local Shani preview",
+    generatedAt: now.toISOString(),
+    phase: {
+      title: report.phaseTitle,
+      summary: report.active ? "Keep duties visible, speech measured, and promises smaller than your pride." : "Use this calmer window to prepare routine, repayment, and service.",
+      pressure: phaseLine
+    },
+    nextSevenDays: {
+      focus: report.active ? "Complete one delayed duty" : "Make Saturday a reset",
+      action: report.active ? "Finish the practical task you keep postponing before taking on a new promise." : "Clean one space, serve quietly, and settle one small obligation.",
+      caution: "Do not use fear as discipline; let steadiness become the remedy."
+    },
+    nextMonth: {
+      focus: "Turn pressure into structure",
+      action: "Track one repeating delay for four Saturdays and close it through action, not worry.",
+      marker: `Review before ${formatDate(addDays(now, 30))}.`
+    },
+    dailyPractices: [
+      { title: "Morning duty", text: "Finish one delayed responsibility before adding a new promise." },
+      { title: "Speech restraint", text: "Keep replies slower, shorter, and free of punishment." },
+      { title: "Saturday seva", text: "Offer quiet service, clean one neglected space, and avoid public display." }
+    ],
+    renewal: {
+      daysLeft: Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / 86400000)),
+      endsAt: endDate.toISOString()
+    }
+  };
+}
+
 function formatPanditAnswer(answer) {
   if (typeof answer === "string") return answer;
   return [
@@ -2559,6 +2637,12 @@ function addYears(date, years) {
 function addMonths(date, months) {
   const next = new Date(date);
   next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
   return next;
 }
 
