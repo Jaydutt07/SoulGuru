@@ -1,7 +1,7 @@
 import { applyVerifiedIdentity } from "../src/backend/auth.js";
 import { createPanditGuidance, getShaniDashboard } from "../src/backend/shaniService.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
-import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
+import { getHttpMethod, parseJsonRequest, sendErrorJson, sendJson } from "../src/backend/request.js";
 
 export default async function handler(req, res) {
   if (getHttpMethod(req) !== "POST") {
@@ -34,6 +34,6 @@ export default async function handler(req, res) {
     const result = await getShaniDashboard(payload, process.env);
     sendJson(res, 200, { ...result, rate, auth });
   } catch (error) {
-    sendJson(res, error.statusCode || 500, { error: error.message || "Unable to load Shani guidance" });
+    await sendErrorJson(req, res, error, { route: "shani-guidance", fallbackMessage: "Unable to load Shani guidance" });
   }
 }

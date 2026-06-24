@@ -1,5 +1,5 @@
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
-import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
+import { getHttpMethod, parseJsonRequest, sendErrorJson, sendJson } from "../src/backend/request.js";
 import { requestOtp, verifyOtp } from "../src/backend/otpService.js";
 
 export default async function handler(req, res) {
@@ -29,6 +29,6 @@ export default async function handler(req, res) {
 
     sendJson(res, 200, { ...result, rate });
   } catch (error) {
-    sendJson(res, error.statusCode || 500, { error: error.message || "Unable to process OTP" });
+    await sendErrorJson(req, res, error, { route: "auth-otp", fallbackMessage: "Unable to process OTP" });
   }
 }

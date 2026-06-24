@@ -20,10 +20,7 @@ export function buildDeploymentReadiness(env = process.env) {
     ], "Configure Upstash so AI, OTP, and payment routes are protected from abuse.", "warning"),
     checkPinecone(env),
     checkClerk(env),
-    checkRequired(env, "observability", "Observability", [
-      "VITE_SENTRY_DSN",
-      "VITE_POSTHOG_KEY"
-    ], "Configure Sentry and PostHog public keys for production monitoring.", "warning")
+    checkObservability(env)
   ];
 
   const failedChecks = checks.filter((check) => check.status === "fail");
@@ -55,6 +52,28 @@ function checkRequired(env, id, label, requiredEnv, advice, severity = "critical
     requiredEnv,
     missingEnv: missing,
     advice: missing.length ? advice : ""
+  };
+}
+
+function checkObservability(env) {
+  const missingEnv = [];
+  if (!hasEnv(env, "SENTRY_DSN") && !hasEnv(env, "VITE_SENTRY_DSN")) {
+    missingEnv.push("SENTRY_DSN or VITE_SENTRY_DSN");
+  }
+  if (!hasEnv(env, "VITE_POSTHOG_KEY")) {
+    missingEnv.push("VITE_POSTHOG_KEY");
+  }
+
+  return {
+    id: "observability",
+    label: "Observability",
+    severity: "warning",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["SENTRY_DSN or VITE_SENTRY_DSN", "VITE_POSTHOG_KEY"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Configure Sentry error tracking and PostHog analytics for production monitoring."
+      : ""
   };
 }
 

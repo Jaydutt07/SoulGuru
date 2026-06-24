@@ -42,7 +42,8 @@ This project is being built toward the stack shown in the product planning image
 - Resend helper for subscription confirmation emails
 - Offline Resend email contract checker for API payloads, errors, skips, and membership email escaping
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
-- Offline Sentry/PostHog observability contract checker for initialization and analytics privacy
+- Server-side Sentry envelope capture for sanitized 5xx API failures
+- Offline Sentry/PostHog observability contract checker for initialization, backend API capture, and analytics privacy
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
 - Offline Astro Solves quota, paid-bonus, storage, and memory contract checker
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
@@ -129,5 +130,5 @@ This project is being built toward the stack shown in the product planning image
 23. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
 24. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
 25. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-26. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+26. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables. Use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.
 27. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

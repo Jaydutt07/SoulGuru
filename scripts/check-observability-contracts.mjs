@@ -1,3 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
+import {
+  buildSentryEvent,
+  captureApiError,
+  parseSentryDsn
+} from "../src/backend/observabilityService.js";
 import {
   clearObservedUser,
   identifyUser,
@@ -13,6 +20,9 @@ await checkInitializationOptions();
 await checkPendingIdentityAppliesAfterLoad();
 await checkTrackEventSanitizesSensitiveProperties();
 await checkClearObservedUserResetsClients();
+await checkBackendSentryCaptureSanitizesApiErrors();
+await checkBackendSentrySkipsUnreportableErrors();
+await checkApiRoutesUseBackendErrorHelper();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -182,6 +192,116 @@ async function checkClearObservedUserResetsClients() {
   ].every(Boolean));
 }
 
+async function checkBackendSentryCaptureSanitizesApiErrors() {
+  const fetchCalls = [];
+  const error = new Error("Supabase service role failed for asha@example.com");
+  error.name = "DatabaseError";
+  error.stack = "DatabaseError: failed\n    at handler (/api/soul-wisdom.js:30:10)";
+
+  const result = await captureApiError(error, {
+    route: "soul-wisdom",
+    statusCode: 503,
+    req: {
+      method: "POST",
+      url: "/api/soul-wisdom?token=secret-token&phone=%2B919000000001&date=2026-06-24",
+      headers: {
+        host: "soulguru.example",
+        authorization: "Bearer secret",
+        cookie: "session=secret",
+        "user-agent": "contract-test",
+        "x-vercel-id": "bom1::contract"
+      }
+    }
+  }, {
+    SENTRY_DSN: "https://public@sentry.example/42",
+    SENTRY_ENVIRONMENT: "production"
+  }, {
+    now: new Date("2026-06-24T00:00:00.000Z"),
+    fetch: async (url, request) => {
+      fetchCalls.push({ url, request });
+      return { ok: true, status: 202 };
+    }
+  });
+
+  const dsn = parseSentryDsn("https://public@sentry.example/42");
+  const envelope = String(fetchCalls[0]?.request?.body || "");
+  const event = JSON.parse(envelope.split("\n")[2] || "{}");
+  const payloadText = JSON.stringify({ event, request: fetchCalls[0]?.request });
+
+  pushCheck("Backend Sentry capture sends sanitized 5xx API errors", [
+    result.captured === true,
+    result.status === 202,
+    dsn?.envelopeUrl === "https://sentry.example/api/42/envelope/",
+    fetchCalls.length === 1,
+    fetchCalls[0].url === "https://sentry.example/api/42/envelope/",
+    fetchCalls[0].request.headers["Content-Type"] === "application/x-sentry-envelope",
+    fetchCalls[0].request.headers["X-Sentry-Auth"].includes("sentry_key=public"),
+    event.transaction === "soul-wisdom",
+    event.tags.status_code === "503",
+    event.request.url.includes("token=%5BFiltered%5D"),
+    event.request.url.includes("phone=%5BFiltered%5D"),
+    event.request.url.includes("date=2026-06-24"),
+    event.request.headers.host === "soulguru.example",
+    event.request.headers["user-agent"] === "contract-test",
+    !payloadText.includes("Bearer secret"),
+    !payloadText.includes("session=secret"),
+    !payloadText.includes("secret-token"),
+    !payloadText.includes("asha@example.com"),
+    !payloadText.includes("+919000000001"),
+    !payloadText.includes("authorization"),
+    !payloadText.includes("cookie")
+  ].every(Boolean));
+}
+
+async function checkBackendSentrySkipsUnreportableErrors() {
+  let fetchCalls = 0;
+  const clientError = new Error("Authentication is required");
+  clientError.statusCode = 401;
+
+  const skippedClient = await captureApiError(clientError, {
+    route: "soul-wisdom",
+    req: { method: "POST", url: "/api/soul-wisdom" }
+  }, {
+    SENTRY_DSN: "https://public@sentry.example/42"
+  }, {
+    fetch: async () => {
+      fetchCalls += 1;
+      return { ok: true, status: 202 };
+    }
+  });
+
+  const skippedMissing = await captureApiError(new Error("boom"), {
+    route: "soul-wisdom",
+    statusCode: 500
+  }, {}, {
+    fetch: async () => {
+      fetchCalls += 1;
+      return { ok: true, status: 202 };
+    }
+  });
+
+  pushCheck("Backend Sentry capture skips client errors and missing DSN", [
+    skippedClient.skipped === true,
+    skippedClient.reason === "non-5xx",
+    skippedMissing.skipped === true,
+    skippedMissing.reason === "missing-dsn",
+    fetchCalls === 0
+  ].every(Boolean));
+}
+
+async function checkApiRoutesUseBackendErrorHelper() {
+  const apiDir = path.join(process.cwd(), "api");
+  const ignored = new Set(["health.js", "readiness.js"]);
+  const files = fs.readdirSync(apiDir)
+    .filter((file) => file.endsWith(".js") && !ignored.has(file));
+  const missing = files.filter((file) => {
+    const source = fs.readFileSync(path.join(apiDir, file), "utf8");
+    return !source.includes("sendErrorJson(req, res, error");
+  });
+
+  pushCheck("API routes report caught backend errors through shared helper", missing.length === 0);
+}
+
 function analyticsUser() {
   return {
     id: "profile-contract-1",
@@ -209,6 +329,9 @@ function createSentrySpy() {
     },
     addBreadcrumb(breadcrumb) {
       this.breadcrumbCalls.push(breadcrumb);
+    },
+    captureException(error) {
+      this.captureExceptionCall = error;
     }
   };
 }

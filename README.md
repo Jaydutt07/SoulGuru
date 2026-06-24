@@ -133,7 +133,7 @@ Check the production readiness report contract:
 npm run readiness:check
 ```
 
-Check Sentry/PostHog initialization and analytics privacy behavior:
+Check Sentry/PostHog initialization, backend API error capture, and analytics privacy behavior:
 
 ```bash
 npm run observability:check
@@ -427,16 +427,17 @@ This read-only check uses the service role key to verify all production tables, 
 
 ## Observability
 
-Optional public keys:
+Optional production observability keys:
 
 ```bash
 VITE_POSTHOG_KEY=
 VITE_POSTHOG_HOST=https://app.posthog.com
+SENTRY_DSN=
 VITE_SENTRY_DSN=
 VITE_SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
-The frontend disables PostHog autocapture/pageviews by default and strips phone numbers, emails, names, OTPs, tokens, keys, and birth details from tracked event properties.
+The frontend disables PostHog autocapture/pageviews by default and strips phone numbers, emails, names, OTPs, tokens, keys, and birth details from tracked event properties. Backend API routes report 5xx failures to Sentry through the envelope endpoint when `SENTRY_DSN` or `VITE_SENTRY_DSN` is configured, and the server-side payload excludes request bodies, cookies, authorization headers, payment signatures, OTPs, and user PII.
 
 ## Pinecone Memory
 
@@ -560,4 +561,4 @@ Before release:
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
 - Configure Pinecone index and `PINECONE_HOST` for long-term guidance memory.
-- Add PostHog/Sentry public keys only where appropriate.
+- Add PostHog/Sentry keys only where appropriate; use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.

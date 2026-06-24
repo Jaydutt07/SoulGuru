@@ -1,3 +1,5 @@
+import { captureApiError } from "./observabilityService.js";
+
 export function sendJson(res, statusCode, payload, headers = {}) {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json");
@@ -5,6 +7,18 @@ export function sendJson(res, statusCode, payload, headers = {}) {
     res.setHeader(name, value);
   }
   res.end(JSON.stringify(payload));
+}
+
+export async function sendErrorJson(req, res, error, options = {}) {
+  const statusCode = Number(error?.statusCode || options.statusCode || 500);
+  const fallbackMessage = options.fallbackMessage || "Unable to process request";
+  await captureApiError(error, {
+    req,
+    route: options.route,
+    statusCode,
+    extra: options.extra
+  }, process.env);
+  sendJson(res, statusCode, { error: error?.message || fallbackMessage });
 }
 
 export function getHttpMethod(req) {

@@ -1,7 +1,7 @@
 import { applyVerifiedIdentity } from "../src/backend/auth.js";
 import { handleUserProfile } from "../src/backend/profileService.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
-import { getHttpMethod, parseJsonRequest, sendJson } from "../src/backend/request.js";
+import { getHttpMethod, parseJsonRequest, sendErrorJson, sendJson } from "../src/backend/request.js";
 
 export default async function handler(req, res) {
   if (getHttpMethod(req) !== "POST") {
@@ -28,6 +28,6 @@ export default async function handler(req, res) {
     const result = await handleUserProfile(payload, process.env);
     sendJson(res, 200, { ...result, rate, auth });
   } catch (error) {
-    sendJson(res, error.statusCode || 500, { error: error.message || "Unable to update profile" });
+    await sendErrorJson(req, res, error, { route: "user-profile", fallbackMessage: "Unable to update profile" });
   }
 }
