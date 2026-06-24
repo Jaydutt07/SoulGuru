@@ -8,6 +8,7 @@ checkUncachedSoulWisdomIsNotReady();
 checkLocalAstroSolvesQuotaIsNotReady();
 checkLocalMoreGuidanceAccessIsNotReady();
 checkLocalShaniAccessIsNotReady();
+checkMissingShaniPricesAreNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -41,7 +42,11 @@ function checkPartialStackIsNotReady() {
     RAZORPAY_KEY_ID: "rzp_test_contract",
     RAZORPAY_KEY_SECRET: "fake-razorpay-secret",
     RAZORPAY_WEBHOOK_SECRET: "fake-webhook-secret",
-    MORE_GUIDANCE_PRICE_PAISE: "49900"
+    MORE_GUIDANCE_PRICE_PAISE: "49900",
+    SHANI_PLAN_3M_PRICE_PAISE: "29900",
+    SHANI_PLAN_6M_PRICE_PAISE: "54900",
+    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
+    SHANI_PLAN_FULL_PRICE_PAISE: "149900"
   });
   const warningFailures = report.checks.filter((check) => check.severity === "warning" && check.status === "fail");
 
@@ -113,6 +118,20 @@ function checkLocalShaniAccessIsNotReady() {
   ].every(Boolean));
 }
 
+function checkMissingShaniPricesAreNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    SHANI_PLAN_FULL_PRICE_PAISE: ""
+  });
+  const shaniAccess = report.checks.find((check) => check.id === "shaniMembershipAccess");
+
+  pushCheck("Readiness rejects missing Shani remedy plan prices", [
+    report.ok === false,
+    shaniAccess?.status === "fail",
+    shaniAccess?.missingEnv.includes("SHANI_PLAN_FULL_PRICE_PAISE")
+  ].every(Boolean));
+}
+
 function checkReadinessPayloadDoesNotLeakSecretValues() {
   const env = fullEnv();
   const serialized = JSON.stringify(buildDeploymentReadiness(env));
@@ -143,6 +162,10 @@ function fullEnv() {
     RAZORPAY_KEY_SECRET: "fake-razorpay-secret",
     RAZORPAY_WEBHOOK_SECRET: "fake-webhook-secret",
     MORE_GUIDANCE_PRICE_PAISE: "49900",
+    SHANI_PLAN_3M_PRICE_PAISE: "29900",
+    SHANI_PLAN_6M_PRICE_PAISE: "54900",
+    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
+    SHANI_PLAN_FULL_PRICE_PAISE: "149900",
     UPSTASH_REDIS_REST_URL: "https://upstash.example.test",
     UPSTASH_REDIS_REST_TOKEN: "fake-upstash-token",
     PINECONE_API_KEY: "fake-pinecone-key",

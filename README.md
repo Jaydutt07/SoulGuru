@@ -242,7 +242,7 @@ npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app
 npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready
 ```
 
-The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, and the More Guidance dashboard contract without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. In non-ready smoke runs, protected `401` responses prove route reachability. In `--expect-ready` runs, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN`; protected POST routes must validate with real authentication before the smoke can pass.
+The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, More Guidance dashboard, and Shani dashboard contracts without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. In non-ready smoke runs, protected `401` responses prove route reachability. In `--expect-ready` runs, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN`; protected POST routes must validate with real authentication before the smoke can pass.
 
 ## Continuous Integration
 
@@ -340,9 +340,17 @@ Verifies the Razorpay checkout return signature, backend-signed order token, sta
 
 The client More Guidance checkout must request a backend-created Razorpay order, load Razorpay Checkout with only public order details, verify the returned payment through `/api/verify-razorpay-payment`, and require a stored subscription before production activation. `npm run payments:check` covers both backend payment contracts and this frontend checkout contract.
 
+`POST /api/create-shani-order`
+
+Creates a Razorpay checkout order for Shani remedy membership plans. The backend owns the plan id, INR currency, and price from `SHANI_PLAN_3M_PRICE_PAISE`, `SHANI_PLAN_6M_PRICE_PAISE`, `SHANI_PLAN_1Y_PRICE_PAISE`, or `SHANI_PLAN_FULL_PRICE_PAISE`; client-supplied amount/currency values are ignored. The signed order token includes the exact Shani plan id so a payment cannot be reused across plans.
+
+`POST /api/verify-shani-payment`
+
+Verifies Razorpay checkout return signature, backend-signed Shani order token, stable user identity, plan id, amount, and currency before storing `shani_remedy_memberships`. Production keeps Pandit locked unless the verified payment creates or reuses a persisted Shani membership.
+
 `POST /api/razorpay-webhook`
 
-Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events that include a stable SoulGuru user identity in Razorpay notes or payment contact details. Production webhook processing requires Supabase event storage; unstored webhook events are allowed only when `PAYMENTS_ALLOW_LOCAL_ACTIVATION=true` is explicitly set for isolated local testing.
+Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates either the 3-month More Guidance subscription or a Shani remedy membership once for successful payment events that include a stable SoulGuru user identity in Razorpay notes or payment contact details. Production webhook processing requires Supabase event storage; unstored webhook events are allowed only when `PAYMENTS_ALLOW_LOCAL_ACTIVATION=true` is explicitly set for isolated local testing.
 
 `POST /api/astro-solve`
 
@@ -382,9 +390,13 @@ MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false
 MORE_GUIDANCE_PRICE_PAISE=49900
 SHANI_ALLOW_LOCAL_ACCESS=false
 SHANI_PANDIT_DISABLE_OPENAI=false
+SHANI_PLAN_3M_PRICE_PAISE=29900
+SHANI_PLAN_6M_PRICE_PAISE=54900
+SHANI_PLAN_1Y_PRICE_PAISE=99900
+SHANI_PLAN_FULL_PRICE_PAISE=149900
 ```
 
-Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false` and `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false` outside isolated local testing. Real More Guidance purchases must be persisted in Supabase before the app unlocks paid guidance.
+Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false`, `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false`, and `SHANI_ALLOW_LOCAL_ACCESS=false` outside isolated local testing. Real More Guidance and Shani purchases must be persisted in Supabase before the app unlocks paid guidance.
 
 For confirmation emails:
 

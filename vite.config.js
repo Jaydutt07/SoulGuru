@@ -5,7 +5,12 @@ import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { createMoreGuidanceReading, getMoreGuidanceDashboard, saveGuidance } from "./src/backend/guidanceService.js";
 import { searchGuidanceMemory, upsertGuidanceMemory } from "./src/backend/memoryService.js";
 import { requestOtp, verifyOtp } from "./src/backend/otpService.js";
-import { createRazorpayOrder, verifyRazorpayCheckoutPayment } from "./src/backend/payments.js";
+import {
+  createRazorpayOrder,
+  createShaniRazorpayOrder,
+  verifyRazorpayCheckoutPayment,
+  verifyShaniRazorpayCheckoutPayment
+} from "./src/backend/payments.js";
 import { handleUserProfile } from "./src/backend/profileService.js";
 import { buildDeploymentReadiness } from "./src/backend/readinessService.js";
 import { createPanditGuidance, getShaniDashboard } from "./src/backend/shaniService.js";
@@ -137,6 +142,72 @@ function soulGuruApiPlugin() {
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
           sendJson(res, error.statusCode || 500, { error: error.message || "Unable to verify payment" });
+        }
+      });
+
+      server.middlewares.use("/api/create-shani-order", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "shani-razorpay-order",
+            limit: Number(runtimeEnv.RAZORPAY_ORDER_RATE_LIMIT || 10),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many Shani payment attempts. Try again later.", rate });
+            return;
+          }
+
+          const order = await createShaniRazorpayOrder(payload, runtimeEnv);
+          sendJson(res, 200, { ...order, rate, auth });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create Shani order" });
+        }
+      });
+
+      server.middlewares.use("/api/verify-shani-payment", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "shani-razorpay-verify",
+            limit: Number(runtimeEnv.RAZORPAY_VERIFY_RATE_LIMIT || 20),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many Shani payment verification attempts. Try again later.", rate });
+            return;
+          }
+
+          const result = await verifyShaniRazorpayCheckoutPayment(payload, runtimeEnv);
+          sendJson(res, 200, { ...result, rate, auth });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to verify Shani payment" });
         }
       });
 

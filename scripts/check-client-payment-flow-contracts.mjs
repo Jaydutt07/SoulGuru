@@ -5,6 +5,7 @@ const source = fs.readFileSync(path.join(process.cwd(), "src", "main.jsx"), "utf
 const checks = [];
 
 checkRazorpayClientFlow();
+checkShaniRazorpayClientFlow();
 checkProductionPaidActivationGuard();
 checkClientSecretBoundaries();
 
@@ -13,6 +14,33 @@ printReport();
 
 if (failed.length > 0) {
   process.exit(1);
+}
+
+function checkShaniRazorpayClientFlow() {
+  pushCheck("Client starts Shani checkout through backend Razorpay order route", [
+    source.includes("async function selectPlan(planId)"),
+    source.includes("authFetch(getApiUrl(\"/api/create-shani-order\")"),
+    source.includes("setPlanStatus(\"Preparing secure Shani checkout...\");"),
+    source.includes("trackEvent(\"shani_checkout_started\", { planId })")
+  ].every(Boolean));
+
+  pushCheck("Client verifies Shani payment with backend before Pandit unlock", [
+    source.includes("async function verifyShaniPayment({ user, order, payment })"),
+    source.includes("authFetch(getApiUrl(\"/api/verify-shani-payment\")"),
+    source.includes("planId: order.planId"),
+    source.includes("orderToken: order.orderToken"),
+    source.includes("if (!data.stored && !LOCAL_PAID_FALLBACK_ENABLED) {"),
+    source.includes("throw new Error(\"Payment verified, but the Shani membership was not stored. Please contact support.\");"),
+    source.includes("setServerDashboard((current) => ({"),
+    source.includes("membership")
+  ].every(Boolean));
+
+  pushCheck("Shani checkout passes product-specific public notes only", [
+    source.includes("soulguru_plan: `shani_remedy_${order.planId || planId}`,"),
+    source.includes("soulguru_product: \"shani_remedy\","),
+    source.includes("shani_plan_id: order.planId || planId,"),
+    source.includes("description: `Shani Remedy - ${order.planName || planId}`,")
+  ].every(Boolean));
 }
 
 function checkRazorpayClientFlow() {

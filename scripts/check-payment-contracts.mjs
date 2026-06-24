@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
 import {
   createRazorpayOrder,
+  createShaniRazorpayOrder,
   processRazorpayWebhook,
+  verifyShaniRazorpayCheckoutPayment,
   verifyRazorpayCheckoutPayment,
   verifyRazorpayPaymentSignature,
   verifyRazorpayWebhookSignature
@@ -11,12 +13,16 @@ import {
 const checks = [];
 
 await checkOrderCreationContract();
+await checkShaniOrderCreationContract();
 await checkCheckoutSignatureContract();
 await checkCheckoutVerificationContract();
+await checkShaniCheckoutVerificationContract();
 await checkCheckoutSubscriptionRaceContract();
+await checkShaniCheckoutMembershipRaceContract();
 await checkWebhookSignatureContract();
 await checkWebhookProcessingContract();
 await checkWebhookDuplicateActivationRecoveryContract();
+await checkShaniWebhookActivationContract();
 await checkWebhookSubscriptionRaceContract();
 await checkSubscriptionWebhookIdempotencyContract();
 checkRazorpayReadinessContract();
@@ -118,6 +124,104 @@ async function checkOrderCreationContract() {
       RAZORPAY_KEY_ID: "rzp_test_contract",
       RAZORPAY_KEY_SECRET: "contract-secret",
       MORE_GUIDANCE_PRICE_PAISE: "0"
+    }),
+    /positive integer/i
+  );
+}
+
+async function checkShaniOrderCreationContract() {
+  const originalFetch = globalThis.fetch;
+  const seen = {};
+  let fetchCalls = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    fetchCalls += 1;
+    seen.url = url;
+    seen.method = options.method;
+    seen.authorization = options.headers?.Authorization;
+    seen.body = JSON.parse(options.body || "{}");
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          id: "order_shani_contract_123",
+          amount: seen.body.amount,
+          currency: seen.body.currency,
+          status: "created"
+        };
+      }
+    };
+  };
+
+  try {
+    const order = await createShaniRazorpayOrder({
+      planId: "6m",
+      user: {
+        id: "shani-user-contract",
+        name: "Shani Contract User",
+        phone: "+15550000003",
+        email: "shani-contract@soulguru.local",
+        birthDate: "1995-02-11",
+        birthTime: "10:15",
+        birthPlace: "Jaipur"
+      },
+      amount: 1,
+      currency: "USD"
+    }, {
+      RAZORPAY_KEY_ID: "rzp_test_contract",
+      RAZORPAY_KEY_SECRET: "contract-secret",
+      SHANI_PLAN_6M_PRICE_PAISE: "54900"
+    });
+
+    const expectedAuth = `Basic ${Buffer.from("rzp_test_contract:contract-secret").toString("base64")}`;
+    const expectedOrderToken = hmac("order_shani_contract_123|shani-user-contract|54900|INR|shani_remedy_6m", "contract-secret");
+    pushCheck("Shani Razorpay order request", [
+      seen.url === "https://api.razorpay.com/v1/orders",
+      seen.method === "POST",
+      seen.authorization === expectedAuth,
+      seen.body.amount === 54900,
+      seen.body.currency === "INR",
+      seen.body.notes?.soulguru_plan === "shani_remedy_6m",
+      seen.body.notes?.soulguru_product === "shani_remedy",
+      seen.body.notes?.shani_plan_id === "6m",
+      seen.body.notes?.user_key === "shani-user-contract",
+      seen.body.notes?.birth_date === "1995-02-11",
+      order.provider === "razorpay",
+      order.orderId === "order_shani_contract_123",
+      order.planId === "6m",
+      order.planName === "6 months",
+      order.amount === 54900,
+      order.currency === "INR",
+      order.orderToken === expectedOrderToken
+    ].every(Boolean));
+
+    await expectRejects(
+      "Shani Razorpay order rejects unknown plan",
+      () => createShaniRazorpayOrder({
+        user: { id: "shani-user-contract" },
+        planId: "unknown"
+      }, {
+        RAZORPAY_KEY_ID: "rzp_test_contract",
+        RAZORPAY_KEY_SECRET: "contract-secret"
+      }),
+      /Unknown Shani remedy plan/i,
+      400
+    );
+
+    pushCheck("Invalid Shani plan is rejected before provider call", fetchCalls === 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  await expectRejects(
+    "Shani Razorpay order rejects invalid configured price",
+    () => createShaniRazorpayOrder({
+      user: { id: "shani-user-contract" },
+      planId: "3m"
+    }, {
+      RAZORPAY_KEY_ID: "rzp_test_contract",
+      RAZORPAY_KEY_SECRET: "contract-secret",
+      SHANI_PLAN_3M_PRICE_PAISE: "0"
     }),
     /positive integer/i
   );
@@ -305,6 +409,107 @@ async function checkCheckoutVerificationContract() {
   );
 }
 
+async function checkShaniCheckoutVerificationContract() {
+  const secret = "checkout-secret";
+  const orderId = "order_shani_checkout";
+  const paymentId = "pay_shani_checkout";
+  const signature = hmac(`${orderId}|${paymentId}`, secret);
+  const amount = 29900;
+  const currency = "INR";
+  const orderToken = hmac(`${orderId}|shani-checkout-user|${amount}|${currency}|shani_remedy_3m`, secret);
+  const result = await verifyShaniRazorpayCheckoutPayment({
+    user: {
+      id: "shani-checkout-user",
+      phone: "+15550000004",
+      birthDate: "1995-02-11",
+      birthTime: "10:15",
+      birthPlace: "Jaipur"
+    },
+    planId: "3m",
+    orderId,
+    amount,
+    currency,
+    orderToken,
+    paymentId,
+    signature
+  }, {
+    RAZORPAY_KEY_SECRET: secret,
+    PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+    SHANI_PLAN_3M_PRICE_PAISE: "29900"
+  });
+
+  pushCheck("Shani checkout verification returns local membership only when explicitly allowed", [
+    result.verified === true,
+    result.stored === false,
+    result.membership?.active === true,
+    result.membership?.planId === "3m",
+    result.membership?.planName === "3 months",
+    result.membership?.provider === "razorpay",
+    result.membership?.providerPaymentId === paymentId,
+    result.membership?.metadata?.order_id === orderId,
+    Date.parse(result.membership?.startedAt),
+    Date.parse(result.membership?.endsAt)
+  ].every(Boolean));
+
+  await expectRejects(
+    "Shani checkout verification requires persisted membership storage",
+    () => verifyShaniRazorpayCheckoutPayment({
+      user: { id: "shani-checkout-user" },
+      planId: "3m",
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      SHANI_PLAN_3M_PRICE_PAISE: "29900"
+    }),
+    /Supabase is required/i
+  );
+
+  await expectRejects(
+    "Shani checkout verification rejects cross-plan order token",
+    () => verifyShaniRazorpayCheckoutPayment({
+      user: { id: "shani-checkout-user" },
+      planId: "6m",
+      orderId,
+      amount: 54900,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+      SHANI_PLAN_6M_PRICE_PAISE: "54900"
+    }),
+    /could not be matched/i,
+    401
+  );
+
+  await expectRejects(
+    "Shani checkout verification rejects underpriced plan",
+    () => verifyShaniRazorpayCheckoutPayment({
+      user: { id: "shani-checkout-user" },
+      planId: "3m",
+      orderId,
+      amount: 1,
+      currency,
+      orderToken: hmac(`${orderId}|shani-checkout-user|1|${currency}|shani_remedy_3m`, secret),
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+      SHANI_PLAN_3M_PRICE_PAISE: "29900"
+    }),
+    /amount does not match/i,
+    400
+  );
+}
+
 async function checkCheckoutSubscriptionRaceContract() {
   const secret = "checkout-secret";
   const orderId = "order_contract_race";
@@ -339,6 +544,45 @@ async function checkCheckoutSubscriptionRaceContract() {
     supabase.state.paymentEvents.size === 1,
     supabase.state.subscriptions.size === 1,
     supabase.state.racedSubscriptionInsertCount === 1
+  ].every(Boolean));
+}
+
+async function checkShaniCheckoutMembershipRaceContract() {
+  const secret = "checkout-secret";
+  const orderId = "order_shani_race";
+  const paymentId = "pay_shani_race";
+  const amount = 29900;
+  const currency = "INR";
+  const signature = hmac(`${orderId}|${paymentId}`, secret);
+  const orderToken = hmac(`${orderId}|shani-race-user|${amount}|${currency}|shani_remedy_3m`, secret);
+  const supabase = createFakePaymentSupabase({ raceShaniInsert: true });
+
+  const result = await verifyShaniRazorpayCheckoutPayment({
+    user: {
+      id: "shani-race-user",
+      phone: "+15550000005"
+    },
+    planId: "3m",
+    orderId,
+    amount,
+    currency,
+    orderToken,
+    paymentId,
+    signature
+  }, {
+    RAZORPAY_KEY_SECRET: secret,
+    SHANI_PLAN_3M_PRICE_PAISE: "29900"
+  }, { supabase });
+
+  pushCheck("Shani checkout activation treats unique membership race as existing membership", [
+    result.verified === true,
+    result.stored === true,
+    result.activated === false,
+    result.membership?.active === true,
+    result.membership?.providerPaymentId === paymentId,
+    supabase.state.paymentEvents.size === 1,
+    supabase.state.shaniMemberships.size === 1,
+    supabase.state.racedShaniInsertCount === 1
   ].every(Boolean));
 }
 
@@ -428,6 +672,42 @@ async function checkWebhookDuplicateActivationRecoveryContract() {
   ].every(Boolean));
 }
 
+async function checkShaniWebhookActivationContract() {
+  const supabase = createFakePaymentSupabase();
+  const first = await processRazorpayWebhook(JSON.stringify(shaniWebhookPayload({
+    id: "evt_shani_captured",
+    paymentId: "pay_shani_webhook",
+    orderId: "order_shani_webhook",
+    planId: "1y"
+  })), {
+    SHANI_PLAN_1Y_PRICE_PAISE: "99900"
+  }, { supabase });
+  const duplicate = await processRazorpayWebhook(JSON.stringify(shaniWebhookPayload({
+    id: "evt_shani_captured",
+    paymentId: "pay_shani_webhook",
+    orderId: "order_shani_webhook",
+    planId: "1y"
+  })), {
+    SHANI_PLAN_1Y_PRICE_PAISE: "99900"
+  }, { supabase });
+
+  pushCheck("Shani webhook activates one remedy membership by provider payment id", [
+    first.ok === true,
+    first.stored === true,
+    first.duplicate === false,
+    first.activated === true,
+    first.membership?.active === true,
+    first.membership?.planId === "1y",
+    first.membership?.providerPaymentId === "pay_shani_webhook",
+    duplicate.ok === true,
+    duplicate.duplicate === true,
+    duplicate.activated === false,
+    duplicate.membership?.active === true,
+    supabase.state.paymentEvents.size === 1,
+    supabase.state.shaniMemberships.size === 1
+  ].every(Boolean));
+}
+
 async function checkWebhookSubscriptionRaceContract() {
   const supabase = createFakePaymentSupabase({ raceSubscriptionInsert: true });
   const result = await processRazorpayWebhook(JSON.stringify(webhookPayload({
@@ -490,7 +770,11 @@ function checkRazorpayReadinessContract() {
     RAZORPAY_KEY_ID: "rzp_test_contract",
     RAZORPAY_KEY_SECRET: "razorpay-secret",
     RAZORPAY_WEBHOOK_SECRET: "webhook-secret",
-    MORE_GUIDANCE_PRICE_PAISE: "49900"
+    MORE_GUIDANCE_PRICE_PAISE: "49900",
+    SHANI_PLAN_3M_PRICE_PAISE: "29900",
+    SHANI_PLAN_6M_PRICE_PAISE: "54900",
+    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
+    SHANI_PLAN_FULL_PRICE_PAISE: "149900"
   });
   const localActivationReport = buildDeploymentReadiness({
     OPENAI_API_KEY: "sk-contract",
@@ -503,6 +787,10 @@ function checkRazorpayReadinessContract() {
     RAZORPAY_KEY_SECRET: "razorpay-secret",
     RAZORPAY_WEBHOOK_SECRET: "webhook-secret",
     MORE_GUIDANCE_PRICE_PAISE: "49900",
+    SHANI_PLAN_3M_PRICE_PAISE: "29900",
+    SHANI_PLAN_6M_PRICE_PAISE: "54900",
+    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
+    SHANI_PLAN_FULL_PRICE_PAISE: "149900",
     PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
   });
   const readyRazorpay = readyReport.checks.find((check) => check.id === "razorpay");
@@ -568,14 +856,56 @@ function subscriptionWebhookPayload({ id = "evt_subscription_123", event = "subs
   };
 }
 
+function shaniWebhookPayload({
+  id = "evt_shani_123",
+  paymentId = "pay_shani_123",
+  orderId = "order_shani_123",
+  userKey = "shani-user-contract",
+  planId = "3m",
+  email = "shani@soulguru.local",
+  phone = "+15550000006",
+  contact = "+15550000006"
+} = {}) {
+  return {
+    id,
+    event: "payment.captured",
+    payload: {
+      payment: {
+        entity: {
+          id: paymentId,
+          order_id: orderId,
+          email,
+          contact,
+          notes: {
+            soulguru_plan: `shani_remedy_${planId}`,
+            soulguru_product: "shani_remedy",
+            shani_plan_id: planId,
+            user_key: userKey,
+            name: "Shani User",
+            email,
+            phone,
+            birth_date: "1995-02-11",
+            birth_time: "10:15",
+            birth_place: "Jaipur"
+          }
+        }
+      }
+    }
+  };
+}
+
 function createFakePaymentSupabase(options = {}) {
   const state = {
     paymentEvents: new Map(),
     subscriptions: new Map(),
+    shaniMemberships: new Map(),
     calls: [],
     failSubscriptionInsert: Boolean(options.failSubscriptionInsert),
     raceSubscriptionInsert: Boolean(options.raceSubscriptionInsert),
     racedSubscriptionInsertCount: 0,
+    failShaniInsert: Boolean(options.failShaniInsert),
+    raceShaniInsert: Boolean(options.raceShaniInsert),
+    racedShaniInsertCount: 0,
     nextSubscriptionId: 1
   };
 
@@ -655,6 +985,37 @@ function createFakePaymentQuery(state, table) {
         return query;
       }
 
+      if (table === "shani_remedy_memberships") {
+        if (state.failShaniInsert) {
+          query.result = {
+            data: null,
+            error: { message: "contract Shani membership insert failure" }
+          };
+          return query;
+        }
+
+        if (state.raceShaniInsert && state.racedShaniInsertCount === 0) {
+          state.racedShaniInsertCount += 1;
+          const membership = buildFakeShaniMembershipRow(state, payload);
+          state.shaniMemberships.set(membership.id, membership);
+          query.result = {
+            data: null,
+            error: {
+              code: "23505",
+              message: "duplicate provider Shani membership"
+            }
+          };
+          return query;
+        }
+
+        const membership = {
+          ...buildFakeShaniMembershipRow(state, payload)
+        };
+        state.shaniMemberships.set(membership.id, membership);
+        query.result = { data: membership, error: null };
+        return query;
+      }
+
       return query;
     },
     async maybeSingle() {
@@ -668,6 +1029,13 @@ function createFakePaymentQuery(state, table) {
       if (table === "more_guidance_subscriptions") {
         return {
           data: clone(findSubscription(state.subscriptions, query.filters)) || null,
+          error: null
+        };
+      }
+
+      if (table === "shani_remedy_memberships") {
+        return {
+          data: clone(findSubscription(state.shaniMemberships, query.filters)) || null,
           error: null
         };
       }
@@ -689,6 +1057,14 @@ function buildFakeSubscriptionRow(state, payload) {
   return {
     ...clone(payload),
     id: `subscription-${state.nextSubscriptionId++}`,
+    created_at: "2026-06-24T00:00:00.000Z"
+  };
+}
+
+function buildFakeShaniMembershipRow(state, payload) {
+  return {
+    ...clone(payload),
+    id: `shani-membership-${state.nextSubscriptionId++}`,
     created_at: "2026-06-24T00:00:00.000Z"
   };
 }

@@ -1202,6 +1202,7 @@ function ShaniTab({ user, updateUser }) {
   const [planStatus, setPlanStatus] = useState("");
   const [dashboardStatus, setDashboardStatus] = useState("");
   const [serverDashboard, setServerDashboard] = useState(null);
+  const [activatingPlanId, setActivatingPlanId] = useState("");
   const report = useMemo(() => getSaadeSatiReport(user, now), [user, now]);
   const countdown = useMemo(() => getCountdown(report.endDate, now), [report.endDate, now]);
   const serverMembership = serverDashboard?.membership?.active ? serverDashboard.membership : null;
@@ -1277,11 +1278,86 @@ function ShaniTab({ user, updateUser }) {
     };
   }, [user.birthDate, user.birthLatitude, user.birthLongitude, user.birthPlace, user.birthPlaceResolutionSource, user.birthPlaceResolvedLabel, user.birthTime, user.birthTimezone, user.birthTimezoneOffsetMinutes, user.email, user.id, user.name, user.phone]);
 
-  function selectPlan(planId) {
+  async function selectPlan(planId) {
     if (serverMembership?.active) {
       setPlanStatus(`${serverMembership.planName} is already active.`);
       return;
     }
+    if (activatingPlanId) return;
+
+    setActivatingPlanId(planId);
+    setPlanStatus("Preparing secure Shani checkout...");
+    trackEvent("shani_checkout_started", { planId });
+
+    try {
+      const response = await authFetch(getApiUrl("/api/create-shani-order"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId,
+          user: buildPaymentUserPayload(user, { includeBirth: true })
+        })
+      });
+      const order = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (DEMO_PAYMENTS_ENABLED && LOCAL_PAID_FALLBACK_ENABLED) {
+          updateUser({ memberPlan: planId });
+          setPlanStatus("Demo Shani member preview is active for this local build.");
+          return;
+        }
+        throw new Error(order.error || "Shani payment setup is not connected in this build.");
+      }
+
+      await openRazorpayCheckout({
+        order,
+        user,
+        description: `Shani Remedy - ${order.planName || planId}`,
+        notes: {
+          soulguru_plan: `shani_remedy_${order.planId || planId}`,
+          soulguru_product: "shani_remedy",
+          shani_plan_id: order.planId || planId,
+          user_key: order.userKey
+        },
+        async onSuccess(payment) {
+          setPlanStatus("Verifying Shani payment...");
+          try {
+            const verification = await verifyShaniPayment({
+              user,
+              order,
+              payment
+            });
+            const membership = verification.membership;
+            setServerDashboard((current) => ({
+              ...(current || { configured: true, report, panditHistory: [] }),
+              configured: true,
+              membership
+            }));
+            updateUser((current) => ({
+              ...current,
+              memberPlan: membership?.planId || planId,
+              shaniMembership: membership
+            }));
+            setPlanStatus("Payment verified. Shani remedy membership is active.");
+            trackEvent("shani_checkout_verified", { planId: membership?.planId || planId });
+          } catch (error) {
+            setPlanStatus(error.message || "Shani payment could not be verified.");
+            trackEvent("shani_payment_verification_failed", { planId });
+          }
+        },
+        onFailure(message) {
+          setPlanStatus(message || "Payment was not completed.");
+          trackEvent("shani_checkout_failed", { planId });
+        }
+      });
+    } catch (error) {
+      setPlanStatus(error.message || "Unable to start Shani checkout.");
+    } finally {
+      setActivatingPlanId("");
+    }
+  }
+
+  function activateLocalShaniPlan(planId) {
     if (LOCAL_PAID_FALLBACK_ENABLED) {
       updateUser({ memberPlan: planId });
       setPlanStatus("Local Shani member preview is active.");
@@ -1335,10 +1411,11 @@ function ShaniTab({ user, updateUser }) {
               type="button"
               key={plan.id}
               className={effectiveMemberPlanId === plan.id ? "plan-card active" : "plan-card"}
-              onClick={() => selectPlan(plan.id)}
+              onClick={() => selectPlan(plan.id).catch(() => activateLocalShaniPlan(plan.id))}
+              disabled={Boolean(activatingPlanId)}
             >
               <strong>{plan.name}</strong>
-              <span>{plan.price}</span>
+              <span>{activatingPlanId === plan.id ? "Opening checkout" : plan.price}</span>
             </button>
           ))}
         </div>
@@ -1821,6 +1898,51 @@ async function verifyRazorpayPayment({ user, order, payment }) {
   return data;
 }
 
+async function verifyShaniPayment({ user, order, payment }) {
+  const response = await authFetch(getApiUrl("/api/verify-shani-payment"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user: buildPaymentUserPayload(user, { includeBirth: true }),
+      planId: order.planId,
+      orderId: order.orderId,
+      amount: order.amount,
+      currency: order.currency || "INR",
+      orderToken: order.orderToken,
+      paymentId: payment.razorpay_payment_id,
+      signature: payment.razorpay_signature
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.verified) {
+    throw new Error(data.error || "Shani payment signature could not be verified.");
+  }
+  if (!data.stored && !LOCAL_PAID_FALLBACK_ENABLED) {
+    throw new Error("Payment verified, but the Shani membership was not stored. Please contact support.");
+  }
+  return data;
+}
+
+function buildPaymentUserPayload(user, { includeBirth = false } = {}) {
+  return {
+    id: user.id,
+    name: user.name,
+    phone: user.phone,
+    email: user.email,
+    ...(includeBirth ? {
+      birthDate: user.birthDate,
+      birthTime: user.birthTime,
+      birthPlace: user.birthPlace,
+      birthLatitude: user.birthLatitude,
+      birthLongitude: user.birthLongitude,
+      birthTimezone: user.birthTimezone,
+      birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+      birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+      birthPlaceResolutionSource: user.birthPlaceResolutionSource
+    } : {})
+  };
+}
+
 function buildProfileUserPayload(account) {
   return {
     id: account.id,
@@ -1916,7 +2038,7 @@ function getApiUrl(path) {
   return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
 }
 
-async function openRazorpayCheckout({ order, user, onSuccess, onFailure }) {
+async function openRazorpayCheckout({ order, user, description = "Soul Guru + Astro Solve", notes = {}, onSuccess, onFailure }) {
   await loadRazorpayCheckout();
   if (!window.Razorpay) {
     throw new Error("Razorpay checkout could not be loaded.");
@@ -1927,7 +2049,7 @@ async function openRazorpayCheckout({ order, user, onSuccess, onFailure }) {
     amount: order.amount,
     currency: order.currency || "INR",
     name: "SoulGuru",
-    description: "Soul Guru + Astro Solve",
+    description,
     order_id: order.orderId,
     prefill: {
       name: user.name,
@@ -1936,7 +2058,8 @@ async function openRazorpayCheckout({ order, user, onSuccess, onFailure }) {
     },
     notes: {
       soulguru_plan: "more_guidance_3m",
-      user_key: order.userKey
+      user_key: order.userKey,
+      ...notes
     },
     theme: {
       color: "#176b73"

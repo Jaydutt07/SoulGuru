@@ -112,16 +112,27 @@ function checkMoreGuidance(env) {
 function checkShani(env) {
   const localAccessEnabled = String(env.SHANI_ALLOW_LOCAL_ACCESS || "false").toLowerCase() === "true";
   const missingEnv = localAccessEnabled ? ["SHANI_ALLOW_LOCAL_ACCESS=false"] : [];
+  const priceKeys = [
+    "SHANI_PLAN_3M_PRICE_PAISE",
+    "SHANI_PLAN_6M_PRICE_PAISE",
+    "SHANI_PLAN_1Y_PRICE_PAISE",
+    "SHANI_PLAN_FULL_PRICE_PAISE"
+  ];
+  for (const key of priceKeys) {
+    if (!hasEnv(env, key)) {
+      missingEnv.push(key);
+    }
+  }
 
   return {
     id: "shaniMembershipAccess",
     label: "Shani remedy membership persistence",
     severity: "critical",
     status: missingEnv.length ? "fail" : "pass",
-    requiredEnv: ["SHANI_ALLOW_LOCAL_ACCESS=false"],
+    requiredEnv: ["SHANI_ALLOW_LOCAL_ACCESS=false", ...priceKeys],
     missingEnv,
     advice: missingEnv.length
-      ? "Disable local Shani access so Pandit guidance requires a persisted remedy membership."
+      ? "Disable local Shani access and configure server-owned Shani plan prices before selling remedy memberships."
       : ""
   };
 }

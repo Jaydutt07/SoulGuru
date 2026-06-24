@@ -31,6 +31,7 @@ await checkHealth();
 await checkReadiness();
 await checkProfileLookup();
 await checkMoreGuidanceDashboard();
+await checkShaniDashboard();
 
 if (outputJson) {
   console.log(JSON.stringify(report, null, 2));
@@ -136,6 +137,41 @@ async function checkMoreGuidanceDashboard() {
       : expectReady
         ? "Expected More Guidance dashboard to be backed by configured Supabase."
         : "Expected dashboard to return 200 with guidanceHistory and savedGuidance arrays."
+  });
+}
+
+async function checkShaniDashboard() {
+  const result = await requestJson("/api/shani-guidance", {
+    method: "POST",
+    body: {
+      action: "dashboard",
+      limit: 3,
+      user: smokeUser()
+    }
+  });
+
+  if (handleAuthRequired(result, {
+    id: "shani-dashboard-auth",
+    label: "Shani dashboard API",
+    contract: "Shani dashboard"
+  })) {
+    return;
+  }
+
+  const configured = result.body?.configured;
+  const hasReport = typeof result.body?.report?.phaseTitle === "string";
+  const hasHistory = Array.isArray(result.body?.panditHistory);
+  const passed = result.status === 200 && hasReport && hasHistory && typeof configured === "boolean" && (!expectReady || configured === true);
+  pushCheck({
+    id: "shani-dashboard",
+    label: "Shani dashboard API",
+    passed,
+    status: result.status,
+    detail: passed
+      ? `Shani dashboard contract returned configured=${configured}.`
+      : expectReady
+        ? "Expected Shani dashboard to be backed by configured Supabase."
+        : "Expected Shani dashboard to return 200 with a report and Pandit history array."
   });
 }
 

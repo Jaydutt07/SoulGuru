@@ -30,6 +30,7 @@ async function checkReadySmokeFailsWhenProtectedRoutesRequireAuth() {
       result.status !== 0,
       result.stdout.includes("FAIL User profile API (401)"),
       result.stdout.includes("FAIL More Guidance dashboard API (401)"),
+      result.stdout.includes("FAIL Shani dashboard API (401)"),
       result.stdout.includes("Production-ready smoke requires authenticated profile lookup"),
       result.stdout.includes("DEPLOYMENT_SMOKE_AUTH_TOKEN")
     ].every(Boolean));
@@ -53,6 +54,7 @@ async function checkReachabilitySmokeAllowsProtectedRoutesWithoutReadyExpectatio
       result.status === 0,
       result.stdout.includes("PASS User profile API (401)"),
       result.stdout.includes("PASS More Guidance dashboard API (401)"),
+      result.stdout.includes("PASS Shani dashboard API (401)"),
       result.stdout.includes("Route is reachable and requires authentication")
     ].every(Boolean));
   } finally {
@@ -85,6 +87,15 @@ async function checkReadySmokePassesWithProtectedPostContracts() {
       return;
     }
 
+    if (req.url === "/api/shani-guidance") {
+      writeJson(res, 200, {
+        configured: true,
+        report: { phaseTitle: "Outside Saade Sati" },
+        panditHistory: []
+      });
+      return;
+    }
+
     writeJson(res, 404, { error: "not found" });
   });
 
@@ -93,7 +104,8 @@ async function checkReadySmokePassesWithProtectedPostContracts() {
     pushCheck("Ready deployment smoke passes when protected contracts are authenticated", [
       result.status === 0,
       result.stdout.includes("PASS User profile API (200)"),
-      result.stdout.includes("PASS More Guidance dashboard API (200)")
+      result.stdout.includes("PASS More Guidance dashboard API (200)"),
+      result.stdout.includes("PASS Shani dashboard API (200)")
     ].every(Boolean));
   } finally {
     await backend.close();
