@@ -24,6 +24,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed OTP challenge route with Supabase storage and optional SMS/email delivery
 - Supabase schema for idempotent Razorpay payment events and subscription provider metadata
 - Daily Soul Guru cache service with Supabase lookup/upsert
+- Offline daily Soul Guru cache contract checker for Supabase hit/miss behavior
 - Optional Upstash-backed rate limit helper for paid/AI endpoints
 - Razorpay order route and signature-verified webhook route
 - Razorpay checkout return verification before local subscription activation

@@ -93,6 +93,12 @@ Check the Razorpay payment/signature contract without contacting Razorpay or wri
 npm run payments:check
 ```
 
+Check the daily Soul Guru cache contract without contacting OpenAI or Supabase:
+
+```bash
+npm run soul:cache:check
+```
+
 Smoke-test the local backend/API routes without spending OpenAI tokens:
 
 ```bash
@@ -133,6 +139,7 @@ The ready-to-use GitHub Actions workflow template lives at `docs/github-actions-
 The CI template checks:
 
 - `npm run soul:quality`
+- `npm run soul:cache:check`
 - `npm run build`
 - `npm run public-env:check`
 - `npm run security:check`
@@ -361,6 +368,7 @@ Before release:
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.
+- Run `npm run soul:cache:check`.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
 - Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.

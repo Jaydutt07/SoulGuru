@@ -11,15 +11,18 @@ import {
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-const PROMPT_VERSION = "soul-wisdom-v5";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v5";
 
-export async function createDailySoulWisdom(payload, env = process.env) {
+export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || "Asia/Kolkata";
   const model = env.OPENAI_MODEL || "gpt-5.5";
   const userKey = buildUserKey(user);
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+  const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
+  const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
+  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
 
   if (supabase) {
     const cached = await readCachedReading(supabase, userKey, date);
@@ -34,13 +37,13 @@ export async function createDailySoulWisdom(payload, env = process.env) {
   }
 
   const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
-  const memory = await searchGuidanceMemory({
+  const memory = await searchMemory({
     user,
     query: buildMemoryQuery({ user, astrologyContext, date }),
     topK: Number(env.PINECONE_TOP_K || 4)
   }, env);
   const memoryContext = buildMemoryContext(memory);
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(apiKey);
   const promptInput = buildSoulWisdomInput({
     user,
     context: astrologyContext,
@@ -74,7 +77,7 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     astrologyContext,
     cached: false,
     model,
-    promptVersion: PROMPT_VERSION,
+    promptVersion: SOUL_WISDOM_PROMPT_VERSION,
     readingDate: date,
     quality: {
       attempts: qualityAttempts,
@@ -101,14 +104,14 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     });
   }
 
-  await upsertGuidanceMemory({
+  await upsertMemory({
     user,
     kind: "daily-soul-reading",
-    sourceId: `${date}-${PROMPT_VERSION}`,
+    sourceId: `${date}-${SOUL_WISDOM_PROMPT_VERSION}`,
     text: reading.wisdom,
     metadata: {
       readingDate: date,
-      promptVersion: PROMPT_VERSION,
+      promptVersion: SOUL_WISDOM_PROMPT_VERSION,
       model
     }
   }, env);
@@ -131,7 +134,7 @@ async function readCachedReading(supabase, userKey, date) {
     .select("id, reading, astrology_context, model, prompt_version, reading_date, created_at")
     .eq("user_key", userKey)
     .eq("reading_date", date)
-    .eq("prompt_version", PROMPT_VERSION)
+    .eq("prompt_version", SOUL_WISDOM_PROMPT_VERSION)
     .maybeSingle();
 
   if (error) {
@@ -165,7 +168,7 @@ async function writeCachedReading(supabase, { user, userKey, date, timezone, rea
       astrology_context: astrologyContext,
       reading,
       model,
-      prompt_version: PROMPT_VERSION
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION
     }, {
       onConflict: "user_key,reading_date,prompt_version"
     });
@@ -218,6 +221,10 @@ function buildUserKey(user) {
 function nullableNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
 
 function buildServerFallbackWisdom(user, context) {
