@@ -21,7 +21,15 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
-import { authFetch, initializeClerkAuth } from "./authClient.js";
+import {
+  authFetch,
+  getClerkSessionSnapshot,
+  initializeClerkAuth,
+  isClerkAuthConfigured,
+  openClerkSignIn,
+  openClerkUserProfile,
+  signOutClerk
+} from "./authClient.js";
 import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
 import { generateCompatibility } from "./compatibility.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
@@ -109,6 +117,7 @@ function App() {
 
   function handleLogout() {
     window.localStorage.removeItem(SESSION_KEY);
+    signOutClerk();
     clearObservedUser();
     setUser(null);
     setActiveTab("soul");
@@ -1395,6 +1404,69 @@ function HarmonyTab({ user }) {
 }
 
 function SettingsDrawer({ user, onClose, onLogout }) {
+  const [secureSession, setSecureSession] = useState({
+    configured: isClerkAuthConfigured(),
+    loading: isClerkAuthConfigured(),
+    signedIn: false,
+    label: "",
+    status: ""
+  });
+
+  useEffect(() => {
+    if (!secureSession.configured) return undefined;
+
+    let cancelled = false;
+    refreshSecureSession();
+
+    async function refreshSecureSession() {
+      const snapshot = await getClerkSessionSnapshot();
+      if (cancelled) return;
+      setSecureSession({
+        configured: snapshot.configured,
+        loading: false,
+        signedIn: snapshot.signedIn,
+        label: snapshot.email || snapshot.phone || snapshot.userId || "",
+        status: snapshot.signedIn ? "Connected" : "Not connected"
+      });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [secureSession.configured]);
+
+  async function handleSecureSignIn() {
+    setSecureSession((current) => ({ ...current, loading: true, status: "Opening" }));
+    const opened = await openClerkSignIn();
+    const snapshot = await getClerkSessionSnapshot();
+    setSecureSession({
+      configured: snapshot.configured,
+      loading: false,
+      signedIn: snapshot.signedIn,
+      label: snapshot.email || snapshot.phone || snapshot.userId || "",
+      status: opened ? (snapshot.signedIn ? "Connected" : "Pending") : "Unavailable"
+    });
+  }
+
+  async function handleSecureAccount() {
+    const opened = await openClerkUserProfile();
+    if (!opened) {
+      setSecureSession((current) => ({ ...current, status: "Connected" }));
+    }
+  }
+
+  async function handleSecureSignOut() {
+    setSecureSession((current) => ({ ...current, loading: true, status: "Signing out" }));
+    await signOutClerk();
+    setSecureSession((current) => ({
+      ...current,
+      loading: false,
+      signedIn: false,
+      label: "",
+      status: "Not connected"
+    }));
+  }
+
   return (
     <div className="settings-layer">
       <button className="settings-scrim" type="button" onClick={onClose} aria-label="Close settings" />
@@ -1417,6 +1489,34 @@ function SettingsDrawer({ user, onClose, onLogout }) {
           <div><dt>Astro Solves</dt><dd>{(user.solvedProblems || []).length}/{getAstroQuestionAllowance(user)} used</dd></div>
           <div><dt>More Guidance</dt><dd>{user.soulGuruSubscription?.active ? "Soul Guru + Astro Solve" : "Not active"}</dd></div>
         </dl>
+        {secureSession.configured && (
+          <section className="secure-session-panel">
+            <div>
+              <p className="eyebrow">Secure session</p>
+              <strong>{secureSession.loading ? "Checking" : secureSession.status}</strong>
+              {secureSession.label && <span>{secureSession.label}</span>}
+            </div>
+            <div className="secure-session-actions">
+              {secureSession.signedIn ? (
+                <>
+                  <button className="secondary-action small" type="button" onClick={handleSecureAccount}>
+                    <ShieldCheck size={16} aria-hidden="true" />
+                    Account
+                  </button>
+                  <button className="secondary-action small" type="button" onClick={handleSecureSignOut} disabled={secureSession.loading}>
+                    <LogOut size={16} aria-hidden="true" />
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <button className="primary-action small" type="button" onClick={handleSecureSignIn} disabled={secureSession.loading}>
+                  <LogIn size={16} aria-hidden="true" />
+                  Sign in
+                </button>
+              )}
+            </div>
+          </section>
+        )}
         <button className="secondary-action" type="button" onClick={onLogout}>
           <LogOut size={18} aria-hidden="true" />
           Sign out

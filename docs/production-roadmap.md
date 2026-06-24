@@ -46,6 +46,7 @@ This project is being built toward the stack shown in the product planning image
 - Offline Astro Solves quota, paid-bonus, storage, and memory contract checker
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Optional ClerkJS frontend bridge so configured production sessions send Bearer tokens to backend routes
+- Settings drawer Clerk secure-session status and account controls for strict backend auth rollout
 - Offline Clerk auth contract checker with fail-closed required-auth behavior
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Offline Pinecone/OpenAI memory contract checker for hashed namespaces, metadata sanitization, prompt-safe memory context, and degraded behavior

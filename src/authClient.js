@@ -17,6 +17,56 @@ export function initializeClerkAuth() {
   return clerkLoadPromise;
 }
 
+export function isClerkAuthConfigured() {
+  return Boolean(CLERK_PUBLISHABLE_KEY);
+}
+
+export async function getClerkSessionSnapshot() {
+  const clerk = await initializeClerkAuth();
+  const user = clerk?.user || null;
+  const signedIn = Boolean(clerk?.isSignedIn || clerk?.session || user);
+
+  return {
+    configured: isClerkAuthConfigured(),
+    loaded: Boolean(clerk),
+    signedIn,
+    userId: user?.id || "",
+    email: user?.primaryEmailAddress?.emailAddress || "",
+    phone: user?.primaryPhoneNumber?.phoneNumber || ""
+  };
+}
+
+export async function openClerkSignIn() {
+  const clerk = await initializeClerkAuth();
+  if (clerk?.openSignIn) {
+    clerk.openSignIn();
+    return true;
+  }
+  if (clerk?.redirectToSignIn) {
+    await clerk.redirectToSignIn();
+    return true;
+  }
+  return false;
+}
+
+export async function openClerkUserProfile() {
+  const clerk = await initializeClerkAuth();
+  if (clerk?.openUserProfile) {
+    clerk.openUserProfile();
+    return true;
+  }
+  return false;
+}
+
+export async function signOutClerk() {
+  const clerk = await initializeClerkAuth();
+  if (!clerk?.signOut) {
+    return false;
+  }
+  await clerk.signOut();
+  return true;
+}
+
 export async function authFetch(input, init = {}) {
   const token = await getClerkToken();
   const headers = new Headers(init.headers || {});

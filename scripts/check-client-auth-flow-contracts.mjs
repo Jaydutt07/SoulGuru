@@ -31,14 +31,21 @@ function checkProductionExistingLoginPrefersServerProfile() {
 
 function checkFrontendClerkBridge() {
   pushCheck("Frontend Clerk bridge loads configured ClerkJS and attaches bearer tokens", [
-    source.includes("import { authFetch, initializeClerkAuth } from \"./authClient.js\";"),
+    source.includes("from \"./authClient.js\";"),
+    source.includes("authFetch,"),
+    source.includes("initializeClerkAuth,"),
     source.includes("initializeClerkAuth();"),
     authClientSource.includes("const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || \"\";"),
     authClientSource.includes("https://${clerkDomain}/npm/@clerk/ui@1/dist/ui.browser.js"),
     authClientSource.includes("https://${clerkDomain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js"),
     authClientSource.includes("\"data-clerk-publishable-key\": CLERK_PUBLISHABLE_KEY"),
     authClientSource.includes("headers.set(\"Authorization\", `Bearer ${token}`);"),
-    authClientSource.includes("return window.atob(padded).replace(/\\$$/, \"\");")
+    authClientSource.includes("return window.atob(padded).replace(/\\$$/, \"\");"),
+    authClientSource.includes("export async function getClerkSessionSnapshot()"),
+    authClientSource.includes("export async function openClerkSignIn()"),
+    authClientSource.includes("export async function signOutClerk()"),
+    source.includes("<section className=\"secure-session-panel\">"),
+    source.includes("signOutClerk();")
   ].every(Boolean));
 }
 

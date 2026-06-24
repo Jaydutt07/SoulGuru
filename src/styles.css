@@ -1198,6 +1198,40 @@ button:disabled {
   font-weight: 800;
 }
 
+.secure-session-panel {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid rgba(23, 50, 58, 0.1);
+  border-radius: 1rem;
+  padding: 0.9rem;
+  background: rgba(217, 240, 239, 0.44);
+}
+
+.secure-session-panel strong,
+.secure-session-panel span {
+  display: block;
+}
+
+.secure-session-panel strong {
+  margin-top: 0.2rem;
+  color: var(--deep-teal);
+  font-size: 0.98rem;
+}
+
+.secure-session-panel span {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.secure-session-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
 @media (min-width: 48rem) {
   .app-page {
     display: grid;

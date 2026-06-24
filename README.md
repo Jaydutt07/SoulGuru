@@ -312,6 +312,8 @@ In production builds, local account/session storage is disabled for login restor
 
 When `VITE_CLERK_PUBLISHABLE_KEY` is configured, the frontend dynamically initializes ClerkJS from the Clerk frontend API domain and `authFetch` attaches the active Clerk session token as a Bearer header for protected backend routes. No Clerk secret is bundled into the web app or APK.
 
+The settings drawer shows the configured Clerk secure-session state and exposes account/sign-out controls so operators can confirm the browser or APK has an authenticated session before strict backend auth is enabled.
+
 `POST /api/create-razorpay-order`
 
 Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The request must include a stable SoulGuru user identity (`authUserId`, `id`, phone, or email), so paid access is never issued to an anonymous key. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
