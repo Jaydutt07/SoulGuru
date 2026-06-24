@@ -60,6 +60,74 @@ export function verifyRazorpayWebhookSignature(rawBody, signature, secret) {
   return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
 }
 
+export function verifyRazorpayPaymentSignature({ orderId, paymentId, signature }, secret) {
+  if (!orderId || !paymentId || !signature || !secret) return false;
+  const expected = crypto.createHmac("sha256", secret).update(`${orderId}|${paymentId}`).digest("hex");
+  const actual = String(signature);
+  if (actual.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+}
+
+export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymentId, signature }, env = process.env) {
+  const verified = verifyRazorpayPaymentSignature({
+    orderId,
+    paymentId,
+    signature
+  }, env.RAZORPAY_KEY_SECRET);
+
+  if (!verified) {
+    const error = new Error("Payment signature could not be verified");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const userKey = buildPaymentUserKey(user);
+  const startsAt = new Date();
+  const endsAt = addMonths(startsAt, 3);
+  const supabase = createSupabaseAdmin(env);
+
+  if (!supabase) {
+    return {
+      verified: true,
+      stored: false,
+      subscription: buildSubscriptionPayload({
+        startsAt,
+        endsAt,
+        userKey,
+        paymentId,
+        orderId
+      })
+    };
+  }
+
+  await insertPaymentEvent(supabase, {
+    providerEventId: `checkout:${paymentId}`,
+    eventName: "checkout.payment.verified",
+    payload: {
+      provider: "razorpay",
+      payment_id: paymentId,
+      order_id: orderId,
+      user_key: userKey
+    }
+  });
+
+  const activation = await activateMoreGuidanceSubscription(supabase, {
+    user,
+    userKey,
+    paymentId,
+    orderId,
+    startsAt,
+    endsAt
+  });
+
+  return {
+    verified: true,
+    stored: true,
+    activated: activation.created,
+    subscription: activation.subscription
+  };
+}
+
 export async function processRazorpayWebhook(rawBody, env = process.env) {
   const payload = JSON.parse(rawBody || "{}");
   const eventName = payload.event || "unknown";
@@ -97,10 +165,72 @@ export async function processRazorpayWebhook(rawBody, env = process.env) {
     return { ok: true, stored: true, duplicate: false, activated: false, eventName };
   }
 
+  const userKey = notes.user_key || buildPaymentUserKey(notes);
   const startsAt = new Date();
   const endsAt = addMonths(startsAt, 3);
-  const userKey = notes.user_key || buildPaymentUserKey(notes);
-  const { error } = await supabase
+  const activation = await activateMoreGuidanceSubscription(supabase, {
+    user: {
+      ...notes,
+      email: notes.email || payment?.email,
+      phone: notes.phone || payment?.contact
+    },
+    userKey,
+    paymentId: payment?.id || null,
+    orderId: payment?.order_id || null,
+    providerSubscriptionId: subscription?.id || null,
+    startsAt,
+    endsAt
+  });
+
+  const email = notes.email || payment?.email;
+  const emailResult = activation.created
+    ? await sendMembershipConfirmation(email, {
+      name: notes.name,
+      endsAt: activation.subscription.endsAt
+    }, env)
+    : { sent: false, skipped: true, reason: "Subscription already active" };
+
+  return {
+    ok: true,
+    stored: true,
+    duplicate: false,
+    activated: activation.created,
+    eventName,
+    userKey,
+    subscription: activation.subscription,
+    email: emailResult
+  };
+}
+
+async function activateMoreGuidanceSubscription(supabase, {
+  user = {},
+  userKey,
+  paymentId,
+  orderId,
+  providerSubscriptionId = null,
+  startsAt = new Date(),
+  endsAt = addMonths(startsAt, 3)
+}) {
+  if (paymentId) {
+    const { data: existing, error: readError } = await supabase
+      .from("more_guidance_subscriptions")
+      .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
+      .eq("provider", "razorpay")
+      .eq("provider_payment_id", paymentId)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error(`Unable to check existing subscription: ${readError.message}`);
+    }
+    if (existing) {
+      return {
+        created: false,
+        subscription: mapSubscription(existing)
+      };
+    }
+  }
+
+  const { data, error } = await supabase
     .from("more_guidance_subscriptions")
     .insert({
       user_key: userKey,
@@ -110,33 +240,57 @@ export async function processRazorpayWebhook(rawBody, env = process.env) {
       ends_at: endsAt.toISOString(),
       astro_bonus_questions: 15,
       provider: "razorpay",
-      provider_payment_id: payment?.id || null,
-      provider_subscription_id: subscription?.id || null,
+      provider_payment_id: paymentId || null,
+      provider_subscription_id: providerSubscriptionId || null,
       metadata: {
-        order_id: payment?.order_id || null,
-        email: notes.email || payment?.email || null,
-        phone: notes.phone || payment?.contact || null
+        order_id: orderId || null,
+        email: user.email || null,
+        phone: user.phone || null
       }
-    });
+    })
+    .select("id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata")
+    .single();
 
   if (error) {
     throw new Error(`Unable to activate subscription: ${error.message}`);
   }
 
-  const email = notes.email || payment?.email;
-  const emailResult = await sendMembershipConfirmation(email, {
-    name: notes.name,
-    endsAt: endsAt.toISOString()
-  }, env);
-
   return {
-    ok: true,
-    stored: true,
-    duplicate: false,
-    activated: true,
-    eventName,
-    userKey,
-    email: emailResult
+    created: true,
+    subscription: mapSubscription(data)
+  };
+}
+
+function buildSubscriptionPayload({ startsAt, endsAt, userKey, paymentId, orderId }) {
+  return {
+    active: true,
+    name: MEMBERSHIP_PLAN_NAME,
+    duration: "3 months",
+    astroBonusQuestions: 15,
+    startedAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
+    provider: "razorpay",
+    providerPaymentId: paymentId || null,
+    metadata: {
+      order_id: orderId || null,
+      user_key: userKey
+    }
+  };
+}
+
+function mapSubscription(data) {
+  return {
+    id: data.id,
+    active: data.status === "active" && new Date(data.ends_at).getTime() > Date.now(),
+    name: data.plan_name,
+    duration: "3 months",
+    astroBonusQuestions: data.astro_bonus_questions,
+    startedAt: data.starts_at,
+    endsAt: data.ends_at,
+    provider: data.provider,
+    providerPaymentId: data.provider_payment_id,
+    providerSubscriptionId: data.provider_subscription_id,
+    metadata: data.metadata || {}
   };
 }
 

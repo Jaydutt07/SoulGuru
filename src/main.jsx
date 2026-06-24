@@ -843,14 +843,26 @@ function SubscriptionPage({ user, updateUser, onBack }) {
       await openRazorpayCheckout({
         order,
         user,
-        onSuccess(payment) {
-          activatePlan({
-            provider: "razorpay",
-            paymentStatus: "paid",
-            razorpayOrderId: order.orderId,
-            razorpayPaymentId: payment.razorpay_payment_id
-          });
-          setCheckoutStatus("Payment received. More Guidance is active.");
+        async onSuccess(payment) {
+          setCheckoutStatus("Verifying payment...");
+          try {
+            const verification = await verifyRazorpayPayment({
+              user,
+              order,
+              payment
+            });
+            activatePlan({
+              ...(verification.subscription || {}),
+              provider: "razorpay",
+              paymentStatus: "verified",
+              razorpayOrderId: order.orderId,
+              razorpayPaymentId: payment.razorpay_payment_id
+            });
+            setCheckoutStatus("Payment verified. More Guidance is active.");
+          } catch (error) {
+            setCheckoutStatus(error.message || "Payment could not be verified.");
+            trackEvent("more_guidance_payment_verification_failed");
+          }
         },
         onFailure(message) {
           setCheckoutStatus(message || "Payment was not completed.");
@@ -1299,6 +1311,29 @@ async function syncUserProfileToServer(account) {
   } catch {
     return null;
   }
+}
+
+async function verifyRazorpayPayment({ user, order, payment }) {
+  const response = await authFetch(getApiUrl("/api/verify-razorpay-payment"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email
+      },
+      orderId: order.orderId,
+      paymentId: payment.razorpay_payment_id,
+      signature: payment.razorpay_signature
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.verified) {
+    throw new Error(data.error || "Payment signature could not be verified.");
+  }
+  return data;
 }
 
 function buildProfileUserPayload(account) {

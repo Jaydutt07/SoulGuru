@@ -5,7 +5,7 @@ import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { getMoreGuidanceDashboard, saveGuidance } from "./src/backend/guidanceService.js";
 import { searchGuidanceMemory, upsertGuidanceMemory } from "./src/backend/memoryService.js";
 import { requestOtp, verifyOtp } from "./src/backend/otpService.js";
-import { createRazorpayOrder } from "./src/backend/payments.js";
+import { createRazorpayOrder, verifyRazorpayCheckoutPayment } from "./src/backend/payments.js";
 import { handleUserProfile } from "./src/backend/profileService.js";
 import { buildDeploymentReadiness } from "./src/backend/readinessService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
@@ -103,6 +103,39 @@ function soulGuruApiPlugin() {
           sendJson(res, 200, { ...order, auth });
         } catch (error) {
           sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create order" });
+        }
+      });
+
+      server.middlewares.use("/api/verify-razorpay-payment", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "razorpay-verify",
+            limit: Number(runtimeEnv.RAZORPAY_VERIFY_RATE_LIMIT || 20),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many payment verification attempts. Try again later.", rate });
+            return;
+          }
+
+          const result = await verifyRazorpayCheckoutPayment(payload, runtimeEnv);
+          sendJson(res, 200, { ...result, rate, auth });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to verify payment" });
         }
       });
 

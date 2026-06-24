@@ -92,6 +92,10 @@ Creates, updates, or looks up a user profile in Supabase using the backend servi
 
 Creates a Razorpay checkout order for Soul Guru + Astro Solve. The browser receives the public order details only; `RAZORPAY_KEY_SECRET` stays on the server.
 
+`POST /api/verify-razorpay-payment`
+
+Verifies the Razorpay checkout return signature on the backend before the app marks More Guidance active. This protects the client-side activation path while the webhook remains the durable payment event source.
+
 `POST /api/razorpay-webhook`
 
 Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events.
@@ -124,6 +128,7 @@ For Razorpay:
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_VERIFY_RATE_LIMIT=20
 MORE_GUIDANCE_PRICE_PAISE=49900
 ```
 
@@ -144,7 +149,7 @@ OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent.
 
 ## Observability
 
