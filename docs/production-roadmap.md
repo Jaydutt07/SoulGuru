@@ -66,6 +66,7 @@ This project is being built toward the stack shown in the product planning image
 - Local backend smoke-test script for API contract checks before APK testing
 - Vercel deployment config plus deployed backend smoke-test script for health, readiness, profile lookup, and More Guidance dashboard
 - Combined release readiness runner for local and strict production preflight checks
+- Workflow-ready GitHub Actions CI template for web/API contracts, local smoke, APK build, and APK secret scanning
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
 - Astronomy-based birth/transit context replacing hash-only astrology
 - Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows

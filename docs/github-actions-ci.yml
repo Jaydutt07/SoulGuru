@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify CI workflow contract
+        run: npm run ci:check
+
       - name: Soul Guru local quality gate
         run: npm run soul:quality
 
@@ -40,6 +43,9 @@ jobs:
 
       - name: Verify astrology engine contract
         run: npm run astrology:check
+
+      - name: Verify Harmony compatibility contract
+        run: npm run compatibility:check
 
       - name: Verify auth contracts
         run: npm run auth:check

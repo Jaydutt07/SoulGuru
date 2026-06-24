@@ -16,6 +16,7 @@ const failures = [];
 const skipped = [];
 
 await runStep("Public env safety", "node", ["scripts/check-public-env.mjs", "--strict"]);
+await runStep("CI workflow contract", "npm", ["run", "ci:check"]);
 await runStep("Environment manifest contract", "npm", ["run", "env:check"]);
 await runStep("Astrology engine contract", "npm", ["run", "astrology:check"]);
 await runStep("Harmony compatibility contract", "npm", ["run", "compatibility:check"]);

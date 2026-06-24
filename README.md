@@ -224,11 +224,19 @@ The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, and t
 
 The ready-to-use GitHub Actions workflow template lives at `docs/github-actions-ci.yml`. To activate it, copy it to `.github/workflows/ci.yml` using GitHub credentials with `workflow` scope.
 
+Check the CI template includes the release and mobile gates:
+
+```bash
+npm run ci:check
+```
+
 The CI template checks:
 
+- `npm run ci:check`
 - `npm run soul:quality`
 - `npm run env:check`
 - `npm run astrology:check`
+- `npm run compatibility:check`
 - `npm run auth:check`
 - `npm run memory:check`
 - `npm run rate-limit:check`
