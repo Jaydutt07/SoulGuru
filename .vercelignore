@@ -1,10 +1,14 @@
 .env
+.env.*
 .env.local
 SoulGuru-debug.apk
 android
 dist
 node_modules
 *.apk
+*.aab
 *.keystore
 *.jks
+*.p12
+*.pfx
 shared image (2).jpeg

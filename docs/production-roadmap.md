@@ -87,6 +87,7 @@ This project is being built toward the stack shown in the product planning image
 - Stable paid identity checks so Razorpay orders, checkout activation, and webhooks cannot unlock anonymous subscriptions
 - Service-role Supabase schema contract RPC for live index verification
 - Live Supabase uniqueness checks for daily Soul Guru cache, More Guidance cache, and payment event idempotency
+- Vercel deployment contract checker for build settings, API route duration, SPA rewrites, and upload exclusions
 
 ## Next Implementation Steps
 

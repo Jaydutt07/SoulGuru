@@ -41,6 +41,9 @@ jobs:
       - name: Verify env manifest contracts
         run: npm run env:check
 
+      - name: Verify deployment config contracts
+        run: npm run deployment:check
+
       - name: Verify astrology engine contract
         run: npm run astrology:check
 

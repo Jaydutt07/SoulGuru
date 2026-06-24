@@ -85,6 +85,12 @@ Check `.env.example`, production fallback defaults, and the public env allowlist
 npm run env:check
 ```
 
+Check the Vercel deployment config and deploy-ignore safety rules:
+
+```bash
+npm run deployment:check
+```
+
 Check chart/transit calculation, place resolution, timezone handling, and Saade Sati windows:
 
 ```bash
@@ -241,6 +247,7 @@ The CI template checks:
 - `npm run ci:check`
 - `npm run soul:quality`
 - `npm run env:check`
+- `npm run deployment:check`
 - `npm run astrology:check`
 - `npm run compatibility:check`
 - `npm run auth:check`
@@ -484,6 +491,7 @@ Before release:
 - Configure Supabase project and run migrations.
 - Run `npm run supabase:schema:check` against the Supabase project.
 - Run `npm run public-env:check:strict`.
+- Run `npm run deployment:check`.
 - Run `npm run astrology:check`.
 - Run `npm run auth:check`.
 - Run `npm run memory:check`.
