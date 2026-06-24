@@ -21,6 +21,7 @@ This project is being built toward the stack shown in the product planning image
 - Vercel-compatible API route for Soul Guru readings
 - Supabase schema for users, cached readings, subscriptions, saved advice, and Astro Solves
 - Server-backed profile sync route for account birth details
+- Server-backed OTP challenge route with Supabase storage and optional SMS/email delivery
 - Supabase schema for idempotent Razorpay payment events and subscription provider metadata
 - Daily Soul Guru cache service with Supabase lookup/upsert
 - Optional Upstash-backed rate limit helper for paid/AI endpoints
@@ -41,10 +42,11 @@ This project is being built toward the stack shown in the product planning image
 2. Apply `supabase/migrations/002_payment_events.sql`.
 3. Apply `supabase/migrations/003_astro_solves_metadata.sql`.
 4. Apply `supabase/migrations/004_saved_guidance_profile.sql`.
-5. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-6. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
-7. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-8. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-9. Add Resend transactional emails for OTP/account in addition to membership confirmations.
-10. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-11. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+5. Apply `supabase/migrations/005_auth_otp_challenges.sql`.
+6. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+7. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
+8. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend`.
+9. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+10. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+11. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+12. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

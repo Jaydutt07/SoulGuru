@@ -4,6 +4,7 @@ import { applyVerifiedIdentity } from "./src/backend/auth.js";
 import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { getMoreGuidanceDashboard, saveGuidance } from "./src/backend/guidanceService.js";
 import { searchGuidanceMemory, upsertGuidanceMemory } from "./src/backend/memoryService.js";
+import { requestOtp, verifyOtp } from "./src/backend/otpService.js";
 import { createRazorpayOrder } from "./src/backend/payments.js";
 import { handleUserProfile } from "./src/backend/profileService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
@@ -241,6 +242,40 @@ function soulGuruApiPlugin() {
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
           sendJson(res, error.statusCode || 500, { error: error.message || "Unable to update profile" });
+        }
+      });
+
+      server.middlewares.use("/api/auth-otp", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const payload = await parseJsonRequest(req);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user || { phone: payload.phone, email: payload.email }),
+            route: "auth-otp",
+            limit: Number(runtimeEnv.OTP_RATE_LIMIT || 10),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many OTP requests. Try again later.", rate });
+            return;
+          }
+
+          const result = payload.action === "verify"
+            ? await verifyOtp(payload, runtimeEnv)
+            : await requestOtp(payload, runtimeEnv);
+          sendJson(res, 200, { ...result, rate });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to process OTP" });
         }
       });
     }

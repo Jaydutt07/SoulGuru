@@ -181,11 +181,13 @@ function AuthScreen({ onLogin }) {
   const [otpValue, setOtpValue] = useState("");
   const [error, setError] = useState("");
   const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   useEffect(() => {
     setPendingOtp(null);
     setOtpValue("");
     setError("");
+    setIsVerifyingOtp(false);
   }, [mode]);
 
   function updateField(field, value) {
@@ -212,10 +214,15 @@ function AuthScreen({ onLogin }) {
           setError("No account found for this number.");
           return;
         }
+        const otp = await requestOtpFromServer({
+          phone,
+          email: account.email,
+          purpose: "login"
+        });
         saveAccount(account);
         setPendingOtp({
           phone,
-          code: createOtp(),
+          ...otp,
           account,
           payload: account
         });
@@ -235,50 +242,68 @@ function AuthScreen({ onLogin }) {
         setError("This number already has an account.");
         return;
       }
+      const otp = await requestOtpFromServer({
+        phone,
+        email: form.email,
+        purpose: "create"
+      });
 
       setPendingOtp({
         phone,
-        code: createOtp(),
+        ...otp,
         payload: { ...form, phone }
       });
       setOtpValue("");
+    } catch (error) {
+      setError(error.message || "Unable to send OTP.");
     } finally {
       setIsSendingOtp(false);
     }
   }
 
-  function verifyOtp() {
+  async function verifyOtp() {
     if (!pendingOtp) return;
-    if (otpValue.trim() !== pendingOtp.code) {
-      setError("OTP did not match.");
-      return;
-    }
+    if (isVerifyingOtp) return;
+    setError("");
+    setIsVerifyingOtp(true);
 
-    if (mode === "existing") {
-      const account = pendingOtp.account || readAccounts()[pendingOtp.phone];
-      if (!account) {
-        setError("No account found for this number.");
+    try {
+      const verified = await verifyOtpWithServer(pendingOtp, otpValue);
+      if (!verified) {
+        setError("OTP did not match.");
         return;
       }
-      onLogin(account);
-      return;
-    }
 
-    const account = {
-      id: `sg-${Date.now()}`,
-      name: pendingOtp.payload.name.trim(),
-      birthDate: pendingOtp.payload.birthDate,
-      birthPlace: pendingOtp.payload.birthPlace.trim(),
-      birthTime: pendingOtp.payload.birthTime,
-      phone: pendingOtp.phone,
-      email: pendingOtp.payload.email.trim(),
-      createdAt: new Date().toISOString(),
-      solvedProblems: [],
-      memberPlan: "",
-      guidanceHistory: [],
-      savedGuidance: []
-    };
-    onLogin(account);
+      if (mode === "existing") {
+        const account = pendingOtp.account || readAccounts()[pendingOtp.phone];
+        if (!account) {
+          setError("No account found for this number.");
+          return;
+        }
+        onLogin(account);
+        return;
+      }
+
+      const account = {
+        id: `sg-${Date.now()}`,
+        name: pendingOtp.payload.name.trim(),
+        birthDate: pendingOtp.payload.birthDate,
+        birthPlace: pendingOtp.payload.birthPlace.trim(),
+        birthTime: pendingOtp.payload.birthTime,
+        phone: pendingOtp.phone,
+        email: pendingOtp.payload.email.trim(),
+        createdAt: new Date().toISOString(),
+        solvedProblems: [],
+        memberPlan: "",
+        guidanceHistory: [],
+        savedGuidance: []
+      };
+      onLogin(account);
+    } catch (error) {
+      setError(error.message || "Unable to verify OTP.");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
   }
 
   return (
@@ -336,11 +361,15 @@ function AuthScreen({ onLogin }) {
               <p className="eyebrow">OTP sent</p>
               <strong>{maskPhone(pendingOtp.phone)}</strong>
             </div>
-            <span className="otp-demo">Demo OTP {pendingOtp.code}</span>
+            {pendingOtp.code ? (
+              <span className="otp-demo">Demo OTP {pendingOtp.code}</span>
+            ) : (
+              <span className="otp-demo">Check your OTP message</span>
+            )}
             <InputField label="Enter OTP" inputMode="numeric" value={otpValue} onChange={setOtpValue} />
-            <button className="primary-action" type="button" onClick={verifyOtp}>
+            <button className="primary-action" type="button" onClick={verifyOtp} disabled={isVerifyingOtp}>
               <ShieldCheck size={18} aria-hidden="true" />
-              Verify and enter
+              {isVerifyingOtp ? "Verifying" : "Verify and enter"}
             </button>
           </div>
         ) : (
@@ -1192,6 +1221,66 @@ async function lookupAccountFromServer(phone) {
   } catch {
     return null;
   }
+}
+
+async function requestOtpFromServer({ phone, email, purpose }) {
+  try {
+    const response = await authFetch(getApiUrl("/api/auth-otp"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "request",
+        phone: normalizePhone(phone),
+        email,
+        purpose
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to send OTP.");
+    }
+    return {
+      challengeId: data.challengeId || null,
+      serverBacked: Boolean(data.configured && data.challengeId),
+      expiresAt: data.expiresAt || null,
+      delivery: data.delivery || {},
+      code: data.demoCode || (!data.configured ? createOtp() : "")
+    };
+  } catch (error) {
+    if (error.message && error.message !== "Failed to fetch") {
+      throw error;
+    }
+    return {
+      challengeId: null,
+      serverBacked: false,
+      expiresAt: null,
+      delivery: { channel: "local-demo", sent: false },
+      code: createOtp()
+    };
+  }
+}
+
+async function verifyOtpWithServer(pendingOtp, code) {
+  const cleanedCode = String(code || "").replace(/\D/g, "");
+  if (!pendingOtp.serverBacked) {
+    return cleanedCode === String(pendingOtp.code || "");
+  }
+
+  const response = await authFetch(getApiUrl("/api/auth-otp"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "verify",
+      challengeId: pendingOtp.challengeId,
+      phone: pendingOtp.phone,
+      code: cleanedCode
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "OTP did not match.");
+  }
+  return Boolean(data.verified);
 }
 
 async function syncUserProfileToServer(account) {

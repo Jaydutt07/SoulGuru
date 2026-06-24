@@ -37,6 +37,8 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 SOUL_WISDOM_RATE_LIMIT=20
 USER_PROFILE_RATE_LIMIT=60
+OTP_RATE_LIMIT=10
+OTP_HASH_SECRET=
 ```
 
 Required for APK builds that should call the deployed backend:
@@ -53,19 +55,24 @@ npm run mobile:check-backend
 
 ## Supabase Setup
 
-Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. `001_initial_schema.sql` creates:
+Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. The core migrations create:
 
 - `user_profiles`
 - `daily_soul_readings`
 - `more_guidance_subscriptions`
 - `saved_guidance`
 - `astro_solve_questions`
+- `auth_otp_challenges`
 
 `002_payment_events.sql` adds payment event storage and subscription provider metadata for Razorpay webhook idempotency.
 
 The server uses `SUPABASE_SERVICE_ROLE_KEY` only in backend code. Do not expose it to the browser or APK.
 
 ## Backend API
+
+`POST /api/auth-otp`
+
+Requests and verifies backend-controlled OTP challenges. With Supabase configured, OTP codes are hashed in `auth_otp_challenges`, expire after `OTP_EXPIRY_MINUTES`, and enforce `OTP_MAX_ATTEMPTS`. Delivery uses `OTP_SMS_WEBHOOK_URL` when configured, otherwise Resend email when an email is available. Local development can fall back to demo OTP.
 
 `POST /api/soul-wisdom`
 
@@ -117,7 +124,17 @@ RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles.
+For phone OTP delivery, configure your SMS provider behind a webhook:
+
+```bash
+OTP_SMS_WEBHOOK_URL=
+OTP_SMS_WEBHOOK_TOKEN=
+OTP_EXPIRY_MINUTES=10
+OTP_MAX_ATTEMPTS=5
+OTP_DEMO_ENABLED=false
+```
+
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage.
 
 ## Observability
 
@@ -146,9 +163,9 @@ GUIDANCE_MEMORY_RATE_LIMIT=60
 
 Create a Pinecone index that matches the configured OpenAI embedding model. The backend uses `PINECONE_HOST` for REST upsert/query calls and stores user memory in hashed per-user namespaces.
 
-## Clerk Auth
+## OTP And Clerk Auth
 
-The local app keeps the demo OTP flow for quick testing. In production, configure Clerk and set:
+The local app can show a demo OTP when Supabase/SMS delivery is unavailable. In production, configure Supabase plus an SMS webhook or Resend fallback for OTP delivery. For authenticated API protection, configure Clerk and set:
 
 ```bash
 VITE_CLERK_PUBLISHABLE_KEY=
