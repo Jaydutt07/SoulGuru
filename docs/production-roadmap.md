@@ -77,6 +77,7 @@ This project is being built toward the stack shown in the product planning image
 - Fail-closed More Guidance dashboard reads so paid history and saved advice cannot silently disappear
 - Fail-closed Astro Solves quota checks so unreadable subscription/count state cannot spend OpenAI or return uncounted answers
 - Fail-closed Razorpay webhook processing unless local payment activation is explicitly enabled
+- OTP challenge storage before delivery so users are not sent unverifiable codes
 
 ## Next Implementation Steps
 

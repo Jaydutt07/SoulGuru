@@ -23,7 +23,11 @@ async function checkSupabaseOtpRequestStoresHashAndHidesDemoCode() {
     supabase,
     createOtpCode: () => "123456",
     deliverOtp: async (payload) => {
-      deliveries.push(payload);
+      deliveries.push({
+        ...payload,
+        storedBeforeDelivery: supabase.state.challenges.size,
+        storedChallengeId: [...supabase.state.challenges.keys()][0]
+      });
       return { sent: true, channel: "sms-webhook", id: "sms-contract-1" };
     }
   });
@@ -37,6 +41,8 @@ async function checkSupabaseOtpRequestStoresHashAndHidesDemoCode() {
     result.delivery?.sent === true,
     result.delivery?.channel === "sms-webhook",
     deliveries.length === 1,
+    deliveries[0].storedBeforeDelivery === 1,
+    deliveries[0].storedChallengeId === result.challengeId,
     deliveries[0].code === "123456",
     deliveries[0].phone === phone
   ].every(Boolean));
@@ -51,6 +57,36 @@ async function checkSupabaseOtpRequestStoresHashAndHidesDemoCode() {
     challenge.metadata?.deliveryId === "sms-contract-1",
     challenge.attempts === 0,
     !challenge.verified_at
+  ].every(Boolean));
+}
+
+async function checkOtpInsertFailureDoesNotDeliverCode() {
+  const supabase = createFakeSupabase({ failChallengeInsert: true });
+  const deliveries = [];
+
+  await expectRejects(
+    "OTP challenge insert failure does not deliver code",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false"
+    }, {
+      supabase,
+      createOtpCode: () => "123456",
+      deliverOtp: async (payload) => {
+        deliveries.push(payload);
+        return { sent: true, channel: "sms-webhook" };
+      }
+    }),
+    /Unable to create OTP challenge/i
+  );
+
+  pushCheck("Failed OTP challenge insert leaves no delivery or stored code", [
+    deliveries.length === 0,
+    supabase.state.challenges.size === 0
   ].every(Boolean));
 }
 
@@ -234,11 +270,12 @@ function checkOtpReadinessRequiresStrongSecret() {
   pushCheck("Production readiness accepts strong OTP hash secret", strongOtp?.status === "pass");
 }
 
-function createFakeSupabase({ challenges = [] } = {}) {
+function createFakeSupabase({ challenges = [], failChallengeInsert = false } = {}) {
   const state = {
     calls: [],
     challenges: new Map(),
-    nextChallengeId: 1
+    nextChallengeId: 1,
+    failChallengeInsert
   };
 
   for (const challenge of challenges) {
@@ -279,6 +316,14 @@ class FakeQuery {
     });
 
     if (this.table === "auth_otp_challenges") {
+      if (this.state.failChallengeInsert) {
+        this.result = {
+          data: null,
+          error: { message: "contract insert failure" }
+        };
+        return this;
+      }
+
       const id = `otp-${this.state.nextChallengeId++}`;
       const challenge = {
         id,
@@ -396,6 +441,7 @@ function printReport() {
 
 async function main() {
   await checkSupabaseOtpRequestStoresHashAndHidesDemoCode();
+  await checkOtpInsertFailureDoesNotDeliverCode();
   await checkOtpHashSecretIsRequiredBeforeDelivery();
   await checkVerifyOtpAttemptsAndSuccess();
   await checkMaxAttemptsAndExpiryBlockVerification();

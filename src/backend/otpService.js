@@ -33,7 +33,6 @@ export async function requestOtp(payload, env = process.env, deps = {}) {
 
   assertOtpHashSecret(env);
 
-  const delivery = await deliver({ phone, email, code, purpose }, env);
   const { data, error } = await supabase
     .from("auth_otp_challenges")
     .insert({
@@ -41,11 +40,10 @@ export async function requestOtp(payload, env = process.env, deps = {}) {
       email: email || null,
       purpose,
       code_hash: hashOtp({ phone, code }, env),
-      delivery_channel: delivery.channel || "demo",
+      delivery_channel: "pending",
       expires_at: expiresAt,
       metadata: {
-        deliveryId: delivery.id || null,
-        deliverySkipped: Boolean(delivery.skipped)
+        deliveryPending: true
       }
     })
     .select("id, expires_at, delivery_channel")
@@ -53,6 +51,22 @@ export async function requestOtp(payload, env = process.env, deps = {}) {
 
   if (error) {
     throw new Error(`Unable to create OTP challenge: ${error.message}`);
+  }
+
+  const delivery = await deliver({ phone, email, code, purpose }, env);
+  const { error: deliveryUpdateError } = await supabase
+    .from("auth_otp_challenges")
+    .update({
+      delivery_channel: delivery.channel || "demo",
+      metadata: {
+        deliveryId: delivery.id || null,
+        deliverySkipped: Boolean(delivery.skipped)
+      }
+    })
+    .eq("id", data.id);
+
+  if (deliveryUpdateError) {
+    console.warn("Unable to update OTP delivery metadata", deliveryUpdateError.message);
   }
 
   return {
