@@ -26,6 +26,8 @@
     "local:smoke": "node scripts/smoke-local-api.mjs",
     "local:smoke:ai": "node scripts/smoke-local-api.mjs --include-ai",
     "production:check": "node scripts/check-production-readiness.mjs",
+    "release:check": "node scripts/check-release-readiness.mjs",
+    "release:check:local": "node scripts/check-release-readiness.mjs --allow-missing-external",
     "supabase:schema:check": "node scripts/check-supabase-schema.mjs",
     "deployment:smoke": "node scripts/smoke-deployed-backend.mjs"
   },

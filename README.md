@@ -59,6 +59,15 @@ Check server-side production readiness from local env:
 npm run production:check
 ```
 
+Run the combined release readiness bundle:
+
+```bash
+npm run release:check:local
+npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing
+```
+
+`release:check:local` runs the same local build, safety, smoke, quality, audit, and readiness reports while skipping external services that are not configured yet. `release:check` is strict and expects production env, Supabase schema, deployed backend smoke, mobile backend URL, and optional live AI/signing checks when those flags are supplied.
+
 Check public `VITE_` env vars for accidental server-secret exposure:
 
 ```bash
@@ -346,6 +355,7 @@ Before release:
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.
+- Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
