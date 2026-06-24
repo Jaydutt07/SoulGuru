@@ -51,6 +51,7 @@ This project is being built toward the stack shown in the product planning image
 - Vercel deployment config plus deployed backend smoke-test script for health, readiness, profile lookup, and More Guidance dashboard
 - Combined release readiness runner for local and strict production preflight checks
 - Astronomy-based birth/transit context replacing hash-only astrology
+- Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows
 - Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice
 

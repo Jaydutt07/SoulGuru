@@ -16,6 +16,7 @@ const failures = [];
 const skipped = [];
 
 await runStep("Public env safety", "node", ["scripts/check-public-env.mjs", "--strict"]);
+await runStep("Astrology engine contract", "npm", ["run", "astrology:check"]);
 await runStep("Soul Guru daily cache contract", "npm", ["run", "soul:cache:check"]);
 await runStep("Soul Guru local reading quality", "npm", ["run", "soul:quality"]);
 await runStep("Astro Solves contract checks", "npm", ["run", "astro:check"]);

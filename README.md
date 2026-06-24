@@ -75,6 +75,12 @@ npm run public-env:check
 npm run public-env:check:strict
 ```
 
+Check chart/transit calculation, place resolution, timezone handling, and Saade Sati windows:
+
+```bash
+npm run astrology:check
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -157,6 +163,7 @@ The ready-to-use GitHub Actions workflow template lives at `docs/github-actions-
 The CI template checks:
 
 - `npm run soul:quality`
+- `npm run astrology:check`
 - `npm run soul:cache:check`
 - `npm run astro:check`
 - `npm run otp:check`
@@ -386,6 +393,7 @@ Before release:
 - Configure Supabase project and run migrations.
 - Run `npm run supabase:schema:check` against the Supabase project.
 - Run `npm run public-env:check:strict`.
+- Run `npm run astrology:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.

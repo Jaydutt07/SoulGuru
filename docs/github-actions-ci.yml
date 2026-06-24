@@ -35,6 +35,9 @@ jobs:
       - name: Soul Guru local quality gate
         run: npm run soul:quality
 
+      - name: Verify astrology engine contract
+        run: npm run astrology:check
+
       - name: Verify Soul Guru daily cache contract
         run: npm run soul:cache:check
 
