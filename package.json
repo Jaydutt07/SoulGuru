@@ -38,6 +38,7 @@
     "rate-limit:check": "node scripts/check-rate-limit-contracts.mjs",
     "readiness:check": "node scripts/check-readiness-contracts.mjs",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",
+    "shani:check": "node scripts/check-shani-contracts.mjs",
     "soul:cache:check": "node scripts/check-soul-wisdom-cache.mjs",
     "soul:quality": "node scripts/check-soul-wisdom-quality.mjs",
     "soul:quality:extended": "node scripts/check-soul-wisdom-quality.mjs --case-set=extended --max-similarity=0.35",

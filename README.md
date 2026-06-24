@@ -175,6 +175,12 @@ Check the paid More Guidance subscription/cache contract without contacting Open
 npm run more-guidance:check
 ```
 
+Check Shani remedy membership and Pandit guidance contracts without contacting OpenAI or Supabase:
+
+```bash
+npm run shani:check
+```
+
 Check the mobile backend validator contract with local mock backends:
 
 ```bash
@@ -295,6 +301,8 @@ Run the migrations in `supabase/migrations/` inside your Supabase project SQL ed
 - `payment_events`
 - `auth_otp_challenges`
 - `more_guidance_readings`
+- `shani_remedy_memberships`
+- `shani_pandit_messages`
 
 `002_payment_events.sql` adds payment event storage and subscription provider metadata for Razorpay webhook idempotency. The later provider indexes keep both Razorpay payment ids and subscription ids idempotent, so webhook replays cannot create duplicate More Guidance memberships.
 
@@ -348,6 +356,10 @@ Server-only Pinecone memory route. It upserts saved guidance, daily readings, an
 
 Loads the More Guidance dashboard from Supabase, including subscription status, 3-month tracking progress, reading history, and saved advice. Dashboard reads fail closed instead of returning empty synced data when subscription, history, or saved-advice state cannot be loaded. It also creates the paid deeper guidance map and saves advice into `saved_guidance`. Production requires persisted subscription access and daily caching in `more_guidance_readings`; `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing. Production builds must also keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
 
+`POST /api/shani-guidance`
+
+Loads the Shani/Saade Sati dashboard and verifies Shani remedy membership from Supabase. The Pandit action requires an active row in `shani_remedy_memberships`, refuses to call OpenAI before membership is verified, and saves every paid answer to `shani_pandit_messages` before production displays it. `SHANI_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing; production keeps Pandit locked until a persisted membership exists.
+
 `GET /api/health`
 
 Basic API health check for deployment.
@@ -368,6 +380,8 @@ RAZORPAY_VERIFY_RATE_LIMIT=20
 PAYMENTS_ALLOW_LOCAL_ACTIVATION=false
 MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false
 MORE_GUIDANCE_PRICE_PAISE=49900
+SHANI_ALLOW_LOCAL_ACCESS=false
+SHANI_PANDIT_DISABLE_OPENAI=false
 ```
 
 Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false` and `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false` outside isolated local testing. Real More Guidance purchases must be persisted in Supabase before the app unlocks paid guidance.
@@ -389,7 +403,7 @@ OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
 
-Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps. `009_unique_subscription_provider_ids.sql` keeps Razorpay subscription lifecycle events idempotent. `010_schema_contract_rpc.sql` adds a service-role-only schema metadata RPC for live deployment verification. `011_schema_contract_constraints.sql` extends that RPC so live checks can verify primary-key and unique constraints.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps. `009_unique_subscription_provider_ids.sql` keeps Razorpay subscription lifecycle events idempotent. `010_schema_contract_rpc.sql` adds a service-role-only schema metadata RPC for live deployment verification. `011_schema_contract_constraints.sql` extends that RPC so live checks can verify primary-key and unique constraints. `012_shani_membership.sql` adds Shani remedy memberships and stored Pandit guidance history.
 
 Then run:
 
@@ -397,7 +411,7 @@ Then run:
 npm run supabase:schema:check
 ```
 
-This read-only check uses the service role key to verify all production tables, columns, critical indexes, and uniqueness constraints needed for daily Soul Guru caching, OTP login, paid More Guidance, saved advice, Astro Solves, and Razorpay payment events.
+This read-only check uses the service role key to verify all production tables, columns, critical indexes, and uniqueness constraints needed for daily Soul Guru caching, OTP login, paid More Guidance, saved advice, Astro Solves, Shani remedy membership, Pandit history, and Razorpay payment events.
 
 ## Observability
 

@@ -33,6 +33,7 @@ try {
   await checkProfileLookup();
   await checkMoreGuidanceDashboard();
   await checkMoreGuidanceDeep();
+  await checkShaniDashboard();
   await maybeCheckOtpRequest();
   await maybeCheckSoulWisdom();
   await maybeCheckAstroSolve();
@@ -208,6 +209,22 @@ async function checkMoreGuidanceDeep() {
     detail: passed
       ? `${result.body.source || "unknown"} guidance returned for ${result.body.readingDate || "requested date"}.`
       : result.body?.error || "Expected deep guidance fields."
+  });
+}
+
+async function checkShaniDashboard() {
+  const result = await requestJson("POST", "/api/shani-guidance", {
+    action: "dashboard",
+    limit: 3,
+    user: smokeUser()
+  });
+  const passed = result.status === 200 && typeof result.body?.report?.phaseTitle === "string" && Array.isArray(result.body?.panditHistory);
+  pushCheck({
+    id: "shani-dashboard",
+    label: "Shani dashboard",
+    passed,
+    status: result.status,
+    detail: passed ? `Shani configured=${Boolean(result.body.configured)}.` : "Expected Shani report and Pandit history array."
   });
 }
 

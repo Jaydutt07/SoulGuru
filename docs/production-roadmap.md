@@ -69,6 +69,9 @@ This project is being built toward the stack shown in the product planning image
 - Production Astro Solves quota guard so real answers require Supabase persistence
 - Production More Guidance paid-access guard so deeper readings require persisted subscription and cache state
 - Production-gated Shani remedy member preview so Pandit chat cannot unlock from local account state
+- Supabase schema for Shani remedy memberships and stored Pandit guidance history
+- Server-backed Shani dashboard and Pandit route with fail-closed membership, OpenAI, and storage guards
+- Offline Shani contract checker for local-access flags, persisted membership checks, and stored Pandit answers
 - Live Supabase schema checker for migration/table/column/index/constraint contract verification
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing
@@ -108,17 +111,20 @@ This project is being built toward the stack shown in the product planning image
 9. Apply `supabase/migrations/009_unique_subscription_provider_ids.sql`.
 10. Apply `supabase/migrations/010_schema_contract_rpc.sql`.
 11. Apply `supabase/migrations/011_schema_contract_constraints.sql`.
-12. Run `npm run supabase:schema:check` against the Supabase project.
-13. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-14. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
-15. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
-16. Run `npm run public-env:check:strict`.
-17. Run `npm run payments:check`.
-18. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
-19. Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
-20. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
-21. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
-22. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-23. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-24. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-25. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+12. Apply `supabase/migrations/012_shani_membership.sql`.
+13. Run `npm run supabase:schema:check` against the Supabase project.
+14. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+15. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
+16. Connect Shani remedy plan purchases to Razorpay activation rows in `shani_remedy_memberships`.
+17. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
+18. Run `npm run public-env:check:strict`.
+19. Run `npm run payments:check`.
+20. Run `npm run shani:check`.
+21. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
+22. Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
+23. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
+24. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
+25. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+26. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+27. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+28. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

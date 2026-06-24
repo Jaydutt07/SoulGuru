@@ -13,7 +13,8 @@ const requiredMigrationFiles = [
   "008_more_guidance_readings.sql",
   "009_unique_subscription_provider_ids.sql",
   "010_schema_contract_rpc.sql",
-  "011_schema_contract_constraints.sql"
+  "011_schema_contract_constraints.sql",
+  "012_shani_membership.sql"
 ];
 
 const schemaContract = [
@@ -139,6 +140,40 @@ const schemaContract = [
       "prompt_version",
       "created_at"
     ]
+  },
+  {
+    table: "shani_remedy_memberships",
+    columns: [
+      "id",
+      "user_profile_id",
+      "user_key",
+      "plan_id",
+      "plan_name",
+      "status",
+      "starts_at",
+      "ends_at",
+      "provider",
+      "provider_payment_id",
+      "provider_subscription_id",
+      "metadata",
+      "created_at"
+    ]
+  },
+  {
+    table: "shani_pandit_messages",
+    columns: [
+      "id",
+      "user_profile_id",
+      "membership_id",
+      "user_key",
+      "question",
+      "answer",
+      "saade_sati_report",
+      "source",
+      "model",
+      "prompt_version",
+      "created_at"
+    ]
   }
 ];
 
@@ -155,7 +190,13 @@ const requiredIndexes = [
   "auth_otp_expires_idx",
   "subscriptions_provider_payment_unique_idx",
   "subscriptions_provider_subscription_unique_idx",
-  "more_guidance_readings_user_date_idx"
+  "more_guidance_readings_user_date_idx",
+  "shani_memberships_user_status_idx",
+  "shani_memberships_provider_payment_idx",
+  "shani_memberships_provider_payment_unique_idx",
+  "shani_memberships_provider_subscription_unique_idx",
+  "shani_pandit_messages_user_created_idx",
+  "shani_pandit_messages_membership_created_idx"
 ];
 
 const checks = [];
@@ -234,6 +275,12 @@ function checkIndexesAndIdempotency() {
     contains("where provider_subscription_id is not null")
   ].every(Boolean));
   pushCheck("Payment webhook events are idempotent by provider event id", /\bprovider_event_id\s+text\s+primary\s+key\b/i.test(combinedSql));
+  pushCheck("Shani remedy payment activation is idempotent", [
+    contains("create unique index if not exists shani_memberships_provider_payment_unique_idx"),
+    contains("create unique index if not exists shani_memberships_provider_subscription_unique_idx"),
+    contains("where provider_payment_id is not null"),
+    contains("where provider_subscription_id is not null")
+  ].every(Boolean));
 }
 
 function checkCriticalDefaults() {

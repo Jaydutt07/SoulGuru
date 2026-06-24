@@ -49,6 +49,7 @@ await runStep("Web production build", "npm", ["run", "build"]);
 await runStep("Release secret and artifact scan", "npm", ["run", "security:check"]);
 await runStep("Payment contract checks", "npm", ["run", "payments:check"]);
 await runStep("More Guidance contract checks", "npm", ["run", "more-guidance:check"]);
+await runStep("Shani contract checks", "npm", ["run", "shani:check"]);
 await runStep("Mobile backend validation contract checks", "npm", ["run", "mobile:backend:check"]);
 await runStep("Local API smoke", "npm", ["run", "local:smoke"]);
 await runStep("Deployment smoke contract checks", "npm", ["run", "deployment:smoke:check"]);

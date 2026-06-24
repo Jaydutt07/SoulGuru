@@ -133,6 +133,40 @@ const schemaContract = [
       "prompt_version",
       "created_at"
     ]
+  },
+  {
+    table: "shani_remedy_memberships",
+    columns: [
+      "id",
+      "user_profile_id",
+      "user_key",
+      "plan_id",
+      "plan_name",
+      "status",
+      "starts_at",
+      "ends_at",
+      "provider",
+      "provider_payment_id",
+      "provider_subscription_id",
+      "metadata",
+      "created_at"
+    ]
+  },
+  {
+    table: "shani_pandit_messages",
+    columns: [
+      "id",
+      "user_profile_id",
+      "membership_id",
+      "user_key",
+      "question",
+      "answer",
+      "saade_sati_report",
+      "source",
+      "model",
+      "prompt_version",
+      "created_at"
+    ]
   }
 ];
 
@@ -205,6 +239,40 @@ const indexContract = [
     name: "more_guidance_readings_user_date_idx",
     table: "more_guidance_readings",
     columns: ["user_key", "reading_date"]
+  },
+  {
+    name: "shani_memberships_user_status_idx",
+    table: "shani_remedy_memberships",
+    columns: ["user_key", "status", "ends_at"]
+  },
+  {
+    name: "shani_memberships_provider_payment_idx",
+    table: "shani_remedy_memberships",
+    columns: ["provider", "provider_payment_id"]
+  },
+  {
+    name: "shani_memberships_provider_payment_unique_idx",
+    table: "shani_remedy_memberships",
+    columns: ["provider", "provider_payment_id"],
+    unique: true,
+    where: "provider_payment_id is not null"
+  },
+  {
+    name: "shani_memberships_provider_subscription_unique_idx",
+    table: "shani_remedy_memberships",
+    columns: ["provider", "provider_subscription_id"],
+    unique: true,
+    where: "provider_subscription_id is not null"
+  },
+  {
+    name: "shani_pandit_messages_user_created_idx",
+    table: "shani_pandit_messages",
+    columns: ["user_key", "created_at"]
+  },
+  {
+    name: "shani_pandit_messages_membership_created_idx",
+    table: "shani_pandit_messages",
+    columns: ["membership_id", "created_at"]
   }
 ];
 

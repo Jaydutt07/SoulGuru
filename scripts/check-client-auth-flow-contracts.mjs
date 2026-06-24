@@ -111,8 +111,12 @@ function checkProductionSaveAdviceRequiresStoredBackendAnswer() {
 
 function checkProductionShaniDoesNotTrustLocalMemberPlan() {
   pushCheck("Production Shani does not unlock Pandit from local memberPlan", [
-    source.includes("const effectiveMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : \"\";"),
-    source.includes("const memberPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === effectiveMemberPlanId);"),
+    source.includes("const serverMembership = serverDashboard?.membership?.active ? serverDashboard.membership : null;"),
+    source.includes("const localMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : \"\";"),
+    source.includes("const effectiveMemberPlanId = serverMembership?.planId || localMemberPlanId;"),
+    source.includes("const canUsePandit = Boolean(panditMembership?.active);"),
+    source.includes("action: \"pandit\","),
+    source.includes("if (response.ok && data?.answer && data.stored !== false) {"),
     source.includes("if (LOCAL_PAID_FALLBACK_ENABLED) {"),
     source.includes("setPlanStatus(\"Secure Shani remedy checkout is required before member guidance can unlock.\");")
   ].every(Boolean));

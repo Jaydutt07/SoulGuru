@@ -11,6 +11,7 @@ export function buildDeploymentReadiness(env = process.env) {
     checkSoulWisdom(env),
     checkAstroSolves(env),
     checkMoreGuidance(env),
+    checkShani(env),
     checkOtp(env),
     checkRazorpay(env),
     checkRequired(env, "rateLimit", "Upstash rate limiting", [
@@ -104,6 +105,23 @@ function checkMoreGuidance(env) {
     missingEnv,
     advice: missingEnv.length
       ? "Disable local More Guidance access so production paid readings require persisted subscription and cache state."
+      : ""
+  };
+}
+
+function checkShani(env) {
+  const localAccessEnabled = String(env.SHANI_ALLOW_LOCAL_ACCESS || "false").toLowerCase() === "true";
+  const missingEnv = localAccessEnabled ? ["SHANI_ALLOW_LOCAL_ACCESS=false"] : [];
+
+  return {
+    id: "shaniMembershipAccess",
+    label: "Shani remedy membership persistence",
+    severity: "critical",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["SHANI_ALLOW_LOCAL_ACCESS=false"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Disable local Shani access so Pandit guidance requires a persisted remedy membership."
       : ""
   };
 }

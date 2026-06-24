@@ -98,6 +98,9 @@ jobs:
       - name: Verify More Guidance contracts
         run: npm run more-guidance:check
 
+      - name: Verify Shani contracts
+        run: npm run shani:check
+
       - name: Verify mobile backend validation contracts
         run: npm run mobile:backend:check
 

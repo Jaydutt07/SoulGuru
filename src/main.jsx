@@ -1200,17 +1200,88 @@ function ShaniTab({ user, updateUser }) {
   const [now, setNow] = useState(() => new Date());
   const [chatOpen, setChatOpen] = useState(false);
   const [planStatus, setPlanStatus] = useState("");
+  const [dashboardStatus, setDashboardStatus] = useState("");
+  const [serverDashboard, setServerDashboard] = useState(null);
   const report = useMemo(() => getSaadeSatiReport(user, now), [user, now]);
   const countdown = useMemo(() => getCountdown(report.endDate, now), [report.endDate, now]);
-  const effectiveMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : "";
-  const memberPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === effectiveMemberPlanId);
+  const serverMembership = serverDashboard?.membership?.active ? serverDashboard.membership : null;
+  const localMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : "";
+  const effectiveMemberPlanId = serverMembership?.planId || localMemberPlanId;
+  const memberPlan = serverMembership
+    ? {
+        id: serverMembership.planId,
+        name: serverMembership.planName,
+        price: serverMembership.endsAt ? `Active until ${formatDate(serverMembership.endsAt)}` : "Synced membership"
+      }
+    : MEMBERSHIP_PLANS.find((plan) => plan.id === effectiveMemberPlanId);
+  const panditMembership = serverMembership || (LOCAL_PAID_FALLBACK_ENABLED && memberPlan ? {
+    active: true,
+    planId: memberPlan.id,
+    planName: memberPlan.name,
+    provider: "local"
+  } : null);
+  const canUsePandit = Boolean(panditMembership?.active);
+  const useLocalPandit = LOCAL_PAID_FALLBACK_ENABLED && panditMembership?.provider === "local";
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setDashboardStatus("Checking Shani membership...");
+
+    authFetch(getApiUrl("/api/shani-guidance"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "dashboard",
+        limit: 6,
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          birthDate: user.birthDate,
+          birthTime: user.birthTime,
+          birthPlace: user.birthPlace,
+          birthLatitude: user.birthLatitude,
+          birthLongitude: user.birthLongitude,
+          birthTimezone: user.birthTimezone,
+          birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+          birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+          birthPlaceResolutionSource: user.birthPlaceResolutionSource
+        }
+      })
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.configured) {
+          setServerDashboard(data);
+          setDashboardStatus(data.membership?.active ? "Shani membership synced." : "");
+          return;
+        }
+        setDashboardStatus("");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServerDashboard(null);
+          setDashboardStatus(LOCAL_PAID_FALLBACK_ENABLED ? "" : "Shani membership could not sync. Pandit remains locked.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.birthDate, user.birthLatitude, user.birthLongitude, user.birthPlace, user.birthPlaceResolutionSource, user.birthPlaceResolvedLabel, user.birthTime, user.birthTimezone, user.birthTimezoneOffsetMinutes, user.email, user.id, user.name, user.phone]);
+
   function selectPlan(planId) {
+    if (serverMembership?.active) {
+      setPlanStatus(`${serverMembership.planName} is already active.`);
+      return;
+    }
     if (LOCAL_PAID_FALLBACK_ENABLED) {
       updateUser({ memberPlan: planId });
       setPlanStatus("Local Shani member preview is active.");
@@ -1272,20 +1343,29 @@ function ShaniTab({ user, updateUser }) {
           ))}
         </div>
         {planStatus && <p className="checkout-note">{planStatus}</p>}
+        {dashboardStatus && <p className="checkout-note">{dashboardStatus}</p>}
       </div>
 
-      {memberPlan && (
+      {canUsePandit && (
         <button className="pandit-fab" type="button" onClick={() => setChatOpen(true)} aria-label="Open Pandit chat">
           <MessageCircle size={22} aria-hidden="true" />
         </button>
       )}
 
-      {chatOpen && <PanditChat user={user} report={report} onClose={() => setChatOpen(false)} />}
+      {chatOpen && canUsePandit && (
+        <PanditChat
+          user={user}
+          report={report}
+          membership={panditMembership}
+          useLocalPandit={useLocalPandit}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </section>
   );
 }
 
-function PanditChat({ user, report, onClose }) {
+function PanditChat({ user, report, membership, useLocalPandit, onClose }) {
   const [messages, setMessages] = useState([
     {
       from: "pandit",
@@ -1293,17 +1373,73 @@ function PanditChat({ user, report, onClose }) {
     }
   ]);
   const [draft, setDraft] = useState("");
+  const [chatStatus, setChatStatus] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  function sendMessage(event) {
+  async function sendMessage(event) {
     event.preventDefault();
     const text = draft.trim();
-    if (!text) return;
-    setMessages((current) => [
-      ...current,
-      { from: "user", text },
-      { from: "pandit", text: buildPanditReply(text, user, report) }
-    ]);
+    if (!text || isSending) return;
     setDraft("");
+    setChatStatus("");
+    setMessages((current) => [...current, { from: "user", text }]);
+
+    if (useLocalPandit) {
+      setMessages((current) => [...current, { from: "pandit", text: buildPanditReply(text, user, report) }]);
+      return;
+    }
+
+    if (!membership?.active) {
+      setMessages((current) => [...current, { from: "pandit", text: "Shani remedy membership is required before Pandit guidance can open." }]);
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await authFetch(getApiUrl("/api/shani-guidance"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "pandit",
+          question: text,
+          membership,
+          report,
+          user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            email: user.email,
+            birthDate: user.birthDate,
+            birthTime: user.birthTime,
+            birthPlace: user.birthPlace,
+            birthLatitude: user.birthLatitude,
+            birthLongitude: user.birthLongitude,
+            birthTimezone: user.birthTimezone,
+            birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+            birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+            birthPlaceResolutionSource: user.birthPlaceResolutionSource
+          }
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data?.answer && data.stored !== false) {
+        setMessages((current) => [...current, { from: "pandit", text: formatPanditAnswer(data.answer) }]);
+        trackEvent("shani_pandit_answered", { source: data.source || "unknown" });
+        return;
+      }
+
+      if (response.status === 402) {
+        setMessages((current) => [...current, { from: "pandit", text: "Your Shani remedy membership needs to be active before I can answer in detail." }]);
+        return;
+      }
+
+      setChatStatus(data.error || "Pandit guidance could not sync. Please try again shortly.");
+    } catch {
+      setChatStatus("Pandit guidance could not sync. Please try again shortly.");
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
@@ -1325,11 +1461,12 @@ function PanditChat({ user, report, onClose }) {
         ))}
       </div>
       <form className="chat-form" onSubmit={sendMessage}>
-        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about your remedy" />
-        <button className="icon-button filled" type="submit" aria-label="Send message">
+        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about your remedy" disabled={isSending} />
+        <button className="icon-button filled" type="submit" aria-label="Send message" disabled={isSending}>
           <Send size={18} aria-hidden="true" />
         </button>
       </form>
+      {chatStatus && <p className="checkout-note">{chatStatus}</p>}
     </div>
   );
 }
@@ -2230,6 +2367,15 @@ function buildPanditReply(text, user, report) {
     return `Do not fear this ${report.phaseTitle.toLowerCase()}. Shani tests truth, patience, and responsibility. Make your routine honest, reduce ego reactions, and ask for help before pressure becomes isolation.`;
   }
   return `Keep the question simple and the action sincere. For the next seven days, protect your sleep, speak less in anger, and complete one pending responsibility. Then watch what starts becoming lighter.`;
+}
+
+function formatPanditAnswer(answer) {
+  if (typeof answer === "string") return answer;
+  return [
+    answer?.text,
+    answer?.practice ? `Practice: ${answer.practice}` : "",
+    answer?.caution ? `Caution: ${answer.caution}` : ""
+  ].filter(Boolean).join(" ");
 }
 
 function getNumbers(user) {

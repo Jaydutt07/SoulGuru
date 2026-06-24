@@ -48,6 +48,7 @@ function checkRequiredCommands(workflowText) {
     "npm run security:check",
     "npm run payments:check",
     "npm run more-guidance:check",
+    "npm run shani:check",
     "npm run mobile:backend:check",
     "npm run local:smoke",
     "npm run deployment:smoke:check",

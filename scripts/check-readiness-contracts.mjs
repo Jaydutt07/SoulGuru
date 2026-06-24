@@ -7,6 +7,7 @@ checkPartialStackIsNotReady();
 checkUncachedSoulWisdomIsNotReady();
 checkLocalAstroSolvesQuotaIsNotReady();
 checkLocalMoreGuidanceAccessIsNotReady();
+checkLocalShaniAccessIsNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -95,6 +96,20 @@ function checkLocalMoreGuidanceAccessIsNotReady() {
     report.ok === false,
     paidAccess?.status === "fail",
     paidAccess?.missingEnv.includes("MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false")
+  ].every(Boolean));
+}
+
+function checkLocalShaniAccessIsNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    SHANI_ALLOW_LOCAL_ACCESS: "true"
+  });
+  const shaniAccess = report.checks.find((check) => check.id === "shaniMembershipAccess");
+
+  pushCheck("Readiness rejects local Shani remedy access mode", [
+    report.ok === false,
+    shaniAccess?.status === "fail",
+    shaniAccess?.missingEnv.includes("SHANI_ALLOW_LOCAL_ACCESS=false")
   ].every(Boolean));
 }
 

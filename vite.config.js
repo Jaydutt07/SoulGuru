@@ -8,6 +8,7 @@ import { requestOtp, verifyOtp } from "./src/backend/otpService.js";
 import { createRazorpayOrder, verifyRazorpayCheckoutPayment } from "./src/backend/payments.js";
 import { handleUserProfile } from "./src/backend/profileService.js";
 import { buildDeploymentReadiness } from "./src/backend/readinessService.js";
+import { createPanditGuidance, getShaniDashboard } from "./src/backend/shaniService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
 import { parseJsonRequest, sendJson } from "./src/backend/request.js";
@@ -263,6 +264,45 @@ function soulGuruApiPlugin() {
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
           sendJson(res, error.statusCode || 500, { error: error.message || "Unable to load More Guidance" });
+        }
+      });
+
+      server.middlewares.use("/api/shani-guidance", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "shani-guidance",
+            limit: Number(runtimeEnv.SHANI_PANDIT_RATE_LIMIT || 40),
+            windowSeconds: 24 * 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Shani guidance request limit reached. Please try again tomorrow.", rate });
+            return;
+          }
+
+          if (payload.action === "pandit") {
+            const result = await createPanditGuidance(payload, runtimeEnv);
+            sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate, auth });
+            return;
+          }
+
+          const result = await getShaniDashboard(payload, runtimeEnv);
+          sendJson(res, 200, { ...result, rate, auth });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to load Shani guidance" });
         }
       });
 
