@@ -29,6 +29,7 @@ const SESSION_KEY = "soulguru.session.v1";
 const SOUL_READING_CACHE_VERSION = "soul-wisdom-v2";
 const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v2";
 const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v2";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 const TABS = [
   { id: "soul", label: "Soul Guru", Icon: Sparkles },
@@ -392,7 +393,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
 
     setReading(fallbackReading);
 
-    fetch("/api/soul-wisdom", {
+    fetch(getApiUrl("/api/soul-wisdom"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -965,6 +966,10 @@ function stableHash(value) {
   return String(value || "").split("").reduce((hash, char) => {
     return (hash * 31 + char.charCodeAt(0)) >>> 0;
   }, 7);
+}
+
+function getApiUrl(path) {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
 }
 
 function getTodayKey(date = new Date(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata") {

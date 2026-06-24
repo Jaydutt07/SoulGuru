@@ -35,6 +35,12 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
+Required for APK builds that should call the deployed backend:
+
+```bash
+VITE_API_BASE_URL=https://your-vercel-app.vercel.app
+```
+
 ## Supabase Setup
 
 Run the migration in `supabase/migrations/001_initial_schema.sql` inside your Supabase project SQL editor or migration pipeline. It creates:
@@ -72,6 +78,7 @@ SoulGuru-debug.apk
 ```
 
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
+Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a release APK/AAB. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
 
 ## Production Notes
 
