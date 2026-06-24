@@ -23,6 +23,7 @@
     "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
     "memory:check": "node scripts/check-memory-contracts.mjs",
     "more-guidance:check": "node scripts/check-more-guidance-contracts.mjs",
+    "observability:check": "node scripts/check-observability-contracts.mjs",
     "payments:check": "node scripts/check-payment-contracts.mjs",
     "otp:check": "node scripts/check-otp-contracts.mjs",
     "public-env:check": "node scripts/check-public-env.mjs",

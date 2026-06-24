@@ -33,6 +33,7 @@ This project is being built toward the stack shown in the product planning image
 - Offline Razorpay order, checkout signature, and webhook contract checker
 - Resend helper for subscription confirmation emails
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
+- Offline Sentry/PostHog observability contract checker for initialization and analytics privacy
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
 - Offline Astro Solves quota, paid-bonus, storage, and memory contract checker
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch

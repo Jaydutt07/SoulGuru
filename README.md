@@ -99,6 +99,12 @@ Check Upstash rate limiting, hashed Redis keys, pipeline requests, and degraded 
 npm run rate-limit:check
 ```
 
+Check Sentry/PostHog initialization and analytics privacy behavior:
+
+```bash
+npm run observability:check
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -185,6 +191,7 @@ The CI template checks:
 - `npm run auth:check`
 - `npm run memory:check`
 - `npm run rate-limit:check`
+- `npm run observability:check`
 - `npm run soul:cache:check`
 - `npm run astro:check`
 - `npm run otp:check`
@@ -315,7 +322,7 @@ VITE_SENTRY_DSN=
 VITE_SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
-The frontend avoids sending phone numbers or email addresses to analytics.
+The frontend disables PostHog autocapture/pageviews by default and strips phone numbers, emails, names, OTPs, tokens, keys, and birth details from tracked event properties.
 
 ## Pinecone Memory
 
@@ -418,6 +425,7 @@ Before release:
 - Run `npm run auth:check`.
 - Run `npm run memory:check`.
 - Run `npm run rate-limit:check`.
+- Run `npm run observability:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.
