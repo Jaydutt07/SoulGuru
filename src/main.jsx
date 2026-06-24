@@ -78,7 +78,9 @@ function App() {
 
   function handleLogin(account) {
     const enrichedAccount = saveAccount(account);
-    window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);
+    if (LOCAL_AUTH_FALLBACK_ENABLED) {
+      window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);
+    }
     setUser(enrichedAccount);
     setActiveTab("soul");
     syncUserProfileToServer(enrichedAccount).then((profile) => {
@@ -94,7 +96,9 @@ function App() {
     setUser((current) => {
       const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
       const next = saveAccount(nextRaw);
-      window.localStorage.setItem(SESSION_KEY, next.phone);
+      if (LOCAL_AUTH_FALLBACK_ENABLED) {
+        window.localStorage.setItem(SESSION_KEY, next.phone);
+      }
       if (hasProfileChanged(current, next)) {
         syncUserProfileToServer(next);
       }
@@ -1431,6 +1435,9 @@ function readAccounts() {
 
 function saveAccount(account) {
   const enrichedAccount = enrichUserWithPlace(account);
+  if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+    return enrichedAccount;
+  }
   const accounts = readAccounts();
   accounts[enrichedAccount.phone] = enrichedAccount;
   window.localStorage.setItem(ACCOUNT_DB_KEY, JSON.stringify(accounts));
@@ -1637,6 +1644,7 @@ function hasProfileChanged(previous, next) {
 }
 
 function getSessionUser() {
+  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;
   const phone = window.localStorage.getItem(SESSION_KEY);
   if (!phone) return null;
   return readAccounts()[phone] || null;

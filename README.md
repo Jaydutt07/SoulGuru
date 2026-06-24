@@ -308,6 +308,8 @@ The production client only displays and locally caches Soul Guru readings that c
 
 Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage.
 
+In production builds, local account/session storage is disabled for login restore. Users enter through backend OTP/profile lookup, and local account persistence is kept only for development fallback mode.
+
 `POST /api/create-razorpay-order`
 
 Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The request must include a stable SoulGuru user identity (`authUserId`, `id`, phone, or email), so paid access is never issued to an anonymous key. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.

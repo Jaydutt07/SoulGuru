@@ -51,6 +51,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed More Guidance dashboard and saved advice persistence
 - Offline More Guidance subscription, daily-cache, and paid-memory contract checker
 - Production-gated local OTP fallback so demo login cannot silently replace backend OTP in release builds
+- Production-gated local account/session persistence so stored browser records cannot replace backend OTP/profile identity
 - Production-gated local paid fallback so More Guidance unlocks from server payment/subscription state
 - Paid More Guidance deep reading generation with daily Supabase caching
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds

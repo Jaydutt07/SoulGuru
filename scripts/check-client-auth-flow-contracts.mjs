@@ -7,6 +7,7 @@ const checks = [];
 checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
+checkProductionDoesNotPersistLocalSessions();
 checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
@@ -38,6 +39,15 @@ function checkProductionCreateRequiresProfilePersistence() {
     source.includes("const profile = await syncUserProfileToServer(account);"),
     source.includes("setError(\"Unable to save your account profile. Please try again shortly.\");"),
     source.includes("onLogin(mergeAccountProfile(account, profile));")
+  ].every(Boolean));
+}
+
+function checkProductionDoesNotPersistLocalSessions() {
+  pushCheck("Production login does not persist or restore local account sessions", [
+    source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n      window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);"),
+    source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n        window.localStorage.setItem(SESSION_KEY, next.phone);"),
+    source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n    return enrichedAccount;\n  }"),
+    source.includes("function getSessionUser() {\n  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;")
   ].every(Boolean));
 }
 
