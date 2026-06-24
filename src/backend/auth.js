@@ -1,10 +1,14 @@
 import { verifyToken } from "@clerk/backend";
 
-export async function applyVerifiedIdentity(req, payload = {}, env = process.env) {
+export async function applyVerifiedIdentity(req, payload = {}, env = process.env, deps = {}) {
   const token = getBearerToken(req);
   const requireAuth = String(env.CLERK_REQUIRE_AUTH || "false").toLowerCase() === "true";
+  const verify = deps.verifyToken || verifyToken;
 
   if (!env.CLERK_SECRET_KEY) {
+    if (requireAuth) {
+      throw createAuthError("Authentication is not configured", 503);
+    }
     return { payload, auth: { verified: false, skipped: true } };
   }
 
@@ -16,7 +20,7 @@ export async function applyVerifiedIdentity(req, payload = {}, env = process.env
   }
 
   try {
-    const claims = await verifyToken(token, {
+    const claims = await verify(token, {
       secretKey: env.CLERK_SECRET_KEY,
       audience: splitCsv(env.CLERK_JWT_AUDIENCE),
       authorizedParties: splitCsv(env.CLERK_AUTHORIZED_PARTIES)

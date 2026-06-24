@@ -35,6 +35,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
 - Offline Astro Solves quota, paid-bonus, storage, and memory contract checker
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
+- Offline Clerk auth contract checker with fail-closed required-auth behavior
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Server-backed More Guidance dashboard and saved advice persistence
 - Offline More Guidance subscription, daily-cache, and paid-memory contract checker

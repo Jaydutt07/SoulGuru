@@ -8,6 +8,7 @@
     "dev:lan": "vite --host 0.0.0.0",
     "astro:check": "node scripts/check-astro-solve-contracts.mjs",
     "astrology:check": "node scripts/check-astrology-contracts.mjs",
+    "auth:check": "node scripts/check-auth-contracts.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "android:add": "cap add android",
