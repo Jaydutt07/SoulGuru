@@ -28,6 +28,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
+- Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Astronomy-based birth/transit context replacing hash-only astrology
 - More Guidance page with 3-month tracking, reading history, and saved advice
 
@@ -40,5 +41,5 @@ This project is being built toward the stack shown in the product planning image
 5. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
 6. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
 7. Add Resend transactional emails for OTP/account in addition to membership confirmations.
-8. Configure Sentry, PostHog, and Upstash production environment variables.
-9. Add Pinecone only after there is enough saved guidance/history to make retrieval useful.
+8. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+9. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

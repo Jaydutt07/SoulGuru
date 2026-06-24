@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { buildAstrologyContext } from "../astrologyEngine.js";
 import { buildSoulWisdomInput, normalizeWisdomPayload, SOUL_WISDOM_SYSTEM_PROMPT } from "../soulGuruPrompt.js";
+import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const PROMPT_VERSION = "soul-wisdom-v2";
@@ -26,6 +27,12 @@ export async function createDailySoulWisdom(payload, env = process.env) {
   }
 
   const astrologyContext = payload.context || buildAstrologyContext(user, new Date(`${date}T12:00:00+05:30`));
+  const memory = await searchGuidanceMemory({
+    user,
+    query: buildMemoryQuery({ user, astrologyContext, date }),
+    topK: Number(env.PINECONE_TOP_K || 4)
+  }, env);
+  const memoryContext = buildMemoryContext(memory);
   const client = new OpenAI({ apiKey });
   const response = await client.responses.create({
     model,
@@ -33,7 +40,8 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     input: buildSoulWisdomInput({
       user,
       context: astrologyContext,
-      today: payload.today || date
+      today: payload.today || date,
+      memoryContext
     })
   });
 
@@ -45,7 +53,13 @@ export async function createDailySoulWisdom(payload, env = process.env) {
     cached: false,
     model,
     promptVersion: PROMPT_VERSION,
-    readingDate: date
+    readingDate: date,
+    memory: {
+      configured: Boolean(memory.configured),
+      used: Boolean(memoryContext),
+      degraded: Boolean(memory.degraded),
+      matches: memory.matches?.length || 0
+    }
   };
 
   if (supabase) {
@@ -59,6 +73,18 @@ export async function createDailySoulWisdom(payload, env = process.env) {
       model
     });
   }
+
+  await upsertGuidanceMemory({
+    user,
+    kind: "daily-soul-reading",
+    sourceId: `${date}-${PROMPT_VERSION}`,
+    text: reading.wisdom,
+    metadata: {
+      readingDate: date,
+      promptVersion: PROMPT_VERSION,
+      model
+    }
+  }, env);
 
   return result;
 }
@@ -147,4 +173,21 @@ async function upsertUserProfile(supabase, user) {
 function buildUserKey(user) {
   const stableValue = user.authUserId || user.id || user.phone || user.email || `${user.name}-${user.birthDate}-${user.birthTime}`;
   return String(stableValue || "anonymous").toLowerCase().trim();
+}
+
+function buildMemoryQuery({ user, astrologyContext, date }) {
+  return [
+    firstName(user.name),
+    date,
+    astrologyContext.dailyArea,
+    astrologyContext.innerWeather,
+    astrologyContext.emotionalKnot,
+    astrologyContext.decisionGate,
+    astrologyContext.stabilizer,
+    astrologyContext.avoid
+  ].filter(Boolean).join(" | ");
+}
+
+function firstName(name) {
+  return String(name || "friend").trim().split(/\s+/)[0] || "friend";
 }

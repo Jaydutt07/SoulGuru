@@ -38,7 +38,7 @@ Do not sound mystical, vague, performative, or overly poetic.
 No disclaimers, markdown, bullets, emojis, quotes, or extra text outside JSON.
 `.trim();
 
-export function buildSoulWisdomInput({ user, context, today }) {
+export function buildSoulWisdomInput({ user, context, today, memoryContext = "" }) {
   return `
 User:
 - First name: ${firstName(user.name)}
@@ -64,8 +64,11 @@ Silent astrology-derived signals:
 - Writing blueprint: ${context.blueprint}
 - Voice texture: ${context.voiceTexture}
 
+Private long-term guidance memory:
+${memoryContext || "No prior memory is available."}
+
 Task:
-Create today's Words of Wisdom using the silent signals. Make the user feel uniquely seen and guided, but never reveal the signals or mention astrology.
+Create today's Words of Wisdom using the silent signals and any relevant memory. Make the user feel uniquely seen and guided, but never reveal the signals, mention astrology, or say you remember them.
 `.trim();
 }
 

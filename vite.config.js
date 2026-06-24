@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { applyVerifiedIdentity } from "./src/backend/auth.js";
 import { createAstroSolve } from "./src/backend/astroSolveService.js";
+import { searchGuidanceMemory, upsertGuidanceMemory } from "./src/backend/memoryService.js";
 import { createRazorpayOrder } from "./src/backend/payments.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
@@ -117,6 +118,55 @@ function soulGuruApiPlugin() {
           sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate, auth });
         } catch (error) {
           sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create Astro Solves answer" });
+        }
+      });
+
+      server.middlewares.use("/api/guidance-memory", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const parsedPayload = await parseJsonRequest(req);
+          const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "guidance-memory",
+            limit: Number(runtimeEnv.GUIDANCE_MEMORY_RATE_LIMIT || 60),
+            windowSeconds: 24 * 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Guidance memory limit reached. Please try again tomorrow.", rate });
+            return;
+          }
+
+          if (payload.action === "search") {
+            const result = await searchGuidanceMemory({
+              user: payload.user,
+              query: payload.query,
+              topK: payload.topK
+            }, runtimeEnv);
+            sendJson(res, 200, { ...result, rate, auth });
+            return;
+          }
+
+          const result = await upsertGuidanceMemory({
+            user: payload.user,
+            text: payload.text,
+            kind: payload.kind,
+            sourceId: payload.sourceId,
+            metadata: payload.metadata
+          }, runtimeEnv);
+          sendJson(res, 200, { ...result, rate, auth });
+        } catch (error) {
+          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to update guidance memory" });
         }
       });
     }

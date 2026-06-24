@@ -27,6 +27,7 @@ Required for AI readings:
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.5
 ASTRO_SOLVE_MODEL=gpt-5.5
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Required for production daily-reading cache:
@@ -75,6 +76,10 @@ Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the prov
 
 Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. If Supabase is configured, the answer is stored in `astro_solve_questions`.
 
+`POST /api/guidance-memory`
+
+Server-only Pinecone memory route. It upserts saved guidance, daily readings, and Astro Solves answers, or searches relevant memories for future Soul Guru readings. If Pinecone is not configured, the route degrades safely without exposing keys to the app.
+
 `GET /api/health`
 
 Basic API health check for deployment.
@@ -111,6 +116,20 @@ VITE_SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
 The frontend avoids sending phone numbers or email addresses to analytics.
+
+## Pinecone Memory
+
+Optional long-term guidance memory:
+
+```bash
+PINECONE_API_KEY=
+PINECONE_INDEX=
+PINECONE_HOST=
+PINECONE_TOP_K=4
+GUIDANCE_MEMORY_RATE_LIMIT=60
+```
+
+Create a Pinecone index that matches the configured OpenAI embedding model. The backend uses `PINECONE_HOST` for REST upsert/query calls and stores user memory in hashed per-user namespaces.
 
 ## Clerk Auth
 
@@ -151,5 +170,6 @@ Before release:
 - Configure Supabase project and run migrations.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
+- Configure Pinecone index and `PINECONE_HOST` for long-term guidance memory.
 - Add PostHog/Sentry public keys only where appropriate.
 - Replace debug APK with signed release APK/AAB.

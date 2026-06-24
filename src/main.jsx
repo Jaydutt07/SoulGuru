@@ -468,6 +468,8 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       savedGuidance: [savedItem, ...(current.savedGuidance || [])].slice(0, 30),
       guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
     }));
+    writeGuidanceMemory(user, reading, savedItem.id);
+    trackEvent("guidance_saved");
   }
 
   return (
@@ -1255,6 +1257,32 @@ function writeDailyReadingCache(user, dateKey, reading, meta = {}) {
   } catch {
     // Storage can fail in private browsing. The app still has the in-memory reading.
   }
+}
+
+function writeGuidanceMemory(user, reading, sourceId) {
+  authFetch(getApiUrl("/api/guidance-memory"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "upsert",
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        birthDate: user.birthDate,
+        birthTime: user.birthTime,
+        birthPlace: user.birthPlace
+      },
+      kind: "saved-guidance",
+      sourceId,
+      text: reading.wisdom,
+      metadata: {
+        source: "soul-guru",
+        savedAt: new Date().toISOString()
+      }
+    })
+  }).catch(() => {});
 }
 
 function readGuidanceHistoryRaw(user) {

@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { buildAstrologyContext } from "../astrologyEngine.js";
+import { upsertGuidanceMemory } from "./memoryService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const PROMPT_VERSION = "astro-solve-v1";
@@ -100,6 +101,18 @@ export async function createAstroSolve(payload, env = process.env) {
       model
     });
   }
+
+  await upsertGuidanceMemory({
+    user,
+    kind: "astro-solve",
+    sourceId: result.id,
+    text: `Problem: ${question}\nRoot: ${answer.root}\nAstrology: ${answer.astrology}\nSolution: ${answer.solution}`,
+    metadata: {
+      promptVersion: PROMPT_VERSION,
+      source: result.source,
+      model
+    }
+  }, env);
 
   return result;
 }
