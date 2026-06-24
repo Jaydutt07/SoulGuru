@@ -20,6 +20,7 @@ This project is being built toward the stack shown in the product planning image
 - Android Capacitor project and debug APK
 - Vercel-compatible API route for Soul Guru readings
 - Supabase schema for users, cached readings, subscriptions, saved advice, and Astro Solves
+- Offline Supabase migration contract checker for required tables, columns, RLS, indexes, and idempotency
 - Server-backed profile sync route for account birth details
 - Server-backed OTP challenge route with Supabase storage and optional SMS/email delivery
 - Offline OTP hashing, delivery, attempts, and expiry contract checker

@@ -53,6 +53,9 @@ jobs:
       - name: Verify email contracts
         run: npm run email:check
 
+      - name: Verify Supabase migration contracts
+        run: npm run supabase:migrations:check
+
       - name: Verify Soul Guru daily cache contract
         run: npm run soul:cache:check
 

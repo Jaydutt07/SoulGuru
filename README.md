@@ -111,6 +111,12 @@ Check Resend email payloads, skips, errors, and membership email escaping:
 npm run email:check
 ```
 
+Check Supabase migration SQL for required tables, columns, RLS, indexes, and idempotency:
+
+```bash
+npm run supabase:migrations:check
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -199,6 +205,7 @@ The CI template checks:
 - `npm run rate-limit:check`
 - `npm run observability:check`
 - `npm run email:check`
+- `npm run supabase:migrations:check`
 - `npm run soul:cache:check`
 - `npm run astro:check`
 - `npm run otp:check`
@@ -434,6 +441,7 @@ Before release:
 - Run `npm run rate-limit:check`.
 - Run `npm run observability:check`.
 - Run `npm run email:check`.
+- Run `npm run supabase:migrations:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.
