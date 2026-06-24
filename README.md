@@ -217,6 +217,12 @@ Check Soul Guru reading quality, word count, banned repeated phrasing, and simil
 npm run soul:quality
 ```
 
+Run the extended offline diversity suite across a broader profile set before shipping prompt changes:
+
+```bash
+npm run soul:quality:extended
+```
+
 Run the same quality gate with live OpenAI Soul Guru readings:
 
 ```bash
@@ -517,7 +523,7 @@ Before release:
 - Run `npm run soul:cache:check`.
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.
-- Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
+- Run `npm run soul:quality`, `npm run soul:quality:extended`, and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
 - Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:aab:release` or `npm run android:apk:release`.

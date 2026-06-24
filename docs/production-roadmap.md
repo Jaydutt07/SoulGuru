@@ -64,6 +64,7 @@ This project is being built toward the stack shown in the product planning image
 - Production readiness contract checker requiring the full planned stack before `/api/readiness` returns ready
 - Production Soul Guru cache guard so daily AI readings require Supabase persistence
 - Production client guard so Soul Guru does not display or cache unstored local fallback readings
+- Extended Soul Guru local reading diversity gate across a broader profile fixture set
 - Production Astro Solves quota guard so real answers require Supabase persistence
 - Production More Guidance paid-access guard so deeper readings require persisted subscription and cache state
 - Production-gated Shani remedy member preview so Pandit chat cannot unlock from local account state

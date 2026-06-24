@@ -4,8 +4,10 @@ import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrology
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
 import { firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
 const includeAi = process.argv.includes("--include-ai");
+const caseSet = getArgValue("--case-set") || "base";
 const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
 const env = {
   ...loadEnv(mode, process.cwd(), ""),
@@ -15,15 +17,8 @@ const date = getArgValue("--date") || new Date().toISOString().slice(0, 10);
 const minWords = Number(getArgValue("--min-words") || 65);
 const maxWords = Number(getArgValue("--max-words") || 100);
 const maxSimilarity = Number(getArgValue("--max-similarity") || 0.24);
-const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || 2);
-
-const cases = [
-  { name: "Asha Rao", birthDate: "1994-08-17", birthTime: "06:35", birthPlace: "Mumbai", phone: "+919000000001", email: "asha@example.com" },
-  { name: "Kabir Mehta", birthDate: "1988-02-03", birthTime: "21:10", birthPlace: "Delhi", phone: "+919000000002", email: "kabir@example.com" },
-  { name: "Naina Kapoor", birthDate: "2001-11-28", birthTime: "14:45", birthPlace: "Bengaluru", phone: "+919000000003", email: "naina@example.com" },
-  { name: "Rohan Iyer", birthDate: "1979-05-09", birthTime: "04:20", birthPlace: "Chennai", phone: "+919000000004", email: "rohan@example.com" },
-  { name: "Meera Shah", birthDate: "1999-12-31", birthTime: "23:58", birthPlace: "Ahmedabad", phone: "+919000000005", email: "meera@example.com" }
-];
+const cases = getSoulWisdomQualityCases(caseSet);
+const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || defaultMaxSceneRepeats(cases.length));
 
 const started = performance.now();
 const localResults = cases.map((user) => evaluateReading({
@@ -261,6 +256,10 @@ function formatDateForPrompt(dateKey) {
 
 function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function defaultMaxSceneRepeats(caseCount) {
+  return caseCount <= 5 ? 2 : Math.ceil(caseCount * 0.35);
 }
 
 function getArgValue(name) {

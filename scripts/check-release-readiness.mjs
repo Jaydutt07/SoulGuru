@@ -31,6 +31,7 @@ await runStep("Email contract checks", "npm", ["run", "email:check"]);
 await runStep("Supabase migration contract", "npm", ["run", "supabase:migrations:check"]);
 await runStep("Soul Guru daily cache contract", "npm", ["run", "soul:cache:check"]);
 await runStep("Soul Guru local reading quality", "npm", ["run", "soul:quality"]);
+await runStep("Soul Guru extended local reading diversity", "npm", ["run", "soul:quality:extended"]);
 await runStep("Astro Solves contract checks", "npm", ["run", "astro:check"]);
 await runStep("OTP contract checks", "npm", ["run", "otp:check"]);
 
