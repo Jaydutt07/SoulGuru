@@ -50,6 +50,9 @@ jobs:
       - name: Verify observability contracts
         run: npm run observability:check
 
+      - name: Verify email contracts
+        run: npm run email:check
+
       - name: Verify Soul Guru daily cache contract
         run: npm run soul:cache:check
 

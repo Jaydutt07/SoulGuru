@@ -1,6 +1,6 @@
 const RESEND_API_URL = "https://api.resend.com/emails";
 
-export async function sendEmail({ to, subject, html, text, tags = [] }, env = process.env) {
+export async function sendEmail({ to, subject, html, text, tags = [] }, env = process.env, deps = {}) {
   if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) {
     return { sent: false, skipped: true };
   }
@@ -9,7 +9,8 @@ export async function sendEmail({ to, subject, html, text, tags = [] }, env = pr
     return { sent: false, skipped: true, reason: "Missing email fields" };
   }
 
-  const response = await fetch(RESEND_API_URL, {
+  const fetchImpl = deps.fetch || fetch;
+  const response = await fetchImpl(RESEND_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
