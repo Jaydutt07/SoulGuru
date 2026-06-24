@@ -301,15 +301,15 @@ Creates, updates, or looks up a user profile in Supabase using the backend servi
 
 `POST /api/create-razorpay-order`
 
-Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
+Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The request must include a stable SoulGuru user identity (`authUserId`, `id`, phone, or email), so paid access is never issued to an anonymous key. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
 
 `POST /api/verify-razorpay-payment`
 
-Verifies the Razorpay checkout return signature, backend-signed order token, and configured plan amount/currency before the app marks More Guidance active. This protects the client-side activation path from cross-user payment reuse or underpriced order tampering while the webhook remains the durable payment event source.
+Verifies the Razorpay checkout return signature, backend-signed order token, stable user identity, and configured plan amount/currency before the app marks More Guidance active. This protects the client-side activation path from cross-user payment reuse, anonymous paid unlocks, or underpriced order tampering while the webhook remains the durable payment event source.
 
 `POST /api/razorpay-webhook`
 
-Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events. Production webhook processing requires Supabase event storage; unstored webhook events are allowed only when `PAYMENTS_ALLOW_LOCAL_ACTIVATION=true` is explicitly set for isolated local testing.
+Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events that include a stable SoulGuru user identity in Razorpay notes or payment contact details. Production webhook processing requires Supabase event storage; unstored webhook events are allowed only when `PAYMENTS_ALLOW_LOCAL_ACTIVATION=true` is explicitly set for isolated local testing.
 
 `POST /api/astro-solve`
 

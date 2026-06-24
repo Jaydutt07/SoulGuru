@@ -18,7 +18,7 @@ export async function createRazorpayOrder({ user = {} }, env = process.env) {
 
   const amountPaise = getMoreGuidancePricePaise(env);
   const currency = MORE_GUIDANCE_CURRENCY;
-  const userKey = buildPaymentUserKey(user);
+  const userKey = requirePaymentUserKey(user);
   const response = await fetch(RAZORPAY_ORDERS_URL, {
     method: "POST",
     headers: {
@@ -105,7 +105,7 @@ export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymen
     throw error;
   }
 
-  const userKey = buildPaymentUserKey(user);
+  const userKey = requirePaymentUserKey(user);
   if (!verifyRazorpayOrderToken({
     orderId,
     userKey,
@@ -410,17 +410,21 @@ async function insertPaymentEvent(supabase, { providerEventId, eventName, payloa
 }
 
 function buildWebhookActivationRequest({ notes, payment, subscription }) {
-  const userKey = notes.user_key || buildPaymentUserKey(notes);
+  const user = {
+    ...notes,
+    email: notes.email || payment?.email || "",
+    phone: notes.phone || payment?.contact || "",
+    name: notes.name || ""
+  };
+  const noteUserKey = normalizeUserKey(notes.user_key);
+  const userKey = noteUserKey && noteUserKey !== "anonymous"
+    ? noteUserKey
+    : requirePaymentUserKey(user, "Razorpay webhook is missing a stable SoulGuru user identity");
   const startsAt = new Date();
   const endsAt = addMonths(startsAt, 3);
 
   return {
-    user: {
-      ...notes,
-      email: notes.email || payment?.email || "",
-      phone: notes.phone || payment?.contact || "",
-      name: notes.name || ""
-    },
+    user,
     userKey,
     paymentId: payment?.id || null,
     orderId: payment?.order_id || null,
@@ -447,7 +451,19 @@ async function sendMembershipConfirmation(to, details, env) {
 }
 
 function buildPaymentUserKey(user) {
-  return String(user.authUserId || user.id || user.phone || user.email || "anonymous").toLowerCase().trim();
+  return normalizeUserKey(user.authUserId || user.id || user.phone || user.email);
+}
+
+function requirePaymentUserKey(user, message = "Payment user identity is required") {
+  const userKey = buildPaymentUserKey(user);
+  if (!userKey || userKey === "anonymous") {
+    throwHttpError(message, 400);
+  }
+  return userKey;
+}
+
+function normalizeUserKey(value) {
+  return String(value || "").toLowerCase().trim();
 }
 
 function isLocalPaymentActivationAllowed(env) {
@@ -464,6 +480,12 @@ function getMoreGuidancePricePaise(env) {
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }
 
 function signRazorpayOrder({ orderId, userKey, amount, currency }, secret) {

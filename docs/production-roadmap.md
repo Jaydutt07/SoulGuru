@@ -83,6 +83,7 @@ This project is being built toward the stack shown in the product planning image
 - Razorpay webhook replay repair for stored activation events and idempotent provider subscription lifecycle events
 - Race-safe Razorpay subscription activation so unique database conflicts re-read the existing paid membership
 - Server-owned More Guidance price and currency checks for Razorpay orders and checkout verification
+- Stable paid identity checks so Razorpay orders, checkout activation, and webhooks cannot unlock anonymous subscriptions
 
 ## Next Implementation Steps
 

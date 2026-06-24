@@ -31,7 +31,9 @@ if (failed.length > 0) {
 async function checkOrderCreationContract() {
   const originalFetch = globalThis.fetch;
   const seen = {};
+  let fetchCalls = 0;
   globalThis.fetch = async (url, options = {}) => {
+    fetchCalls += 1;
     seen.url = url;
     seen.method = options.method;
     seen.authorization = options.headers?.Authorization;
@@ -83,6 +85,23 @@ async function checkOrderCreationContract() {
       order.currency === "INR",
       order.orderToken === expectedOrderToken
     ].every(Boolean));
+
+    await expectRejects(
+      "Razorpay order rejects anonymous paid identity",
+      () => createRazorpayOrder({
+        user: {},
+        amount: 49900,
+        currency: "INR"
+      }, {
+        RAZORPAY_KEY_ID: "rzp_test_contract",
+        RAZORPAY_KEY_SECRET: "contract-secret",
+        MORE_GUIDANCE_PRICE_PAISE: "49900"
+      }),
+      /identity is required/i,
+      400
+    );
+
+    pushCheck("Anonymous Razorpay order is rejected before provider call", fetchCalls === 1);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -217,6 +236,24 @@ async function checkCheckoutVerificationContract() {
   );
 
   await expectRejects(
+    "Checkout verification rejects anonymous paid identity",
+    () => verifyRazorpayCheckoutPayment({
+      user: {},
+      orderId,
+      amount,
+      currency,
+      orderToken: hmac(`${orderId}|anonymous|${amount}|${currency}`, secret),
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+    }),
+    /identity is required/i,
+    400
+  );
+
+  await expectRejects(
     "Checkout verification rejects underpriced plan token",
     () => verifyRazorpayCheckoutPayment({
       user: { id: "user-contract" },
@@ -335,6 +372,21 @@ async function checkWebhookProcessingContract() {
     result.eventName === "payment.captured",
     /Supabase/i.test(result.reason || "")
   ].every(Boolean));
+
+  const supabase = createFakePaymentSupabase();
+  await expectRejects(
+    "Webhook activation rejects missing paid identity",
+    () => processRazorpayWebhook(JSON.stringify(webhookPayload({
+      id: "evt_missing_identity",
+      userKey: "",
+      email: "",
+      phone: "",
+      contact: ""
+    })), {}, { supabase }),
+    /stable SoulGuru user identity/i,
+    400
+  );
+  pushCheck("Webhook missing paid identity does not create subscription", supabase.state.subscriptions.size === 0);
 }
 
 async function checkWebhookDuplicateActivationRecoveryContract() {
@@ -463,7 +515,15 @@ function checkRazorpayReadinessContract() {
   ].every(Boolean));
 }
 
-function webhookPayload({ id = "evt_contract_123", paymentId = "pay_contract_123", orderId = "order_contract_123" } = {}) {
+function webhookPayload({
+  id = "evt_contract_123",
+  paymentId = "pay_contract_123",
+  orderId = "order_contract_123",
+  userKey = "user-contract",
+  email = "contract@soulguru.local",
+  phone = "+15550000000",
+  contact = "+15550000000"
+} = {}) {
   return {
     id,
     event: "payment.captured",
@@ -472,14 +532,14 @@ function webhookPayload({ id = "evt_contract_123", paymentId = "pay_contract_123
         entity: {
           id: paymentId,
           order_id: orderId,
-          email: "contract@soulguru.local",
-          contact: "+15550000000",
+          email,
+          contact,
           notes: {
             soulguru_plan: "more_guidance_3m",
-            user_key: "user-contract",
+            user_key: userKey,
             name: "Contract User",
-            email: "contract@soulguru.local",
-            phone: "+15550000000"
+            email,
+            phone
           }
         }
       }
