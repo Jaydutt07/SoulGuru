@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { createRazorpayOrder } from "./src/backend/payments.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
@@ -80,6 +81,38 @@ function soulGuruApiPlugin() {
           sendJson(res, 200, order);
         } catch (error) {
           sendJson(res, 500, { error: error.message || "Unable to create order" });
+        }
+      });
+
+      server.middlewares.use("/api/astro-solve", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const payload = await parseJsonRequest(req);
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req, payload.user),
+            route: "astro-solve",
+            limit: Number(runtimeEnv.ASTRO_SOLVE_RATE_LIMIT || 20),
+            windowSeconds: 24 * 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Astro Solves daily request limit reached. Please try again tomorrow.", rate });
+            return;
+          }
+
+          const result = await createAstroSolve(payload, runtimeEnv);
+          sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate });
+        } catch (error) {
+          sendJson(res, 500, { error: error.message || "Unable to create Astro Solves answer" });
         }
       });
     }

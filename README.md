@@ -26,6 +26,7 @@ Required for AI readings:
 ```bash
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.5
+ASTRO_SOLVE_MODEL=gpt-5.5
 ```
 
 Required for production daily-reading cache:
@@ -70,6 +71,10 @@ Creates a Razorpay checkout order for Soul Guru + Astro Solve. The browser recei
 
 Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates the 3-month More Guidance subscription once for successful payment events.
 
+`POST /api/astro-solve`
+
+Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. If Supabase is configured, the answer is stored in `astro_solve_questions`.
+
 `GET /api/health`
 
 Basic API health check for deployment.
@@ -92,7 +97,7 @@ RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 ```
 
-Run both Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions.
+Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields.
 
 ## Observability
 

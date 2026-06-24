@@ -733,6 +733,17 @@ button:disabled {
   font-weight: 850;
 }
 
+.solution-source {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 99rem;
+  padding: 0.22rem 0.5rem;
+  background: rgba(226, 169, 55, 0.14);
+  color: #8a6420;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .mini-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

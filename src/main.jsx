@@ -515,21 +515,87 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
 function AstroSolvesTab({ user, updateUser }) {
   const [problem, setProblem] = useState("");
   const [selectedSections, setSelectedSections] = useState({});
+  const [isSolving, setIsSolving] = useState(false);
+  const [solveStatus, setSolveStatus] = useState("");
   const solvedProblems = user.solvedProblems || [];
   const allowance = getAstroQuestionAllowance(user);
   const remaining = Math.max(0, allowance - solvedProblems.length);
 
-  function submitProblem(event) {
+  async function submitProblem(event) {
     event.preventDefault();
-    if (!problem.trim() || remaining <= 0) return;
+    const question = problem.trim();
+    if (!question || remaining <= 0 || isSolving) return;
 
-    const insight = generateProblemInsight(problem, user, solvedProblems.length);
-    updateUser((current) => ({
-      ...current,
-      solvedProblems: [insight, ...(current.solvedProblems || [])]
-    }));
-    setSelectedSections((current) => ({ ...current, [insight.id]: "solution" }));
-    setProblem("");
+    setIsSolving(true);
+    setSolveStatus("Reading the chart pattern...");
+    trackEvent("astro_solve_started", { has_more_guidance: Boolean(user.soulGuruSubscription?.active) });
+
+    try {
+      const context = buildAstrologyContext(user);
+      const fallback = generateProblemInsight(question, user, solvedProblems.length);
+      const response = await fetch(getApiUrl("/api/astro-solve"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          priorCount: solvedProblems.length,
+          subscription: user.soulGuruSubscription,
+          user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            email: user.email,
+            birthDate: user.birthDate,
+            birthTime: user.birthTime,
+            birthPlace: user.birthPlace,
+            soulGuruSubscription: user.soulGuruSubscription
+          },
+          context,
+          today: new Date().toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric"
+          }),
+          fallback
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 402 || data.allowed === false) {
+        setSolveStatus("Your Astro Solves allowance is complete. More Guidance adds 15 more questions.");
+        return;
+      }
+
+      const insight = response.ok ? normalizeAstroSolveInsight(data, fallback) : {
+        ...fallback,
+        source: "local-fallback"
+      };
+
+      updateUser((current) => ({
+        ...current,
+        solvedProblems: [insight, ...(current.solvedProblems || [])]
+      }));
+      setSelectedSections((current) => ({ ...current, [insight.id]: "solution" }));
+      setProblem("");
+      setSolveStatus(response.ok ? "Analysis created." : "Using local fallback until the backend is connected.");
+      trackEvent("astro_solve_completed", { source: insight.source || "api" });
+    } catch {
+      const fallback = {
+        ...generateProblemInsight(question, user, solvedProblems.length),
+        source: "local-fallback"
+      };
+      updateUser((current) => ({
+        ...current,
+        solvedProblems: [fallback, ...(current.solvedProblems || [])]
+      }));
+      setSelectedSections((current) => ({ ...current, [fallback.id]: "solution" }));
+      setProblem("");
+      setSolveStatus("Using local fallback until the backend is connected.");
+      trackEvent("astro_solve_completed", { source: "local-fallback" });
+    } finally {
+      setIsSolving(false);
+    }
   }
 
   return (
@@ -549,12 +615,13 @@ function AstroSolvesTab({ user, updateUser }) {
         </label>
         <div className="form-row">
           <span>{remaining} detailed analysis left</span>
-          <button className="primary-action small" type="submit" disabled={remaining <= 0 || !problem.trim()}>
+          <button className="primary-action small" type="submit" disabled={remaining <= 0 || !problem.trim() || isSolving}>
             <Send size={16} aria-hidden="true" />
-            Get solution
+            {isSolving ? "Reading" : "Get solution"}
           </button>
         </div>
       </form>
+      {solveStatus && <p className="checkout-note">{solveStatus}</p>}
 
       {remaining === 0 && (
         <div className="locked-note">
@@ -569,6 +636,7 @@ function AstroSolvesTab({ user, updateUser }) {
           return (
             <article className="solution-card" key={item.id}>
               <p className="problem-quote">{item.problem}</p>
+              {item.source && <span className="solution-source">{item.source === "local-fallback" ? "Local fallback" : "AI analysis"}</span>}
               <div className="mini-tabs" role="tablist" aria-label="Analysis sections">
                 {[
                   ["root", "Root"],
@@ -1333,6 +1401,26 @@ function upsertHistory(history, reading) {
     reading
   };
   return [item, ...history.filter((entry) => !String(entry.id || "").endsWith(today))].slice(0, 90);
+}
+
+function normalizeAstroSolveInsight(data, fallback) {
+  const answer = data.answer || data;
+  return {
+    id: data.id || fallback.id || `problem-${Date.now()}`,
+    problem: data.problem || fallback.problem,
+    root: cleanInsightText(answer.root || data.root, fallback.root),
+    astrology: cleanInsightText(answer.astrology || data.astrology, fallback.astrology),
+    solution: cleanInsightText(answer.solution || data.solution, fallback.solution),
+    source: data.source || "api",
+    createdAt: data.createdAt || new Date().toISOString(),
+    allowance: data.allowance
+  };
+}
+
+function cleanInsightText(text, fallback) {
+  return String(text || fallback || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function generateProblemInsight(problem, user, index) {
