@@ -22,13 +22,14 @@ export function buildDeploymentReadiness(env = process.env) {
     ], "Configure Sentry and PostHog public keys for production monitoring.", "warning")
   ];
 
-  const criticalFailures = checks.filter((check) => check.severity === "critical" && check.status === "fail");
+  const failedChecks = checks.filter((check) => check.status === "fail");
   const warnings = checks.filter((check) => check.status === "warn" || (check.severity === "warning" && check.status === "fail"));
+  const ready = failedChecks.length === 0;
 
   return {
-    ok: criticalFailures.length === 0,
+    ok: ready,
     service: "SoulGuru API",
-    status: criticalFailures.length === 0 ? "ready" : "needs_configuration",
+    status: ready ? "ready" : "needs_configuration",
     generatedAt: new Date().toISOString(),
     summary: {
       total: checks.length,

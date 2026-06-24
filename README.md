@@ -101,6 +101,12 @@ Check Upstash rate limiting, hashed Redis keys, pipeline requests, and degraded 
 npm run rate-limit:check
 ```
 
+Check the production readiness report contract:
+
+```bash
+npm run readiness:check
+```
+
 Check Sentry/PostHog initialization and analytics privacy behavior:
 
 ```bash
@@ -211,6 +217,7 @@ The CI template checks:
 - `npm run auth:check`
 - `npm run memory:check`
 - `npm run rate-limit:check`
+- `npm run readiness:check`
 - `npm run observability:check`
 - `npm run email:check`
 - `npm run supabase:migrations:check`
@@ -293,7 +300,7 @@ Basic API health check for deployment.
 
 `GET /api/readiness`
 
-Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration.
+Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
 
 ## Payments And Emails
 
@@ -451,6 +458,7 @@ Before release:
 - Run `npm run auth:check`.
 - Run `npm run memory:check`.
 - Run `npm run rate-limit:check`.
+- Run `npm run readiness:check`.
 - Run `npm run observability:check`.
 - Run `npm run email:check`.
 - Run `npm run supabase:migrations:check`.

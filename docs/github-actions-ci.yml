@@ -47,6 +47,9 @@ jobs:
       - name: Verify rate limit contracts
         run: npm run rate-limit:check
 
+      - name: Verify production readiness contracts
+        run: npm run readiness:check
+
       - name: Verify observability contracts
         run: npm run observability:check
 

@@ -55,6 +55,7 @@ This project is being built toward the stack shown in the product planning image
 - Local-LAN APK build helper for phone testing against the Mac dev backend
 - Signed Android release APK/AAB scripts with keystore validation and artifact secret scanning
 - Production readiness endpoint and CLI checks for backend env configuration
+- Production readiness contract checker requiring the full planned stack before `/api/readiness` returns ready
 - Live Supabase schema checker for migration/table/column contract verification
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing
