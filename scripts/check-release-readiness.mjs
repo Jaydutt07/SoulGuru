@@ -32,6 +32,7 @@ if (includeAi) {
 await runStep("Web production build", "npm", ["run", "build"]);
 await runStep("Release secret and artifact scan", "npm", ["run", "security:check"]);
 await runStep("Payment contract checks", "npm", ["run", "payments:check"]);
+await runStep("More Guidance contract checks", "npm", ["run", "more-guidance:check"]);
 await runStep("Local API smoke", "npm", ["run", "local:smoke"]);
 await runStep("Dependency audit", "npm", ["audit", "--omit", "dev"]);
 

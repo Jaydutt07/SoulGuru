@@ -50,6 +50,9 @@ jobs:
       - name: Verify Razorpay payment contracts
         run: npm run payments:check
 
+      - name: Verify More Guidance contracts
+        run: npm run more-guidance:check
+
       - name: Smoke-test local API routes
         run: npm run local:smoke
 

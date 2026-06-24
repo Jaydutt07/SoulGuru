@@ -35,6 +35,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Server-backed More Guidance dashboard and saved advice persistence
+- Offline More Guidance subscription, daily-cache, and paid-memory contract checker
 - Production-gated local OTP fallback so demo login cannot silently replace backend OTP in release builds
 - Production-gated local paid fallback so More Guidance unlocks from server payment/subscription state
 - Paid More Guidance deep reading generation with daily Supabase caching

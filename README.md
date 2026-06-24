@@ -93,6 +93,12 @@ Check the Razorpay payment/signature contract without contacting Razorpay or wri
 npm run payments:check
 ```
 
+Check the paid More Guidance subscription/cache contract without contacting OpenAI or Supabase:
+
+```bash
+npm run more-guidance:check
+```
+
 Check the daily Soul Guru cache contract without contacting OpenAI or Supabase:
 
 ```bash
@@ -144,6 +150,7 @@ The CI template checks:
 - `npm run public-env:check`
 - `npm run security:check`
 - `npm run payments:check`
+- `npm run more-guidance:check`
 - `npm run local:smoke`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
@@ -368,6 +375,7 @@ Before release:
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run payments:check`.
+- Run `npm run more-guidance:check`.
 - Run `npm run soul:cache:check`.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready`.

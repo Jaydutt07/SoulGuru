@@ -4,7 +4,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
-const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v1";
+export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v1";
 
 const MORE_GUIDANCE_SYSTEM_PROMPT = `
 You are SoulGuru's paid More Guidance mentor.
@@ -129,13 +129,16 @@ export async function saveGuidance(payload, env = process.env) {
   };
 }
 
-export async function createMoreGuidanceReading(payload, env = process.env) {
+export async function createMoreGuidanceReading(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
   const userKey = buildUserKey(user);
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || user.birthTimezone || "Asia/Kolkata";
   const model = env.MORE_GUIDANCE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+  const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
+  const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
+  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
   const subscription = payload.subscription || user.soulGuruSubscription || {};
   const hasPersistedSubscription = await hasActiveSubscription(supabase, userKey);
   const isMember = supabase ? hasPersistedSubscription : Boolean(subscription.active);
@@ -161,7 +164,7 @@ export async function createMoreGuidanceReading(payload, env = process.env) {
 
   const openAiDisabled = String(env.MORE_GUIDANCE_DISABLE_OPENAI || "false").toLowerCase() === "true";
   if (env.OPENAI_API_KEY && !openAiDisabled) {
-    const memory = await searchGuidanceMemory({
+    const memory = await searchMemory({
       user,
       query: [
         "more guidance",
@@ -173,7 +176,7 @@ export async function createMoreGuidanceReading(payload, env = process.env) {
       ].filter(Boolean).join(" | "),
       topK: Number(env.PINECONE_TOP_K || 4)
     }, env);
-    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+    const client = createOpenAIClient(env.OPENAI_API_KEY);
     const response = await client.responses.create({
       model,
       instructions: MORE_GUIDANCE_SYSTEM_PROMPT,
@@ -211,7 +214,7 @@ export async function createMoreGuidanceReading(payload, env = process.env) {
     });
   }
 
-  await upsertGuidanceMemory({
+  await upsertMemory({
     user,
     kind: "more-guidance-reading",
     sourceId: `${date}-${DEEP_GUIDANCE_PROMPT_VERSION}`,
@@ -558,4 +561,8 @@ function buildUserKey(user) {
 function nullableNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
