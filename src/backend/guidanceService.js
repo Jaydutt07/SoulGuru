@@ -6,16 +6,19 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v1";
+export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v2";
 
 const MORE_GUIDANCE_SYSTEM_PROMPT = `
 You are SoulGuru's paid More Guidance mentor.
 
 Use the supplied birth details, daily astrology-derived context, and prior guidance memory silently. Do not mention astrology, zodiac, planets, charts, transits, numerology, karma, predictions, or remedies. This is deeper mentorship, not a horoscope.
+The paid reading must feel like a private continuation of the user's day: specific, useful, and clearly different from the free Words of Wisdom.
+Before writing, privately choose a fingerprint from the silent signals: one recurring pattern, one concrete cost, one week-level practice, one month-level structure, and one relational or work caution. Express that fingerprint naturally without naming the signals.
+Do not write from a reusable template. Avoid repeating the same opening logic across users, especially "the deeper pattern", "this phase", or "you may feel" style phrasing.
 
 Output valid JSON only:
 {
-  "overview": "110 to 150 words",
+  "overview": "115 to 155 words",
   "thisWeek": "55 to 85 words",
   "thisMonth": "55 to 85 words",
   "practice": "35 to 65 words",
@@ -26,8 +29,11 @@ Output valid JSON only:
 Rules:
 - Address the user by first name exactly once in overview.
 - Make the guidance specific enough to feel paid: name a pattern, a cost, a practical shift, and a relationship/work caution.
+- The overview must include at least one ordinary concrete detail from the silent signals: room, desk, meal, calendar, money, body, door, message, notebook, or unfinished task behavior.
 - Keep a calm mentor tone: warm, direct, adult, and emotionally exact.
 - Do not repeat the daily Words of Wisdom paragraph; expand the direction into a fuller map.
+- Do not hedge the main insight with may, might, could, or vague "energy" language.
+- Do not use label-like starts inside fields such as "This week," or "This month,"; the JSON key already provides the label.
 - Do not use vague spiritual language, grand promises, fear, disclaimers, markdown, bullets, emojis, or text outside JSON.
 `.trim();
 
@@ -181,6 +187,11 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   const fallback = normalizeDeepGuidance(payload.fallback || buildFallbackDeepGuidance(user, astrologyContext));
   let guidance = fallback;
   let source = "local-fallback";
+  let quality = {
+    attempts: 0,
+    repaired: false,
+    passed: getDeepGuidanceContractIssues(fallback, user).length === 0
+  };
 
   const openAiDisabled = String(env.MORE_GUIDANCE_DISABLE_OPENAI || "false").toLowerCase() === "true";
   if (env.OPENAI_API_KEY && !openAiDisabled) {
@@ -197,18 +208,53 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
       topK: Number(env.PINECONE_TOP_K || 4)
     }, env);
     const client = createOpenAIClient(env.OPENAI_API_KEY);
-    const response = await client.responses.create({
-      model,
-      instructions: MORE_GUIDANCE_SYSTEM_PROMPT,
-      input: buildMoreGuidanceInput({
-        user,
-        context: astrologyContext,
-        date,
-        memoryContext: buildMemoryContext(memory)
-      })
+    const firstInput = buildMoreGuidanceInput({
+      user,
+      context: astrologyContext,
+      date,
+      memoryContext: buildMemoryContext(memory)
     });
-    guidance = normalizeDeepGuidance(response.output_text, fallback);
-    source = "openai";
+    let outputText = await requestMoreGuidance(client, model, firstInput);
+    let attempts = 1;
+    let candidate = normalizeDeepGuidance(outputText, fallback);
+    let candidateIssues = getDeepGuidanceContractIssues(candidate, user);
+
+    if (candidateIssues.length) {
+      outputText = await requestMoreGuidance(
+        client,
+        model,
+        buildMoreGuidanceRepairInput({
+          user,
+          context: astrologyContext,
+          date,
+          memoryContext: buildMemoryContext(memory),
+          rejectedGuidance: candidate,
+          rejectionReason: candidateIssues.join("; ")
+        })
+      );
+      attempts = 2;
+      candidate = normalizeDeepGuidance(outputText, fallback);
+      candidateIssues = getDeepGuidanceContractIssues(candidate, user);
+    }
+
+    guidance = candidateIssues.length ? fallback : candidate;
+    source = candidateIssues.length ? "quality-fallback" : "openai";
+    quality = {
+      attempts,
+      repaired: attempts > 1,
+      passed: getDeepGuidanceContractIssues(guidance, user).length === 0,
+      fallbackUsed: candidateIssues.length > 0
+    };
+  }
+
+  if (getDeepGuidanceContractIssues(guidance, user).length) {
+    guidance = normalizeDeepGuidance(buildFallbackDeepGuidance(user, astrologyContext));
+    source = source === "openai" ? "quality-fallback" : source;
+    quality = {
+      ...quality,
+      passed: getDeepGuidanceContractIssues(guidance, user).length === 0,
+      fallbackUsed: true
+    };
   }
 
   const result = {
@@ -220,7 +266,8 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
     source,
     model,
     promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
-    readingDate: date
+    readingDate: date,
+    quality
   };
 
   if (supabase) {
@@ -258,6 +305,34 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   }, env);
 
   return result;
+}
+
+async function requestMoreGuidance(client, model, input) {
+  const response = await client.responses.create({
+    model,
+    instructions: MORE_GUIDANCE_SYSTEM_PROMPT,
+    input
+  });
+  return response.output_text;
+}
+
+function buildMoreGuidanceRepairInput({ user, context, date, memoryContext = "", rejectedGuidance = {}, rejectionReason = "" }) {
+  return `
+${buildMoreGuidanceInput({
+  user,
+  context,
+  date,
+  memoryContext
+})}
+
+Quality repair:
+The previous paid draft was rejected because it sounded reusable, vague, underdeveloped, or missed a paid guidance contract.
+Specific rejection reason: ${rejectionReason || "The reading failed the More Guidance quality contract."}
+Rejected draft:
+${JSON.stringify(rejectedGuidance)}
+
+Rewrite from scratch. Change the opening, weekly practice, monthly structure, and caution. Keep the same JSON schema and all hidden-signal rules.
+`.trim();
 }
 
 export function isLocalMoreGuidanceAllowed(env = process.env) {
@@ -532,6 +607,51 @@ function normalizeDeepGuidance(raw, fallback = buildFallbackDeepGuidance()) {
   };
 }
 
+function getDeepGuidanceContractIssues(guidance, user = {}) {
+  const value = normalizeDeepGuidance(guidance, buildFallbackDeepGuidance(user));
+  const fields = [
+    ["overview", value.overview, 105, 160],
+    ["thisWeek", value.thisWeek, 45, 90],
+    ["thisMonth", value.thisMonth, 45, 90],
+    ["practice", value.practice, 30, 75]
+  ];
+  const issues = [];
+
+  for (const [field, text, minWords, maxWords] of fields) {
+    const wordCount = words(text).length;
+    if (wordCount < minWords || wordCount > maxWords) {
+      issues.push(`${field} expected ${minWords}-${maxWords} words, got ${wordCount}`);
+    }
+    if (mentionsAstrologyTerms(text)) {
+      issues.push(`${field} mentioned astrology terms`);
+    }
+    if (isLowQualityDeepGuidanceText(text)) {
+      issues.push(`${field} matched vague or repeated paid-guidance phrasing`);
+    }
+  }
+
+  const nameCount = countWord(value.overview, firstName(user.name));
+  if (nameCount !== 1) {
+    issues.push(`overview expected first name exactly once, got ${nameCount}`);
+  }
+
+  if (!hasConcretePaidCue(value.overview)) {
+    issues.push("overview needs an ordinary concrete cue");
+  }
+
+  for (const [field, text] of [["focus", value.focus], ["watch", value.watch]]) {
+    const wordCount = words(text).length;
+    if (wordCount < 4 || wordCount > 12) {
+      issues.push(`${field} expected 4-12 words, got ${wordCount}`);
+    }
+    if (mentionsAstrologyTerms(text) || isLowQualityDeepGuidanceText(text)) {
+      issues.push(`${field} matched forbidden phrasing`);
+    }
+  }
+
+  return issues;
+}
+
 function buildFallbackDeepGuidance(user = {}, context = {}) {
   const name = firstName(user.name);
   const area = context.dailyArea || "responsibility, timing, and emotional steadiness";
@@ -543,12 +663,12 @@ function buildFallbackDeepGuidance(user = {}, context = {}) {
   const work = context.workSignal || "make the action plain enough to complete";
 
   return {
-    overview: `${name}, the deeper pattern is not that you lack direction; it is that ${area} can become heavier when ${anchor} stays unnamed. This phase asks you to reduce the emotional noise around ordinary duties. Start by giving the day one visible finish line, then protect it from ${avoid}. In relationships, ${caution}; in work, ${work}. You do not need a dramatic breakthrough to feel guided. You need a repeatable rhythm that proves your care without draining your center.`,
-    thisWeek: `This week, ${move}. Notice where your first reaction tries to become the whole plan. Keep replies shorter, name the practical cost before saying yes, and let one completed task rebuild trust in your timing.`,
-    thisMonth: `This month, watch the themes that repeat in saved readings. If the same pressure returns through different people, treat it as a pattern asking for structure. Build one habit around sleep, money, work, or communication and keep it visible.`,
-    practice: `For seven days, begin with ${body}. Before sleep, write one line: what became lighter because I handled it directly? Let that record become your proof.`,
+    overview: `A small unfinished detail near the desk can show why ${area} has been taking more room than it deserves. ${name}, the cost is not only lost time; it is the way ${anchor} keeps turning practical duty into emotional negotiation. The next layer of guidance is to separate care from constant availability, then give one promise a clear edge before the day fills with explanations. Protect that edge from ${avoid}. In relationships, ${caution}; in work, ${work}. Progress becomes believable when the body sees a repeatable rhythm, not when the mind wins another argument.`,
+    thisWeek: `${capitalize(move)} before the day has too many witnesses. Keep one reply shorter than habit wants, name the practical cost before agreeing, and close one small loop where someone has been getting access without clarity. The win is not intensity; it is finishing what your nervous system can trust.`,
+    thisMonth: `Watch the same pressure move through work, family, money, and rest under different names. Treat that repetition as a request for structure, not as proof that you are behind. Build one visible habit around sleep, spending, or communication, then review it weekly so guidance becomes evidence you can see.`,
+    practice: `For seven days, begin with this body cue: ${body}. Before sleep, write one line about what became lighter because you handled it directly, then let that record shape tomorrow's first decision.`,
     focus: "Make guidance visible through routine",
-    watch: "Over-explaining before the body settles"
+    watch: "Explaining before the body settles"
   };
 }
 
@@ -599,6 +719,61 @@ function scrubAstrologyTerms(text) {
     "numerology",
     "karma"
   ].reduce((current, term) => current.replace(new RegExp(term, "gi"), "inner timing"), String(text || ""));
+}
+
+function isLowQualityDeepGuidanceText(text) {
+  const normalized = String(text || "").toLowerCase();
+  if (!normalized.trim()) return true;
+
+  return [
+    /\byou may\b/,
+    /\byou might\b/,
+    /\byou could\b/,
+    /\bmay feel\b/,
+    /\bmight feel\b/,
+    /\bcould feel\b/,
+    /\btoday asks\b/,
+    /\bthe deeper pattern\b/,
+    /\bthis phase asks\b/,
+    /\bthis is a time\b/,
+    /\bthe universe\b/,
+    /\bdivine timing\b/,
+    /\btrust the process\b/,
+    /^this week[, ]/i,
+    /^this month[, ]/i,
+    /^in the coming days[, ]/i,
+    /^over the next month[, ]/i,
+    /\bnot asking for (another|more) analysis\b/,
+    /\bquiet proof\b/,
+    /\bverdict on your worth\b/
+  ].some((pattern) => pattern.test(normalized));
+}
+
+function mentionsAstrologyTerms(text) {
+  return /\b(astrology|zodiac|moon sign|planet|transit|chart|horoscope|numerology|karma|remed(?:y|ies))\b/i.test(String(text || ""));
+}
+
+function hasConcretePaidCue(text) {
+  return /\b(room|desk|table|meal|breakfast|lunch|dinner|calendar|money|wallet|bill|receipt|body|shoulder|jaw|breath|door|message|notebook|page|task|work|sleep|reply|conversation|family)\b/i.test(String(text || ""));
+}
+
+function countWord(text, word) {
+  const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
+  return (String(text || "").match(pattern) || []).length;
+}
+
+function words(text) {
+  return String(text || "").split(/\s+/).filter(Boolean);
+}
+
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function capitalize(text) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function throwHttpError(message, statusCode) {

@@ -319,14 +319,7 @@ async function checkPaidSubscriptionReadFailureDoesNotCallOpenAI() {
 async function checkCachedPaidReadingBypassesOpenAI() {
   const date = "2026-06-24";
   const user = paidUser("cached-member");
-  const cachedGuidance = {
-    overview: "The paid map begins with the half-written list on the table: a practical duty has been carrying more feeling than it deserves. Mira, let the day become less dramatic by giving the oldest task a time and a finish line. This deeper phase is about separating care from availability, especially where someone else's uncertainty keeps asking for your extra explanation. Keep the work visible, protect the first quiet hour, and let one completed promise become the proof your nervous system can trust.",
-    thisWeek: "This week, choose the repair that future-you will notice. Keep one reply short, name one cost before agreeing, and let the practical shape of care matter more than intensity.",
-    thisMonth: "This month, watch the same pressure return through different duties. Build one visible routine around communication, sleep, or money so the pattern has somewhere useful to land.",
-    practice: "For seven days, write the oldest open loop each morning and close one small part before starting a new promise.",
-    focus: "Make care visible through structure",
-    watch: "Explaining when timing is enough"
-  };
+  const cachedGuidance = paidGuidanceFixture();
   const supabase = createFakeSupabase({
     subscriptions: [activeSubscription(user.id)],
     moreGuidanceReadings: [{
@@ -417,14 +410,7 @@ async function checkPaidCacheReadFailureDoesNotCallOpenAI() {
 async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
   const date = "2026-06-24";
   const user = paidUser("fresh-member");
-  const guidanceJson = JSON.stringify({
-    overview: "The deeper pattern starts with the document you keep reopening without changing: effort is present, but the finish line keeps moving because approval has become part of the task. Mira, separate the work from the audience for one clean hour and let the result be ordinary enough to complete. In relationships, do not turn quick access into proof of care. In money and planning, write the real cost before saying yes. This month becomes lighter when structure replaces repeated explanation.",
-    thisWeek: "This week, give one task a named finish line and protect it from extra commentary. Shorten the message, schedule the repair, and let consistency do the persuading.",
-    thisMonth: "This month, watch where the same demand returns through work, family, and private expectation. Build one visible habit around time, spending, or rest so the pressure stops living only in your head.",
-    practice: "For seven days, start with one written cost and one written limit. At night, record what became easier because the shape was clear.",
-    focus: "Finish before seeking approval",
-    watch: "Turning access into reassurance"
-  });
+  const guidanceJson = JSON.stringify(paidGuidanceFixture());
   const supabase = createFakeSupabase({
     subscriptions: [activeSubscription(user.id)]
   });
@@ -519,17 +505,133 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
   ].every(Boolean));
 }
 
+async function checkPaidGuidanceRepairsLowQualityDraftBeforeCaching() {
+  const date = "2026-06-25";
+  const user = paidUser("repair-member");
+  const weakGuidanceJson = JSON.stringify({
+    overview: "Mira, you may feel a deeper pattern today, and the best thing is to stay steady. This phase asks for clarity, calm energy, and trust in the process while you make one small move.",
+    thisWeek: "This week, keep moving gently and trust yourself.",
+    thisMonth: "This month, stay open to better alignment.",
+    practice: "Breathe and write what matters.",
+    focus: "Trust the process",
+    watch: "Energy shifts"
+  });
+  const repairedGuidance = paidGuidanceFixture({
+    focus: "Give the promise a container",
+    watch: "Instant access replacing care"
+  });
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)]
+  });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+
+  const result = await createMoreGuidanceReading({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    MORE_GUIDANCE_MODEL: "gpt-paid-contract"
+  }, {
+    supabase,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async (payload) => {
+      memoryUpserts.push(payload);
+      return { configured: true, upserted: true };
+    },
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return {
+              output_text: openAiRequests.length === 1
+                ? weakGuidanceJson
+                : JSON.stringify(repairedGuidance)
+            };
+          }
+        }
+      };
+    }
+  });
+
+  const storedReading = [...supabase.state.moreGuidanceReadings.values()][0];
+
+  pushCheck("Paid guidance repairs weak AI draft before caching", [
+    openAiRequests.length === 2,
+    /Quality repair/.test(openAiRequests[1].input),
+    /you may feel/.test(openAiRequests[1].input),
+    result.allowed === true,
+    result.source === "openai",
+    result.quality?.attempts === 2,
+    result.quality?.repaired === true,
+    result.quality?.passed === true,
+    result.guidance.overview === repairedGuidance.overview,
+    storedReading.guidance.overview === repairedGuidance.overview,
+    !storedReading.guidance.overview.includes("you may feel"),
+    memoryUpserts.length === 1,
+    memoryUpserts[0].metadata?.source === "openai"
+  ].every(Boolean));
+}
+
+async function checkPaidGuidanceUsesQualityFallbackAfterFailedRepair() {
+  const date = "2026-06-26";
+  const user = paidUser("failed-repair-member");
+  const weakGuidanceJson = JSON.stringify({
+    overview: "Mira, you may feel a deeper pattern today, and the universe could be asking for calm energy. Trust the process and choose one small steady thing.",
+    thisWeek: "This week, stay steady and trust the process.",
+    thisMonth: "This month, keep your energy clear.",
+    practice: "Breathe, reflect, and stay open.",
+    focus: "Trust the process",
+    watch: "Energy shifts"
+  });
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)]
+  });
+  const openAiRequests = [];
+
+  const result = await createMoreGuidanceReading({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    MORE_GUIDANCE_MODEL: "gpt-paid-contract"
+  }, {
+    supabase,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async () => ({ configured: true, upserted: true }),
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return { output_text: weakGuidanceJson };
+          }
+        }
+      };
+    }
+  });
+
+  const storedReading = [...supabase.state.moreGuidanceReadings.values()][0];
+
+  pushCheck("Paid guidance uses quality fallback after failed repair", [
+    openAiRequests.length === 2,
+    result.allowed === true,
+    result.source === "quality-fallback",
+    result.quality?.attempts === 2,
+    result.quality?.repaired === true,
+    result.quality?.passed === true,
+    result.quality?.fallbackUsed === true,
+    storedReading.guidance.overview === result.guidance.overview,
+    !storedReading.guidance.overview.includes("you may feel"),
+    !storedReading.guidance.focus.toLowerCase().includes("trust the process")
+  ].every(Boolean));
+}
+
 async function checkPaidCacheWriteFailureDoesNotReturnReading() {
   const date = "2026-06-24";
   const user = paidUser("write-failure-member");
-  const guidanceJson = JSON.stringify({
-    overview: "The deeper pattern starts with the document you keep reopening without changing: effort is present, but the finish line keeps moving because approval has become part of the task. Mira, separate the work from the audience for one clean hour and let the result be ordinary enough to complete. In relationships, do not turn quick access into proof of care. In money and planning, write the real cost before saying yes.",
-    thisWeek: "This week, give one task a named finish line and protect it from extra commentary. Shorten the message and let consistency do the persuading.",
-    thisMonth: "This month, watch where the same demand returns through work, family, and private expectation. Build one visible habit around time, spending, or rest.",
-    practice: "For seven days, start with one written cost and one written limit. At night, record what became easier because the shape was clear.",
-    focus: "Finish before seeking approval",
-    watch: "Turning access into reassurance"
-  });
+  const guidanceJson = JSON.stringify(paidGuidanceFixture());
   const supabase = createFakeSupabase({
     subscriptions: [activeSubscription(user.id)],
     failReadingUpsert: true
@@ -770,6 +872,18 @@ function paidUser(id) {
   };
 }
 
+function paidGuidanceFixture(overrides = {}) {
+  return {
+    overview: "The notebook left open beside the calendar shows the real pattern: practical work keeps absorbing feelings that belong in a clearer conversation. Mira, your paid map is to stop treating every unfinished detail as a private emergency and start giving each duty a clean container. The cost of the old habit is not only tiredness; it is delayed trust in your own timing. Put one promise on the page, name the limit around it, and let the next relationship or work reply respect that limit. When care becomes visible through structure, the day stops asking your body to carry every possible outcome without demanding a dramatic breakthrough.",
+    thisWeek: "Begin with the task that keeps returning after dinner or before sleep. Write its real size, give it one finish line, and keep the explanation around it brief. If someone reaches for instant access, answer with timing instead of apology, then complete the smallest visible part before opening a new promise.",
+    thisMonth: "Track where the same pressure appears through work, money, family, and rest. The useful move is to build one visible system rather than negotiate each moment from scratch. Review the saved readings weekly, look for the repeating cost, and let one habit around time or communication become the container that holds it.",
+    practice: "For seven days, write one limit before the first difficult reply. At night, note what became lighter because the limit stayed visible, then use that evidence to choose tomorrow's first action.",
+    focus: "Put one limit on the page",
+    watch: "Apology replacing clear timing",
+    ...overrides
+  };
+}
+
 function readingKey(reading) {
   return [
     reading.user_key,
@@ -806,6 +920,8 @@ async function main() {
   await checkCachedPaidReadingBypassesOpenAI();
   await checkPaidCacheReadFailureDoesNotCallOpenAI();
   await checkPaidCacheMissWritesAndSecondReadUsesCache();
+  await checkPaidGuidanceRepairsLowQualityDraftBeforeCaching();
+  await checkPaidGuidanceUsesQualityFallbackAfterFailedRepair();
   await checkPaidCacheWriteFailureDoesNotReturnReading();
 
   const failed = checks.filter((check) => !check.passed);
