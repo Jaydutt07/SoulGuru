@@ -15,6 +15,7 @@
     "android:apk:local": "node scripts/build-local-mobile-apk.mjs",
     "mobile:check-backend": "node scripts/validate-mobile-backend.mjs",
     "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
+    "security:check": "node scripts/check-release-secrets.mjs",
     "soul:quality": "node scripts/check-soul-wisdom-quality.mjs",
     "soul:quality:ai": "node scripts/check-soul-wisdom-quality.mjs --include-ai",
     "local:smoke": "node scripts/smoke-local-api.mjs",

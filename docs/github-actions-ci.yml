@@ -38,6 +38,9 @@ jobs:
       - name: Build web app
         run: npm run build
 
+      - name: Check for committed secrets and artifacts
+        run: npm run security:check
+
       - name: Smoke-test local API routes
         run: npm run local:smoke
 
@@ -84,6 +87,9 @@ jobs:
         run: |
           chmod +x android/gradlew
           npm run android:apk
+
+      - name: Check APK for bundled secrets
+        run: npm run security:check
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4

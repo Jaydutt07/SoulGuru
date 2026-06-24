@@ -59,6 +59,12 @@ Check server-side production readiness from local env:
 npm run production:check
 ```
 
+Check tracked files and the local debug APK for accidentally exposed secrets or generated artifacts:
+
+```bash
+npm run security:check
+```
+
 Smoke-test the local backend/API routes without spending OpenAI tokens:
 
 ```bash
@@ -97,10 +103,11 @@ The CI template checks:
 
 - `npm run soul:quality`
 - `npm run build`
+- `npm run security:check`
 - `npm run local:smoke`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
-- Android debug APK build
+- Android debug APK build plus `npm run security:check`
 
 If the repository secret `OPENAI_API_KEY` is configured, the workflow also runs `npm run soul:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
@@ -283,6 +290,7 @@ Before release:
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
+- Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.
 - Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
 - Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:apk:backend`.
