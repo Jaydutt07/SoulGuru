@@ -24,6 +24,7 @@
     "local:smoke": "node scripts/smoke-local-api.mjs",
     "local:smoke:ai": "node scripts/smoke-local-api.mjs --include-ai",
     "production:check": "node scripts/check-production-readiness.mjs",
+    "supabase:schema:check": "node scripts/check-supabase-schema.mjs",
     "deployment:smoke": "node scripts/smoke-deployed-backend.mjs"
   },
   "dependencies": {

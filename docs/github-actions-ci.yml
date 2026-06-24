@@ -50,6 +50,17 @@ jobs:
       - name: Report production readiness
         run: npm run production:check -- --allow-fail
 
+      - name: Verify Supabase schema
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            npm run supabase:schema:check
+          else
+            echo "Skipping Supabase schema check because Supabase secrets are not configured."
+          fi
+
       - name: Soul Guru live OpenAI quality gate
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

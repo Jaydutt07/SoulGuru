@@ -38,6 +38,7 @@ This project is being built toward the stack shown in the product planning image
 - Local-LAN APK build helper for phone testing against the Mac dev backend
 - Signed Android release APK/AAB scripts with keystore validation and artifact secret scanning
 - Production readiness endpoint and CLI checks for backend env configuration
+- Live Supabase schema checker for migration/table/column contract verification
 - Local backend smoke-test script for API contract checks before APK testing
 - Vercel deployment config plus deployed backend smoke-test script
 - Astronomy-based birth/transit context replacing hash-only astrology
@@ -54,13 +55,14 @@ This project is being built toward the stack shown in the product planning image
 6. Apply `supabase/migrations/006_unique_subscription_payments.sql`.
 7. Apply `supabase/migrations/007_birth_place_resolution.sql`.
 8. Apply `supabase/migrations/008_more_guidance_readings.sql`.
-9. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-10. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
-11. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
-12. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
-13. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
-14. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
-15. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-16. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-17. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
-18. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.
+9. Run `npm run supabase:schema:check` against the Supabase project.
+10. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+11. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
+12. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
+13. Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app`.
+14. Set `VITE_API_BASE_URL` to the deployed Vercel URL and run `npm run android:apk:backend` for a backend-connected phone test.
+15. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
+16. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+17. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+18. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables.
+19. Add Cloudflare DNS once the Vercel deployment URL and production domain are ready.

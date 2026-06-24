@@ -59,6 +59,12 @@ Check server-side production readiness from local env:
 npm run production:check
 ```
 
+After applying Supabase migrations, verify the live database schema:
+
+```bash
+npm run supabase:schema:check
+```
+
 Check tracked files and the local debug APK for accidentally exposed secrets or generated artifacts:
 
 ```bash
@@ -111,6 +117,8 @@ The CI template checks:
 
 If the repository secret `OPENAI_API_KEY` is configured, the workflow also runs `npm run soul:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
+If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app contract.
+
 ## Supabase Setup
 
 Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. The core migrations create:
@@ -120,7 +128,9 @@ Run the migrations in `supabase/migrations/` inside your Supabase project SQL ed
 - `more_guidance_subscriptions`
 - `saved_guidance`
 - `astro_solve_questions`
+- `payment_events`
 - `auth_otp_challenges`
+- `more_guidance_readings`
 
 `002_payment_events.sql` adds payment event storage and subscription provider metadata for Razorpay webhook idempotency.
 
@@ -202,6 +212,14 @@ OTP_DEMO_ENABLED=false
 ```
 
 Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps.
+
+Then run:
+
+```bash
+npm run supabase:schema:check
+```
+
+This read-only check uses the service role key to verify all production tables and columns needed for daily Soul Guru caching, OTP login, paid More Guidance, saved advice, Astro Solves, and Razorpay payment events.
 
 ## Observability
 
@@ -310,6 +328,7 @@ Before release:
 
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
+- Run `npm run supabase:schema:check` against the Supabase project.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.

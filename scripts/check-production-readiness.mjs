@@ -4,8 +4,8 @@ import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
 const args = new Set(process.argv.slice(2));
 const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
 const env = {
-  ...process.env,
-  ...loadEnv(mode, process.cwd(), "")
+  ...loadEnv(mode, process.cwd(), ""),
+  ...process.env
 };
 const report = buildDeploymentReadiness(env);
 const strict = args.has("--strict");
