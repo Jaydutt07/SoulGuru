@@ -101,6 +101,18 @@ export async function upsertUserProfile(payload, env = process.env, deps = {}) {
   };
 }
 
+export async function upsertUserProfileId(supabase, user, { warnLabel = "Unable to upsert user profile" } = {}) {
+  if (!supabase) return null;
+
+  try {
+    const result = await upsertUserProfile({ user }, {}, { supabase });
+    return result.profile?.id || result.profile?.profileId || null;
+  } catch (error) {
+    console.warn(warnLabel, error.message);
+    return null;
+  }
+}
+
 async function mergeExistingPhoneProfile(supabase, profile, { requireExisting = false } = {}) {
   const { data: existing, error: readError } = await supabase
     .from("user_profiles")

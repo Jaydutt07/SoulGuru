@@ -24,6 +24,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed profile sync route for account birth details
 - Production-gated client login flow requiring server profile persistence before account creation enters the app
 - Backend profile merge contracts for OTP phone profiles and authenticated identities
+- Shared profile linking for Soul Guru, Astro Solves, More Guidance, and saved advice writes
 - Server-backed OTP challenge route with Supabase storage and optional SMS/email delivery
 - Offline OTP hashing, delivery, attempts, and expiry contract checker
 - Production-gated OTP HMAC secret strength check before delivery or storage

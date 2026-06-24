@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
+import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
@@ -100,7 +101,9 @@ export async function saveGuidance(payload, env = process.env) {
     };
   }
 
-  const userProfileId = await upsertUserProfile(supabase, user);
+  const userProfileId = await upsertUserProfileId(supabase, user, {
+    warnLabel: "Unable to upsert More Guidance user profile"
+  });
   const { data, error } = await supabase
     .from("saved_guidance")
     .insert({
@@ -386,7 +389,9 @@ async function readCachedDeepGuidance(supabase, userKey, date) {
 }
 
 async function writeCachedDeepGuidance(supabase, { user, userKey, date, timezone, guidance, astrologyContext, model }) {
-  const userProfileId = await upsertUserProfile(supabase, user);
+  const userProfileId = await upsertUserProfileId(supabase, user, {
+    warnLabel: "Unable to upsert More Guidance user profile"
+  });
   const { error } = await supabase
     .from("more_guidance_readings")
     .upsert({
@@ -491,41 +496,6 @@ function mapSavedGuidance(item) {
     reading: item.reading,
     wisdom: item.reading?.wisdom || ""
   };
-}
-
-async function upsertUserProfile(supabase, user) {
-  const profile = {
-    auth_user_id: user.authUserId || null,
-    phone: user.phone || null,
-    email: user.email || null,
-    full_name: user.name || "SoulGuru user",
-    birth_date: user.birthDate,
-    birth_time: user.birthTime || null,
-    birth_place: user.birthPlace || null,
-    birth_latitude: nullableNumber(user.birthLatitude),
-    birth_longitude: nullableNumber(user.birthLongitude),
-    birth_timezone: user.birthTimezone || null,
-    birth_timezone_offset_minutes: nullableNumber(user.birthTimezoneOffsetMinutes),
-    birth_place_resolved_label: user.birthPlaceResolvedLabel || null,
-    birth_place_resolution_source: user.birthPlaceResolutionSource || null,
-    updated_at: new Date().toISOString()
-  };
-
-  const conflictTarget = profile.auth_user_id ? "auth_user_id" : profile.phone ? "phone" : null;
-  if (!conflictTarget || !profile.birth_date) return null;
-
-  const { data, error } = await supabase
-    .from("user_profiles")
-    .upsert(profile, { onConflict: conflictTarget })
-    .select("id")
-    .maybeSingle();
-
-  if (error) {
-    console.warn("Unable to upsert More Guidance user profile", error.message);
-    return null;
-  }
-
-  return data?.id || null;
 }
 
 async function linkSavedGuidanceToProfile(supabase, savedGuidanceId, userProfileId) {
@@ -653,11 +623,6 @@ function formatBirthLocation(location, user) {
 function buildUserKey(user) {
   const stableValue = user.authUserId || user.id || user.phone || user.email || `${user.name}-${user.birthDate}-${user.birthTime}`;
   return String(stableValue || "anonymous").toLowerCase().trim();
-}
-
-function nullableNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
 }
 
 function hasOwn(object, key) {

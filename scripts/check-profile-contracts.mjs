@@ -1,4 +1,4 @@
-import { handleUserProfile, lookupUserProfile, upsertUserProfile } from "../src/backend/profileService.js";
+import { handleUserProfile, lookupUserProfile, upsertUserProfile, upsertUserProfileId } from "../src/backend/profileService.js";
 
 const checks = [];
 
@@ -6,6 +6,7 @@ await checkLocalFallbackContract();
 await checkLookupContract();
 await checkPhoneProfileCreationContract();
 await checkAuthenticatedPhoneMergeContract();
+await checkSharedProfileIdMergeContract();
 await checkPhoneMergeRaceContract();
 await checkPhoneIdentityConflictContract();
 
@@ -126,6 +127,30 @@ async function checkAuthenticatedPhoneMergeContract() {
     rows[0].auth_user_id === "clerk_contract_123",
     rows[0].phone === "+919999001234",
     updateCalls.length === 1
+  ].every(Boolean));
+}
+
+async function checkSharedProfileIdMergeContract() {
+  const supabase = createFakeProfileSupabase({
+    profiles: [
+      profileRow({
+        id: "shared-otp-profile",
+        auth_user_id: null,
+        phone: "+919999001234"
+      })
+    ]
+  });
+
+  const profileId = await upsertUserProfileId(supabase, profileUser({
+    authUserId: "clerk_shared_123",
+    phone: "+91 99990 01234"
+  }));
+  const row = supabase.state.profiles.get("shared-otp-profile");
+
+  pushCheck("Shared profile id helper links existing OTP phone profile", [
+    profileId === "shared-otp-profile",
+    row?.auth_user_id === "clerk_shared_123",
+    row?.phone === "+919999001234"
   ].every(Boolean));
 }
 
