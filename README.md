@@ -59,6 +59,13 @@ Check server-side production readiness from local env:
 npm run production:check
 ```
 
+Check public `VITE_` env vars for accidental server-secret exposure:
+
+```bash
+npm run public-env:check
+npm run public-env:check:strict
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -109,6 +116,7 @@ The CI template checks:
 
 - `npm run soul:quality`
 - `npm run build`
+- `npm run public-env:check`
 - `npm run security:check`
 - `npm run local:smoke`
 - `npm audit --omit dev`
@@ -280,6 +288,7 @@ The Android scripts auto-detect common Homebrew JDK and Android SDK paths. If yo
 
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
 Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
+Run `npm run public-env:check:strict` before any web or mobile release so server-only keys cannot be exposed through public `VITE_` variables.
 
 For phone testing before Vercel deployment, run the backend on your Mac's Wi-Fi/LAN address:
 
@@ -329,6 +338,7 @@ Before release:
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
 - Run `npm run supabase:schema:check` against the Supabase project.
+- Run `npm run public-env:check:strict`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.
 - Run `npm run security:check` before committing or sharing APK builds.
 - Run `npm run soul:quality` and `npm run soul:quality:ai` before release after prompt changes.

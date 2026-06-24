@@ -38,6 +38,9 @@ jobs:
       - name: Build web app
         run: npm run build
 
+      - name: Check public env exposure
+        run: npm run public-env:check
+
       - name: Check for committed secrets and artifacts
         run: npm run security:check
 
