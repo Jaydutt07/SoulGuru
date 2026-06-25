@@ -118,7 +118,7 @@ Check Harmony compatibility against sidereal birth-chart placements:
 npm run compatibility:check
 ```
 
-Check Clerk auth behavior and production client login rules, including fail-closed required auth, backend identity injection, server-profile-first login, and profile persistence before account creation completes:
+Check Clerk auth behavior, production client login rules, and the API route auth matrix, including fail-closed required auth, backend identity injection, server-profile-first login, protected-route coverage, and profile persistence before account creation completes:
 
 ```bash
 npm run auth:check
@@ -297,7 +297,7 @@ The CI template checks:
 - `npm run deployment:check`
 - `npm run astrology:check`
 - `npm run compatibility:check`
-- `npm run auth:check`
+- `npm run auth:check` including the protected API route matrix
 - `npm run memory:check`
 - `npm run rate-limit:check`
 - `npm run request:check`
@@ -582,7 +582,7 @@ Before release:
 - Run `npm run public-env:check:strict`.
 - Run `npm run deployment:check`.
 - Run `npm run astrology:check`.
-- Run `npm run auth:check`.
+- Run `npm run auth:check`, including the protected API route matrix.
 - Run `npm run memory:check`.
 - Run `npm run rate-limit:check`.
 - Run `npm run request:check`.

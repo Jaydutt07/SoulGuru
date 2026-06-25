@@ -56,7 +56,7 @@ jobs:
       - name: Verify Harmony compatibility contract
         run: npm run compatibility:check
 
-      - name: Verify auth contracts
+      - name: Verify auth and API route contracts
         run: npm run auth:check
 
       - name: Verify guidance memory contracts

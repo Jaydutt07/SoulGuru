@@ -52,6 +52,7 @@ This project is being built toward the stack shown in the product planning image
 - Optional ClerkJS frontend bridge so configured production sessions send Bearer tokens to backend routes
 - Settings drawer Clerk secure-session status and account controls for strict backend auth rollout
 - Offline Clerk auth contract checker with fail-closed required-auth behavior
+- Offline API route auth matrix checker so private Soul Guru, payment, profile, memory, More Guidance, and Shani routes cannot bypass verified identity
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Offline Pinecone/OpenAI memory contract checker for hashed namespaces, metadata sanitization, prompt-safe memory context, and degraded behavior
 - Server-backed More Guidance dashboard and saved advice persistence

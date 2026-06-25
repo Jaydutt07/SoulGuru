@@ -67,7 +67,7 @@ function checkFallbackDefaultsAreListed() {
 function checkDoesNotExposeRuntimeSecretValues() {
   const sentinelEnv = {
     ...process.env,
-    OPENAI_API_KEY: "sk-prod-env-checklist-sentinel",
+    OPENAI_API_KEY: "openai-prod-env-checklist-sentinel",
     SUPABASE_SERVICE_ROLE_KEY: "supabase-service-role-sentinel",
     RAZORPAY_KEY_SECRET: "razorpay-secret-sentinel",
     OTP_HASH_SECRET: "otp-secret-sentinel-with-at-least-32-characters"
