@@ -144,5 +144,5 @@ This project is being built toward the stack shown in the product planning image
 26. Set `VITE_API_BASE_URL` to the production domain and run `npm run android:apk:backend` for a backend-connected phone test.
 27. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
 28. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-29. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+29. Configure Razorpay dashboard webhook for `/api/razorpay-webhook`, set `RAZORPAY_WEBHOOK_URL` and `RAZORPAY_WEBHOOK_READY=true`, and test payment event replay.
 30. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables. Use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.

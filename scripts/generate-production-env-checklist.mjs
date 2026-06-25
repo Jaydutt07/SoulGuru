@@ -47,7 +47,7 @@ function buildChecklist(report) {
     "",
     "- [ ] Apply Supabase migrations before enabling production traffic.",
     "- [ ] Point the Namecheap domain through Cloudflare DNS and set `CLOUDFLARE_DNS_READY=true` only after the HTTPS app URL resolves correctly.",
-    "- [ ] Configure Razorpay webhook URL to `/api/razorpay-webhook` with the same webhook secret set in Vercel.",
+    "- [ ] Configure Razorpay webhook URL to `/api/razorpay-webhook` with the same webhook secret set in Vercel, then set `RAZORPAY_WEBHOOK_READY=true`.",
     "- [ ] Run `npm run production:check` locally with production env loaded.",
     "- [ ] Run `npm run production:domain:smoke -- --expect-ready` after DNS and Vercel custom-domain setup are live.",
     "- [ ] Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
@@ -111,6 +111,8 @@ function buildHint(requirement, example) {
     hints.push("set to `false`");
   } else if (requirement.includes("=positive integer")) {
     hints.push("positive integer");
+  } else if (requirement.includes("=/api/razorpay-webhook")) {
+    hints.push("production webhook URL ending in `/api/razorpay-webhook`");
   } else if (requirement.includes("=https URL")) {
     hints.push("HTTPS URL");
   } else if (requirement.includes("=valid email sender")) {

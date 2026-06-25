@@ -283,6 +283,8 @@ function checkRazorpay(env) {
     "RAZORPAY_KEY_ID",
     "RAZORPAY_KEY_SECRET",
     "RAZORPAY_WEBHOOK_SECRET",
+    "RAZORPAY_WEBHOOK_URL=/api/razorpay-webhook",
+    "RAZORPAY_WEBHOOK_READY=true",
     "MORE_GUIDANCE_PRICE_PAISE",
     "PAYMENTS_ALLOW_LOCAL_ACTIVATION=false"
   ];
@@ -291,6 +293,18 @@ function checkRazorpay(env) {
     "RAZORPAY_KEY_SECRET",
     "RAZORPAY_WEBHOOK_SECRET"
   ].filter((name) => !hasEnv(env, name));
+  if (!hasEnv(env, "RAZORPAY_WEBHOOK_URL")) {
+    missingEnv.push("RAZORPAY_WEBHOOK_URL");
+  } else {
+    const webhookUrlProblem = getWebhookUrlProblem(env.RAZORPAY_WEBHOOK_URL, env.PRODUCTION_DOMAIN);
+    if (webhookUrlProblem) {
+      missingEnv.push(webhookUrlProblem);
+    }
+  }
+  const webhookReady = String(env.RAZORPAY_WEBHOOK_READY || "false").toLowerCase() === "true";
+  if (!webhookReady) {
+    missingEnv.push("RAZORPAY_WEBHOOK_READY=true");
+  }
   if (!hasEnv(env, "MORE_GUIDANCE_PRICE_PAISE")) {
     missingEnv.push("MORE_GUIDANCE_PRICE_PAISE");
   } else if (!isPositiveIntegerEnv(env, "MORE_GUIDANCE_PRICE_PAISE")) {
@@ -308,7 +322,7 @@ function checkRazorpay(env) {
     status: missingEnv.length ? "fail" : "pass",
     requiredEnv,
     missingEnv,
-    advice: missingEnv.length ? "Configure Razorpay keys, webhook secret, More Guidance price, and persisted payment activation." : ""
+    advice: missingEnv.length ? "Configure Razorpay keys, webhook URL/secret, More Guidance price, and persisted payment activation." : ""
   };
 }
 
@@ -462,6 +476,30 @@ function isProductionHttpsUrl(value) {
   if (!isHttpsUrl(value)) return false;
   const hostname = new URL(String(value || "").trim()).hostname.toLowerCase();
   return isValidProductionDomain(hostname);
+}
+
+function getWebhookUrlProblem(value, productionDomain) {
+  let url;
+  try {
+    url = new URL(String(value || "").trim());
+  } catch {
+    return "RAZORPAY_WEBHOOK_URL=https URL";
+  }
+
+  if (url.protocol !== "https:" || !url.hostname) {
+    return "RAZORPAY_WEBHOOK_URL=https URL";
+  }
+
+  if (url.pathname !== "/api/razorpay-webhook" || url.search || url.hash) {
+    return "RAZORPAY_WEBHOOK_URL=/api/razorpay-webhook";
+  }
+
+  const normalizedDomain = String(productionDomain || "").trim().toLowerCase().replace(/\.$/, "");
+  if (isValidProductionDomain(normalizedDomain) && !urlBelongsToDomain(value, normalizedDomain)) {
+    return "RAZORPAY_WEBHOOK_URL=production domain or subdomain";
+  }
+
+  return "";
 }
 
 function isValidProductionDomain(value) {

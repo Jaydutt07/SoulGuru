@@ -10,6 +10,7 @@ checkLocalMoreGuidanceAccessIsNotReady();
 checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
+checkInvalidRazorpayWebhookIsNotReady();
 checkInvalidServiceUrlsAreNotReady();
 checkInvalidDomainDnsIsNotReady();
 checkInvalidEmailSenderIsNotReady();
@@ -62,6 +63,7 @@ function checkPlaceholderValuesAreNotReady() {
     SUPABASE_SERVICE_ROLE_KEY: "replace-with-service-role",
     PLACE_GEOCODER_URL: "<geocoder-url>",
     RAZORPAY_KEY_SECRET: "<razorpay-secret>",
+    RAZORPAY_WEBHOOK_URL: "<razorpay-webhook-url>",
     RESEND_API_KEY: "fake-resend-key",
     UPSTASH_REDIS_REST_TOKEN: "$UPSTASH_TOKEN",
     PINECONE_API_KEY: "dummy-pinecone-key",
@@ -85,6 +87,7 @@ function checkPlaceholderValuesAreNotReady() {
     supabase?.missingEnv.includes("SUPABASE_SERVICE_ROLE_KEY"),
     birthPlaceAccuracy?.missingEnv.includes("PLACE_GEOCODER_URL"),
     razorpay?.missingEnv.includes("RAZORPAY_KEY_SECRET"),
+    razorpay?.missingEnv.includes("RAZORPAY_WEBHOOK_URL"),
     transactionalEmail?.missingEnv.includes("RESEND_API_KEY"),
     rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_TOKEN"),
     pinecone?.missingEnv.includes("PINECONE_API_KEY"),
@@ -204,6 +207,38 @@ function checkInvalidPaymentPricesAreNotReady() {
   ].every(Boolean));
 }
 
+function checkInvalidRazorpayWebhookIsNotReady() {
+  const missingReadyReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    RAZORPAY_WEBHOOK_READY: "false"
+  });
+  const wrongPathReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    RAZORPAY_WEBHOOK_URL: "https://soulguru.app/webhook"
+  });
+  const wrongDomainReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    PRODUCTION_DOMAIN: "soulguru.app",
+    RAZORPAY_WEBHOOK_URL: "https://payments.other-domain.app/api/razorpay-webhook"
+  });
+
+  const missingReady = missingReadyReport.checks.find((check) => check.id === "razorpay");
+  const wrongPath = wrongPathReport.checks.find((check) => check.id === "razorpay");
+  const wrongDomain = wrongDomainReport.checks.find((check) => check.id === "razorpay");
+
+  pushCheck("Readiness rejects incomplete Razorpay webhook dashboard setup", [
+    missingReadyReport.ok === false,
+    missingReady?.status === "fail",
+    missingReady?.missingEnv.includes("RAZORPAY_WEBHOOK_READY=true"),
+    wrongPathReport.ok === false,
+    wrongPath?.status === "fail",
+    wrongPath?.missingEnv.includes("RAZORPAY_WEBHOOK_URL=/api/razorpay-webhook"),
+    wrongDomainReport.ok === false,
+    wrongDomain?.status === "fail",
+    wrongDomain?.missingEnv.includes("RAZORPAY_WEBHOOK_URL=production domain or subdomain")
+  ].every(Boolean));
+}
+
 function checkInvalidServiceUrlsAreNotReady() {
   const supabaseReport = buildDeploymentReadiness({
     ...fullEnv(),
@@ -218,6 +253,7 @@ function checkInvalidServiceUrlsAreNotReady() {
     PLACE_GEOCODER_URL: "http://geocoder.example.test",
     UPSTASH_REDIS_REST_URL: "http://upstash.example.test",
     PINECONE_HOST: "bad host",
+    RAZORPAY_WEBHOOK_URL: "http://soulguru.app/api/razorpay-webhook",
     SENTRY_DSN: "not-a-dsn",
     VITE_POSTHOG_HOST: "not-a-url",
     PRODUCTION_DOMAIN: "https://soulguru.app",
@@ -230,6 +266,7 @@ function checkInvalidServiceUrlsAreNotReady() {
   const birthPlaceAccuracy = vendorReport.checks.find((check) => check.id === "birthPlaceAccuracy");
   const rateLimit = vendorReport.checks.find((check) => check.id === "rateLimit");
   const pinecone = vendorReport.checks.find((check) => check.id === "pinecone");
+  const razorpay = vendorReport.checks.find((check) => check.id === "razorpay");
   const observability = vendorReport.checks.find((check) => check.id === "observability");
   const domainDns = vendorReport.checks.find((check) => check.id === "domainDns");
 
@@ -247,6 +284,8 @@ function checkInvalidServiceUrlsAreNotReady() {
     rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_URL=https URL"),
     pinecone?.status === "fail",
     pinecone?.missingEnv.includes("PINECONE_HOST=valid HTTPS URL or host"),
+    razorpay?.status === "fail",
+    razorpay?.missingEnv.includes("RAZORPAY_WEBHOOK_URL=https URL"),
     observability?.status === "fail",
     observability?.missingEnv.includes("SENTRY_DSN=valid Sentry DSN"),
     observability?.missingEnv.includes("VITE_POSTHOG_HOST=https URL"),
@@ -335,6 +374,8 @@ function criticalEnv() {
     RAZORPAY_KEY_ID: "rzp_test_contract123456",
     RAZORPAY_KEY_SECRET: "razorpay-contract-secret-123456",
     RAZORPAY_WEBHOOK_SECRET: "razorpay-webhook-secret-123456",
+    RAZORPAY_WEBHOOK_URL: "https://soulguru.app/api/razorpay-webhook",
+    RAZORPAY_WEBHOOK_READY: "true",
     MORE_GUIDANCE_PRICE_PAISE: "49900",
     SHANI_PLAN_3M_PRICE_PAISE: "29900",
     SHANI_PLAN_6M_PRICE_PAISE: "54900",

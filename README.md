@@ -380,7 +380,7 @@ The settings drawer shows the configured Clerk secure-session state and exposes 
 `POST /api/create-razorpay-order`
 
 Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The request must include a stable SoulGuru user identity (`authUserId`, `id`, phone, or email), so paid access is never issued to an anonymous key. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
-Production readiness requires `MORE_GUIDANCE_PRICE_PAISE` and all Shani plan prices to be positive integer paise values.
+Production readiness requires `MORE_GUIDANCE_PRICE_PAISE` and all Shani plan prices to be positive integer paise values, plus a Razorpay dashboard webhook pointing at the production `/api/razorpay-webhook` endpoint.
 
 `POST /api/verify-razorpay-payment`
 
@@ -399,6 +399,7 @@ Verifies Razorpay checkout return signature, backend-signed Shani order token, s
 `POST /api/razorpay-webhook`
 
 Verifies `x-razorpay-signature` using `RAZORPAY_WEBHOOK_SECRET`, stores the provider event, and activates either the 3-month More Guidance subscription or a Shani remedy membership once for successful payment events that include a stable SoulGuru user identity in Razorpay notes or payment contact details. Production webhook processing requires Supabase event storage; unstored webhook events are allowed only when `PAYMENTS_ALLOW_LOCAL_ACTIVATION=true` is explicitly set for isolated local testing.
+Set `RAZORPAY_WEBHOOK_URL` to the exact production HTTPS webhook URL and set `RAZORPAY_WEBHOOK_READY=true` only after the matching URL and secret are configured in the Razorpay dashboard.
 
 `POST /api/astro-solve`
 
@@ -434,6 +435,8 @@ For Razorpay:
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_WEBHOOK_URL=https://your-production-domain.app/api/razorpay-webhook
+RAZORPAY_WEBHOOK_READY=false
 RAZORPAY_VERIFY_RATE_LIMIT=20
 PAYMENTS_ALLOW_LOCAL_ACTIVATION=false
 MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false
@@ -619,6 +622,6 @@ Before release:
 - Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
 - Set `VITE_API_BASE_URL` to the production domain-backed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
-- Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
+- Configure Razorpay dashboard webhook for `/api/razorpay-webhook`, then set `RAZORPAY_WEBHOOK_URL` and `RAZORPAY_WEBHOOK_READY=true`.
 - Configure Pinecone index and `PINECONE_HOST` for long-term guidance memory.
 - Add PostHog/Sentry keys only where appropriate; use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.
