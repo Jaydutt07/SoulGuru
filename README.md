@@ -154,6 +154,12 @@ Check OpenAI backend timeout/retry policy for Responses and Embeddings calls:
 npm run openai:check
 ```
 
+Check bounded backend fetch behavior for vendor APIs such as Razorpay, Resend, Upstash, Pinecone, geocoding, OTP SMS, and Sentry:
+
+```bash
+npm run backend-fetch:check
+```
+
 Check Resend email payloads, skips, errors, and membership email escaping:
 
 ```bash
@@ -284,6 +290,7 @@ The CI template checks:
 - `npm run readiness:check`
 - `npm run observability:check`
 - `npm run openai:check`
+- `npm run backend-fetch:check`
 - `npm run email:check`
 - `npm run supabase:migrations:check`
 - `npm run soul:cache:check`
@@ -560,6 +567,7 @@ Before release:
 - Run `npm run readiness:check`.
 - Run `npm run observability:check`.
 - Run `npm run openai:check`.
+- Run `npm run backend-fetch:check`.
 - Run `npm run email:check`.
 - Run `npm run supabase:migrations:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.

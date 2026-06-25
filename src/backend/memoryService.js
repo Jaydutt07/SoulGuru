@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { createOpenAIClient, requestOpenAIEmbedding } from "./openaiClient.js";
 
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
@@ -16,9 +17,9 @@ export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TO
 
   try {
     const makeEmbedding = deps.createEmbedding || createEmbedding;
-    const fetchImpl = deps.fetch || fetch;
+    const fetchImpl = deps.fetch || globalThis.fetch;
     const vector = await makeEmbedding(query, env);
-    const response = await fetchImpl(`${normalizePineconeHost(env.PINECONE_HOST)}/query`, {
+    const response = await fetchWithTimeout(`${normalizePineconeHost(env.PINECONE_HOST)}/query`, {
       method: "POST",
       headers: pineconeHeaders(env),
       body: JSON.stringify({
@@ -28,6 +29,10 @@ export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TO
         includeMetadata: true,
         includeValues: false
       })
+    }, {
+      env,
+      fetchImpl,
+      label: "Pinecone memory query"
     });
 
     const data = await response.json().catch(() => ({}));
@@ -64,11 +69,11 @@ export async function upsertGuidanceMemory({
 
   try {
     const makeEmbedding = deps.createEmbedding || createEmbedding;
-    const fetchImpl = deps.fetch || fetch;
+    const fetchImpl = deps.fetch || globalThis.fetch;
     const cleanText = String(text || "").replace(/\s+/g, " ").trim().slice(0, MAX_MEMORY_TEXT_CHARS);
     const vector = await makeEmbedding(cleanText, env);
     const id = buildMemoryId({ user, kind, sourceId, text: cleanText });
-    const response = await fetchImpl(`${normalizePineconeHost(env.PINECONE_HOST)}/vectors/upsert`, {
+    const response = await fetchWithTimeout(`${normalizePineconeHost(env.PINECONE_HOST)}/vectors/upsert`, {
       method: "POST",
       headers: pineconeHeaders(env),
       body: JSON.stringify({
@@ -85,6 +90,10 @@ export async function upsertGuidanceMemory({
           })
         }]
       })
+    }, {
+      env,
+      fetchImpl,
+      label: "Pinecone memory upsert"
     });
 
     const data = await response.json().catch(() => ({}));

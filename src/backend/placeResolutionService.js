@@ -1,5 +1,6 @@
 import tzLookup from "tz-lookup";
 import { enrichUserWithPlace, resolveBirthPlace } from "../placeResolver.js";
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
 
 export async function enrichUserWithServerPlace(user = {}, env = process.env, deps = {}) {
   const profilePlace = resolveProfileCoordinates(user);
@@ -30,12 +31,16 @@ export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
 
   try {
     const url = buildGeocoderUrl(geocoderUrl, query);
-    const response = await fetchImpl(url.toString(), {
+    const response = await fetchWithTimeout(url.toString(), {
       method: "GET",
       headers: {
         Accept: "application/json",
         "User-Agent": env.PLACE_GEOCODER_USER_AGENT || "SoulGuru/1.0 birth-place-resolution"
       }
+    }, {
+      env,
+      fetchImpl,
+      label: "Birth place geocoder"
     });
     if (!response?.ok) return null;
 

@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 export async function sendEmail({ to, subject, html, text, tags = [] }, env = process.env, deps = {}) {
@@ -9,8 +11,8 @@ export async function sendEmail({ to, subject, html, text, tags = [] }, env = pr
     return { sent: false, skipped: true, reason: "Missing email fields" };
   }
 
-  const fetchImpl = deps.fetch || fetch;
-  const response = await fetchImpl(RESEND_API_URL, {
+  const fetchImpl = deps.fetch || globalThis.fetch;
+  const response = await fetchWithTimeout(RESEND_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -24,6 +26,10 @@ export async function sendEmail({ to, subject, html, text, tags = [] }, env = pr
       text,
       tags
     })
+  }, {
+    env,
+    fetchImpl,
+    label: "Resend email"
   });
 
   const data = await response.json().catch(() => ({}));

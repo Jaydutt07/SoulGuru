@@ -39,6 +39,7 @@ function checkRequiredCommands(workflowText) {
     "npm run readiness:check",
     "npm run observability:check",
     "npm run openai:check",
+    "npm run backend-fetch:check",
     "npm run email:check",
     "npm run supabase:migrations:check",
     "npm run soul:cache:check",

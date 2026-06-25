@@ -1,5 +1,6 @@
 import { createHmac, randomInt } from "node:crypto";
 import { sendEmail } from "./emailService.js";
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_EXPIRY_MINUTES = 10;
@@ -192,7 +193,7 @@ async function sendSmsWebhook({ phone, code, purpose }, env) {
     headers.Authorization = `Bearer ${env.OTP_SMS_WEBHOOK_TOKEN}`;
   }
 
-  const response = await fetch(env.OTP_SMS_WEBHOOK_URL, {
+  const response = await fetchWithTimeout(env.OTP_SMS_WEBHOOK_URL, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -201,6 +202,9 @@ async function sendSmsWebhook({ phone, code, purpose }, env) {
       message,
       purpose
     })
+  }, {
+    env,
+    label: "OTP SMS webhook"
   });
   const data = await response.json().catch(() => ({}));
 

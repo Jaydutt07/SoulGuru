@@ -71,6 +71,9 @@ jobs:
       - name: Verify OpenAI backend contracts
         run: npm run openai:check
 
+      - name: Verify backend fetch timeout contracts
+        run: npm run backend-fetch:check
+
       - name: Verify email contracts
         run: npm run email:check
 

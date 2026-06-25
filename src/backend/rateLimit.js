@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { getClientIp } from "./request.js";
 
 const DEFAULT_LIMIT = 20;
@@ -13,7 +14,7 @@ export async function checkRateLimit({
   route = "default",
   limit = DEFAULT_LIMIT,
   windowSeconds = DEFAULT_WINDOW_SECONDS,
-  fetchImpl = fetch,
+  fetchImpl = globalThis.fetch,
   now = Date.now()
 }) {
   const restUrl = env.UPSTASH_REDIS_REST_URL;
@@ -25,7 +26,7 @@ export async function checkRateLimit({
 
   const redisKey = buildRedisRateLimitKey(route, key);
   try {
-    const response = await fetchImpl(`${restUrl.replace(/\/$/, "")}/pipeline`, {
+    const response = await fetchWithTimeout(`${restUrl.replace(/\/$/, "")}/pipeline`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -35,6 +36,10 @@ export async function checkRateLimit({
         ["INCR", redisKey],
         ["EXPIRE", redisKey, windowSeconds, "NX"]
       ])
+    }, {
+      env,
+      fetchImpl,
+      label: "Upstash rate limit"
     });
 
     if (!response.ok) {

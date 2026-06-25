@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
 
 const SENTRY_VERSION = "7";
 
@@ -37,13 +38,17 @@ export async function captureApiError(error, options = {}, env = process.env, de
   ].join("\n");
 
   try {
-    const response = await fetchImpl(dsn.envelopeUrl, {
+    const response = await fetchWithTimeout(dsn.envelopeUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-sentry-envelope",
         "X-Sentry-Auth": buildSentryAuthHeader(dsn.publicKey)
       },
       body: envelope
+    }, {
+      env,
+      fetchImpl,
+      label: "Sentry envelope capture"
     });
 
     return {

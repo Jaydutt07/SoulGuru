@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { buildMembershipEmail, sendEmail } from "./emailService.js";
+import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { buildShaniReport } from "./shaniService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
@@ -46,7 +47,7 @@ const SHANI_PLAN_DEFINITIONS = Object.freeze({
   }
 });
 
-export async function createRazorpayOrder({ user = {} }, env = process.env) {
+export async function createRazorpayOrder({ user = {} }, env = process.env, deps = {}) {
   const keyId = env.RAZORPAY_KEY_ID;
   const keySecret = env.RAZORPAY_KEY_SECRET;
 
@@ -57,7 +58,7 @@ export async function createRazorpayOrder({ user = {} }, env = process.env) {
   const amountPaise = getMoreGuidancePricePaise(env);
   const currency = MORE_GUIDANCE_CURRENCY;
   const userKey = requirePaymentUserKey(user);
-  const response = await fetch(RAZORPAY_ORDERS_URL, {
+  const response = await fetchWithTimeout(RAZORPAY_ORDERS_URL, {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
@@ -76,6 +77,10 @@ export async function createRazorpayOrder({ user = {} }, env = process.env) {
         email: user.email || ""
       }
     })
+  }, {
+    env,
+    fetchImpl: deps.fetch || globalThis.fetch,
+    label: "Razorpay More Guidance order"
   });
 
   const data = await response.json().catch(() => ({}));
@@ -106,7 +111,7 @@ export async function createRazorpayOrder({ user = {} }, env = process.env) {
   };
 }
 
-export async function createShaniRazorpayOrder({ user = {}, planId = "3m" }, env = process.env) {
+export async function createShaniRazorpayOrder({ user = {}, planId = "3m" }, env = process.env, deps = {}) {
   const keyId = env.RAZORPAY_KEY_ID;
   const keySecret = env.RAZORPAY_KEY_SECRET;
 
@@ -119,7 +124,7 @@ export async function createShaniRazorpayOrder({ user = {}, planId = "3m" }, env
   const currency = SHANI_CURRENCY;
   const userKey = requirePaymentUserKey(user);
   const planKey = buildShaniPlanKey(plan.id);
-  const response = await fetch(RAZORPAY_ORDERS_URL, {
+  const response = await fetchWithTimeout(RAZORPAY_ORDERS_URL, {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
@@ -143,6 +148,10 @@ export async function createShaniRazorpayOrder({ user = {}, planId = "3m" }, env
         birth_place: user.birthPlace || ""
       }
     })
+  }, {
+    env,
+    fetchImpl: deps.fetch || globalThis.fetch,
+    label: "Razorpay Shani order"
   });
 
   const data = await response.json().catch(() => ({}));

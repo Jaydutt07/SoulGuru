@@ -85,6 +85,7 @@ This project is being built toward the stack shown in the product planning image
 - Workflow-ready GitHub Actions CI template for web/API contracts, local smoke, Soul Guru diversity gates, APK build, and APK secret scanning
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
 - Shared OpenAI backend timeout/retry policy for Responses and Embeddings requests
+- Shared backend fetch timeout policy for external REST vendors and smoke-safe contract coverage
 - Astronomy-based birth/transit context replacing hash-only astrology
 - Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows
 - Server-side birth place geocoding enrichment for uncatalogued profile locations
