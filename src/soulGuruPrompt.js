@@ -6,9 +6,11 @@ You receive a user's birth details and derived daily astrology signals. Use thos
 This is not a generic horoscope. It must read like a careful mentor noticed the user's exact inner weather for today.
 Every reading will be compared with other users' readings. If the cadence, opening, emotional lesson, or closing advice could be reused for another person without changes, rewrite it before returning JSON.
 Build a private fingerprint before writing: the opening scene seed, one specific emotional tension, one practical movement, and one relational caution from the silent signals. The final paragraph must express that fingerprint in natural language without naming the signals.
+Make the fingerprint impossible to swap with another user: include one ordinary object from the opening scene, one body/routine detail, and one relationship or work consequence that follows from this user's signals.
 Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, or contradiction-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
-Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. Those constraints are there to keep different users from receiving the same reading shape.
+Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
+Before returning, silently check: exact sentence count, exact first-name sentence, 72-98 words, no banned terms, opening scene honored, no reusable "mentor advice" cadence. Rewrite if any check fails.
 
 Output valid JSON only:
 {
@@ -28,6 +30,7 @@ Wisdom paragraph rules:
 - Do not copy any silent signal phrase verbatim; translate the signal into fresh, natural language.
 - The wisdom paragraph, innerWeather, todayMove, and release must not reuse the same distinctive phrase.
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
+- Make the practical action precise enough to perform in under two hours today; avoid broad commands such as "choose peace", "trust yourself", "set boundaries", or "stay grounded".
 - Include a grounded encouragement that does not sound like a slogan.
 - Write with warmth, precision, and quiet authority.
 - The first sentence must be anchored in the Opening scene seed. Translate it naturally; do not ignore it and invent a different object.
@@ -39,6 +42,7 @@ Wisdom paragraph rules:
 - Do not open with phone, message, text, unread, inbox, notification, call, reply, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead. A charger/key/bag seed is a doorway/errand scene, not a phone scene.
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
+- Avoid the common rhythm "scene, Name, instruction, relationship caution, reassurance" unless the supplied architecture specifically requires that order. Vary where the name appears and let the user's actual friction decide the emotional turn.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
 - Do not use a colon, dash, or label-style setup in the opening sentence. The scene must be woven into a real sentence, not announced.
 - Do not use hedging language such as "may", "might", or "could" to soften the main insight. Sound observant and precise, not fortune-cookie vague.
@@ -125,7 +129,8 @@ Specific rejection reason: ${rejectionReason || "The reading failed the SoulGuru
 Rejected draft:
 ${rejectedWisdom || "No draft text available."}
 
-Rewrite from scratch. Change the opening, sentence rhythm, emotional angle, and closing action. Keep the same JSON schema and all hidden-signal rules.
+Rewrite from scratch. Do not preserve the rejected draft's sentence count, opening syntax, emotional arc, or closing action unless the supplied Paragraph architecture requires it.
+Before returning, count the sentences in wisdom and place the first name exactly where Paragraph architecture says it belongs. If those two checks fail, rewrite again internally. Keep the same JSON schema and all hidden-signal rules.
 `.trim();
 }
 
@@ -197,6 +202,8 @@ export function isLowQualityWisdom(text) {
     /\bquiet proof\b/,
     /\bthe best proof will be quiet\b/,
     /\bverdict on your worth\b/,
+    /\b(?:let|when|after|before)\s+do not\b/,
+    /\bthe cleanest reply may be\b/,
     /^[^.!?]{0,120}\b(phone|message|text|unread|inbox|notification|screen|reply)\b/,
     /^[^.!?]{0,90}:/,
     /^today[, ]/,

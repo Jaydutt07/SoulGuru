@@ -119,6 +119,9 @@ function evaluateReading({ user, source, result }) {
   if (wordCount < minWords || wordCount > maxWords) {
     failures.push(`expected ${minWords}-${maxWords} words, got ${wordCount}.`);
   }
+  if (sentences.length < 3 || sentences.length > 6) {
+    failures.push(`expected 3-6 sentences, got ${sentences.length}.`);
+  }
   if (isLowQualityWisdom(wisdom)) {
     failures.push("matched low-quality/repeated phrasing rules.");
   }
@@ -328,7 +331,7 @@ function hasMechanicalDirectAddressCasing(text, name) {
 }
 
 function hasAwkwardTemplateJoin(text) {
-  return /\bLet\s+(?:answer|choose|clean|close|complete|document|finish|letting|make|protect|separate|turn)\b/i.test(String(text || ""));
+  return /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i.test(String(text || ""));
 }
 
 function getParagraphArchitectureFailures({ sentences, user, context, today }) {

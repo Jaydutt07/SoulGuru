@@ -1,5 +1,5 @@
 import { buildAstrologyContext, buildTransitDateForUser } from "./astrologyEngine.js";
-import { cleanWisdomText, firstName, isLowQualityWisdom } from "./soulGuruPrompt.js";
+import { buildParagraphArchitecture, cleanWisdomText, firstName, isLowQualityWisdom } from "./soulGuruPrompt.js";
 
 export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined)) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
@@ -14,7 +14,7 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
     buildCoreNeedWisdom,
     buildPersonalEdgeWisdom
   ];
-  let wisdom = buildSignatureWisdom(user, context, seed);
+  let wisdom = buildSignatureWisdom(user, context, seed, dateKey);
   if (isLowQualityWisdom(wisdom)) {
     wisdom = builders[seed % builders.length](user, context);
   }
@@ -43,25 +43,71 @@ export function getDailyFocus(user, dateKey = getTodayKey(new Date(), user.birth
   ];
 }
 
-function buildSignatureWisdom(user, context, seed) {
+function buildSignatureWisdom(user, context, seed, dateKey) {
   const name = firstName(user.name);
   const scene = sceneSeed(context, seed);
   const opening = openingLine(scene, context, seed, name);
   const nameInsight = nameLine(name, context, seed + 3);
   const action = actionLine(context, seed + 7, name);
+  const body = bodyLine(context, seed + 11, name);
   const relation = relationLine(name, context, seed + 13);
   const closing = closingLine(context, seed + 19, name);
-  const plans = [
-    [opening, nameInsight, action, relation, closing],
-    [opening, action, nameInsight, relation, closing],
-    [opening, relation, nameInsight, action, closing],
-    [opening, nameInsight, relation, action, closing],
-    [opening, `${nameInsight} ${action}`, relation, closing],
-    [opening, action, relation, nameInsight, closing]
-  ];
-  const planIndex = mod(seed + stableHash(`${name}|${context.openingScene}|${context.dailyArea}|${context.coreNeed}`), plans.length);
+  const relationClose = relationCloseLine(context, seed + 23, name);
+  const architecture = buildParagraphArchitecture(user, context, dateKey);
+  const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 5);
+  const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
 
-  return plans[planIndex].join(" ");
+  return buildArchitecturePlan({
+    opening,
+    nameInsight,
+    action,
+    body,
+    relation,
+    closing,
+    relationClose,
+    sentenceCount,
+    nameSentence,
+    seed
+  }).join(" ");
+}
+
+function buildArchitecturePlan({
+  opening,
+  nameInsight,
+  action,
+  body,
+  relation,
+  closing,
+  relationClose,
+  sentenceCount,
+  nameSentence,
+  seed
+}) {
+  const count = Math.min(6, Math.max(4, sentenceCount || 5));
+  const plan = Array(count).fill(null);
+  const nameIndex = Math.min(count - 2, Math.max(1, (nameSentence || 2) - 1));
+  plan[0] = opening;
+  plan[nameIndex] = nameInsight;
+  plan[count - 1] = count === 4 ? relationClose : closing;
+
+  const fillerGroups = [
+    [action, body, relation],
+    [body, action, relation],
+    [relation, action, body],
+    [action, relation, body],
+    [body, relation, action],
+    [relation, body, action]
+  ];
+  const fillers = fillerGroups[mod(seed, fillerGroups.length)];
+  let fillerIndex = 0;
+
+  for (let index = 1; index < count - 1; index += 1) {
+    if (plan[index]) continue;
+    plan[index] = fillers[fillerIndex % fillers.length];
+    fillerIndex += 1;
+  }
+
+  return plan.map((line) => line || closing);
 }
 
 function buildTaskFirstWisdom(user, context) {
@@ -158,18 +204,18 @@ function nameLine(name, context, seed) {
   const area = dailyAreaLabel(context.dailyArea);
   const edgeInstruction = lowerFirst(edge);
   const lines = [
-    `${name}, ${edgeInstruction} before ${area} starts sounding like a test of discipline.`,
-    `${name}, you need ${need} before the pressure around ${area} gets noisy.`,
-    `${name}, the pressure around ${area} is not asking for a perfect mood; it is asking for one clean shape.`,
-    `${name}, keep ${need} specific, or the whole day will start sounding like the same problem.`,
-    `${name}, ${edgeInstruction}; the goal is movement without turning the moment into a measure of worth.`,
-    `${name}, do not let a delay around ${area} decide the tone of your whole day.`,
-    `${name}, give ${area} a practical container while you practice this: ${edge}.`,
-    `${name}, protect ${need} with one observable choice instead of another internal argument.`,
-    `${name}, ${edgeInstruction}. Treat that as a signal, not a sentence.`,
-    `${name}, separate ${need} from the noise around ${area} before you answer anything urgent.`,
-    `${name}, the real need under ${area} is ${need}; protect it with ordinary support instead of another internal argument.`,
-    `${name}, ${edgeInstruction} before ${area} becomes heavier than it has to be.`
+    `For ${name}, ${edgeInstruction} before ${area} starts sounding like a test of discipline.`,
+    `What ${name} needs is ${need} before the pressure around ${area} gets noisy.`,
+    `Around ${area}, ${name} is not being asked for a perfect mood, only one clean shape.`,
+    `Keep ${need} specific, ${name}, or the whole day will start sounding like the same problem.`,
+    `The useful edge for ${name} is to ${edgeInstruction} without turning the moment into a measure of worth.`,
+    `A delay around ${area} does not get to decide the whole tone for ${name}.`,
+    `Give ${area} a practical container, ${name}, while you practice this: ${edge}.`,
+    `One observable choice can protect ${need} for ${name} better than another internal argument.`,
+    `For ${name}, ${edgeInstruction} is a signal, not a sentence.`,
+    `Separate ${need} from the noise around ${area}, ${name}, before you answer anything urgent.`,
+    `The real need under ${area}, ${name}, is ${need}; protect it with ordinary support.`,
+    `Before ${area} becomes heavier than it has to be, ${name} needs to ${edgeInstruction}.`
   ];
   return pickLine(lines, seed, name, need, edge, area);
 }
@@ -196,40 +242,88 @@ function actionLine(context, seed, salt = "") {
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
-    `For the next hour, ${action}. Leave the larger story alone until that is done.`,
-    `Make the next useful task visible. ${capitalize(work)}. Pair it with one plain instruction. ${capitalize(action)}.`,
-    `Check the body first. ${capitalize(body)}. Keep the habit of ${avoid} out of the room.`,
+    `For the next hour, ${action}, then leave the larger story alone until the task has shape.`,
+    `Make the next useful task visible by pairing ${work} with one plain instruction: ${action}.`,
+    `Check the body first through this simple rule: ${body}, with ${avoid} kept out of the room.`,
     `Give the next hour one visible edge: ${action}, no extra proving required.`,
-    `Give the work a plain place. ${capitalize(work)}. Leave the extra possibilities unopened for now.`,
+    `Give the work a plain place by choosing to ${work}, while the extra possibilities stay unopened for now.`,
     `Before the day scatters, ${action}; the mood can catch up after the action has form.`,
-    `Shrink the decision until it can be done today. ${capitalize(action)}.`,
-    `Treat the body cue as useful data. ${capitalize(body)}. Then complete the nearest piece of work without dramatizing it.`,
-    `The first proof of care can be practical: ${work}. Stop negotiating with the mood after that.`,
-    `Give the action a time and a place. ${capitalize(action)}.`,
-    `Let the body lead the timing. ${capitalize(body)}. Handle the practical part after that.`,
-    `Reduce the work to one visible movement. ${capitalize(work)}. The rest can wait its turn.`
+    `Shrink the decision until it can be done today: ${action}.`,
+    `Treat the body cue as useful data by choosing to ${body}, then complete the nearest piece of work without dramatizing it.`,
+    `The first proof of care can be practical: ${work}, with no further negotiation from the mood.`,
+    `Give the action a time and a place by choosing to ${action}.`,
+    `Let the body lead the timing through this move: ${body}, then handle the practical part after that.`,
+    `Reduce the work to one visible movement: ${work}, and let the rest wait its turn.`
   ];
   return pickLine(lines, seed, salt, action, work, body, avoid, context.dailyArea, context.openingScene, context.coreNeed);
 }
 
+function bodyLine(context, seed, salt = "") {
+  const body = fragment(context.bodySignal || "let the body settle before choosing words");
+  const cue = bodyCueClause(body);
+  const weather = fragment(context.innerWeather || "the mood is asking for less noise");
+  const avoid = fragment(context.avoid || "over-explaining");
+  const lines = [
+    `Let ${cue} set the sequence before ${avoid} begins inventing meanings.`,
+    `The mood becomes more useful when ${cue} comes before any final interpretation.`,
+    `Keep the body in the room today with ${cue}, then let the mind make a smaller claim.`,
+    `Treat ${weather} as information, but let ${cue} decide the pace of the next move.`,
+    `Before the pressure gets a story, give the body one plain vote through ${body}.`,
+    `A practical body cue matters here because ${avoid} will make the day sound larger than it is.`
+  ];
+  return pickLine(lines, seed, salt, body, cue, weather, avoid, context.openingScene, context.dailyArea);
+}
+
 function relationLine(name, context, seed) {
-  const relation = fragment(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising");
+  const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising");
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
     `With other people, ${relation}; warmth does not require unlimited availability.`,
     `If a conversation pulls for more, keep the answer shorter than the worry around it.`,
-    `Keep this relational note close: ${sentence(relation)} Let it soften your pace without erasing your position.`,
+    `Keep this relational note close: ${lowerFirst(relation)}, so your pace softens without erasing your position.`,
     `The relationship tone improves when you stop offering extra words just to calm the air.`,
     `Respond from proportion: kind, brief, and clear enough that resentment has less room.`,
     `Do not confuse care with staying open to every demand that arrives without timing.`,
     `If someone needs an answer, give one that respects both warmth and timing.`,
     `Let the next reply be useful, not decorative; care does not need a long defense.`,
-    `Let this be the relational rule: ${relation}. Everything else can stay simpler.`,
+    `Treat this as the relational rule: ${lowerFirst(relation)}, while everything else stays simpler.`,
     `Where ${avoid} usually takes over, answer with a clean time, a clean no, or a clean yes.`,
     `Keep the door open only as far as your body can honestly support.`,
     `The kinder answer is the one you can keep without quietly punishing yourself later.`
   ];
   return pickLine(lines, seed, name, relation, avoid, context.dailyArea);
+}
+
+function relationCloseLine(context, seed, salt = "") {
+  const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising");
+  const permission = fragment(context.closingPermission || "one small finish can be enough");
+  const lines = [
+    `Let the next reply follow this rule: ${lowerFirst(relation)}, then let the rest of the day stay modest and workable.`,
+    `With other people, ${relation}; the day can still end with one useful detail finished.`,
+    `Keep the relational answer simple enough to keep, and let one ordinary finish count without decoration.`,
+    `When the room asks for more explanation, ${relation}, and leave with one less loose end.`,
+    `Let warmth have timing today, because ${permission} without another performance is already progress.`,
+    `A cleaner reply and one finished task will support you better than solving the whole emotional weather.`
+  ];
+  return pickLine(lines, seed, salt, relation, permission, context.dailyArea);
+}
+
+function bodyCueClause(text) {
+  const value = fragment(text);
+  if (!value) return "the body's practical cue";
+  if (/^do not\b/i.test(value)) {
+    return `the cue to ${lowerFirst(value).replace(/^do not\b/i, "avoid")}`;
+  }
+  if (/^(eat|leave|walk|sleep|drink|lower|protect|notice|step|start|let)\b/i.test(value)) {
+    return `the cue to ${lowerFirst(value)}`;
+  }
+  return `the body cue to ${lowerFirst(value)}`;
+}
+
+function relationClause(text) {
+  return fragment(text)
+    .replace(/\bmay be\b/gi, "is")
+    .replace(/\bmay\b/gi, "can");
 }
 
 function sceneVariants(raw) {
@@ -396,11 +490,6 @@ function normalizeLocalWisdom(text) {
 
 function fragment(text) {
   return String(text || "").replace(/[.!?]+$/g, "").trim();
-}
-
-function sentence(text) {
-  const value = fragment(text);
-  return value ? `${capitalize(value)}.` : "";
 }
 
 function toCue(text) {
