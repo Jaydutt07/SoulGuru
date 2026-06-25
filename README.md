@@ -136,6 +136,12 @@ Check Upstash rate limiting, hashed Redis keys, pipeline requests, and emergency
 npm run rate-limit:check
 ```
 
+Check API request parsing, invalid JSON, oversized body, and error response behavior:
+
+```bash
+npm run request:check
+```
+
 Check the production readiness report contract:
 
 ```bash
@@ -287,6 +293,7 @@ The CI template checks:
 - `npm run auth:check`
 - `npm run memory:check`
 - `npm run rate-limit:check`
+- `npm run request:check`
 - `npm run readiness:check`
 - `npm run observability:check`
 - `npm run openai:check`
@@ -564,6 +571,7 @@ Before release:
 - Run `npm run auth:check`.
 - Run `npm run memory:check`.
 - Run `npm run rate-limit:check`.
+- Run `npm run request:check`.
 - Run `npm run readiness:check`.
 - Run `npm run observability:check`.
 - Run `npm run openai:check`.

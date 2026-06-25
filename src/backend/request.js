@@ -28,32 +28,58 @@ export function getHttpMethod(req) {
 export async function readRequestBody(req, maxBytes = 50000) {
   return new Promise((resolve, reject) => {
     let body = "";
+    let bytes = 0;
+    let rejected = false;
     req.on("data", (chunk) => {
+      bytes += Buffer.byteLength(chunk);
       body += chunk;
-      if (body.length > maxBytes) {
-        reject(new Error("Request body is too large"));
+      if (!rejected && bytes > maxBytes) {
+        rejected = true;
+        reject(createHttpError("Request body is too large", 413, "PAYLOAD_TOO_LARGE"));
         req.destroy();
       }
     });
-    req.on("end", () => resolve(body || ""));
-    req.on("error", reject);
+    req.on("end", () => {
+      if (!rejected) resolve(body || "");
+    });
+    req.on("error", (error) => {
+      if (!rejected) reject(error);
+    });
   });
 }
 
 export async function parseJsonRequest(req, maxBytes = 50000) {
   if (typeof req.body === "string") {
-    return JSON.parse(req.body || "{}");
+    return parseJsonBody(req.body);
   }
   if (req.body && typeof req.body === "object") {
     return req.body;
   }
 
   const rawBody = await readRequestBody(req, maxBytes);
-  return rawBody ? JSON.parse(rawBody) : {};
+  return parseJsonBody(rawBody);
 }
 
 export function getClientIp(req) {
   const forwarded = req.headers?.["x-forwarded-for"];
   const value = Array.isArray(forwarded) ? forwarded[0] : forwarded;
   return String(value || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
+}
+
+function parseJsonBody(rawBody) {
+  const text = String(rawBody || "");
+  if (!text.trim()) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw createHttpError("Invalid JSON request body", 400, "INVALID_JSON");
+  }
+}
+
+function createHttpError(message, statusCode, code) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  return error;
 }

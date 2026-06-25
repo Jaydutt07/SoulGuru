@@ -36,6 +36,7 @@ function checkRequiredCommands(workflowText) {
     "npm run auth:check",
     "npm run memory:check",
     "npm run rate-limit:check",
+    "npm run request:check",
     "npm run readiness:check",
     "npm run observability:check",
     "npm run openai:check",

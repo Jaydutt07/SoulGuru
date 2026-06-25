@@ -62,6 +62,9 @@ jobs:
       - name: Verify rate limit contracts
         run: npm run rate-limit:check
 
+      - name: Verify request handling contracts
+        run: npm run request:check
+
       - name: Verify production readiness contracts
         run: npm run readiness:check
 

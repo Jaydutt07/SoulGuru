@@ -39,6 +39,7 @@
     "public-env:check:strict": "node scripts/check-public-env.mjs --strict",
     "rate-limit:check": "node scripts/check-rate-limit-contracts.mjs",
     "readiness:check": "node scripts/check-readiness-contracts.mjs",
+    "request:check": "node scripts/check-request-contracts.mjs",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",
     "shani:check": "node scripts/check-shani-contracts.mjs",
     "soul:cache:check": "node scripts/check-soul-wisdom-cache.mjs",
