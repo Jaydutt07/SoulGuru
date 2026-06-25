@@ -69,6 +69,7 @@ This project is being built toward the stack shown in the product planning image
 - Signed Android release APK/AAB scripts with keystore validation and artifact secret scanning
 - Production readiness endpoint and CLI checks for backend env configuration
 - Production readiness contract checker requiring the full planned stack before `/api/readiness` returns ready
+- Provider stack readiness matrix covering the planning-image providers with secret-safe missing-env output
 - Production Soul Guru cache guard so daily AI readings require Supabase persistence
 - Production client guard so Soul Guru does not display or cache unstored local fallback readings
 - Extended Soul Guru local reading diversity gate across a broader profile fixture set
@@ -137,7 +138,7 @@ This project is being built toward the stack shown in the product planning image
 11. Apply `supabase/migrations/011_schema_contract_constraints.sql`.
 12. Apply `supabase/migrations/012_shani_membership.sql`.
 13. Run `npm run supabase:schema:check` against the Supabase project.
-14. Run `npm run production:env:checklist` and use the generated checklist while configuring Vercel, Cloudflare, and provider dashboards.
+14. Run `npm run production:env:checklist` and `npm run production:providers` while configuring Vercel, Cloudflare, and provider dashboards.
 15. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
 16. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 17. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.

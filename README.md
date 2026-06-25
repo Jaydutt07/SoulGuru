@@ -102,6 +102,15 @@ npm run production:env:checklist
 
 The checklist includes the custom domain and Cloudflare DNS launch gate. Set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and `VITE_API_BASE_URL` only after the production HTTPS domain is attached to the Vercel app.
 
+Print and verify the provider stack from the planning image against the real production readiness gate:
+
+```bash
+npm run production:providers
+npm run providers:check
+```
+
+The provider matrix covers OpenAI, Supabase, Vercel, Namecheap, Razorpay, GitHub, Resend, Clerk, Cloudflare, PostHog, Sentry, Upstash, and Pinecone without printing secret values.
+
 Check the production-domain smoke contract and, after DNS is live, smoke-test the HTTPS custom domain:
 
 ```bash
@@ -353,6 +362,7 @@ The CI template checks:
 - `npm run rate-limit:check`
 - `npm run request:check`
 - `npm run readiness:check`
+- `npm run providers:check`
 - `npm run observability:check`
 - `npm run openai:check`
 - `npm run backend-fetch:check`

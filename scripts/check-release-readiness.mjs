@@ -28,6 +28,7 @@ await runStep("Guidance memory contract checks", "npm", ["run", "memory:check"])
 await runStep("Rate limit contract checks", "npm", ["run", "rate-limit:check"]);
 await runStep("Request handling contract checks", "npm", ["run", "request:check"]);
 await runStep("Production readiness contract checks", "npm", ["run", "readiness:check"]);
+await runStep("Provider stack contract checks", "npm", ["run", "providers:check"]);
 await runStep("Observability contract checks", "npm", ["run", "observability:check"]);
 await runStep("OpenAI backend contract checks", "npm", ["run", "openai:check"]);
 await runStep("Backend fetch timeout contract checks", "npm", ["run", "backend-fetch:check"]);
