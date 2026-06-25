@@ -147,14 +147,12 @@ function evaluateReading({ user, source, result }) {
   if (openingSceneCategory === "device" && expectedSceneCategory !== "device") {
     failures.push("opened with phone/message/screen imagery even though the seeded scene was not device-based.");
   }
-  if (source === "openai") {
-    failures.push(...getParagraphArchitectureFailures({
-      sentences,
-      user,
-      context,
-      today: formatDateForPrompt(date)
-    }));
-  }
+  failures.push(...getParagraphArchitectureFailures({
+    sentences,
+    user,
+    context,
+    today: source === "openai" ? formatDateForPrompt(date) : date
+  }));
 
   return {
     source,
@@ -280,7 +278,7 @@ function buildStructureSignature(sentences, nameSentenceIndex) {
 
 function sentenceOpeningBucket(sentence) {
   const normalized = String(sentence || "").toLowerCase().trim();
-  if (/^(begin|notice|use|make|give|keep|do|take|finish|protect|respond|leave|put|treat|reduce|shrink|answer|decline|wait|walk|eat|drink)\b/.test(normalized)) {
+  if (/^(answer|begin|check|choose|close|decline|do|drink|eat|finish|give|handle|keep|leave|let|make|name|notice|protect|put|reduce|respond|schedule|send|separate|set|shrink|stand|stop|take|treat|use|wait|walk|write)\b/.test(normalized)) {
     return "imperative";
   }
   if (/^(before|after|by evening|if|when|where|with)\b/.test(normalized)) {
@@ -342,6 +340,9 @@ function getParagraphArchitectureFailures({ sentences, user, context, today }) {
   const architecture = buildParagraphArchitecture(user, context, today);
   const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0);
   const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
+  const expectedOpeningBucket = String(architecture || "").match(/Opening bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
+  const expectedFinalBucket = String(architecture || "").match(/Final bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
+  const expectedImperativeTarget = Number(String(architecture || "").match(/Imperative target:\s*(\d+)/i)?.[1] || Number.NaN);
   const failures = [];
   if (sentenceCount && sentences.length !== sentenceCount) {
     failures.push(`expected paragraph architecture sentence count ${sentenceCount}, got ${sentences.length}.`);
@@ -350,6 +351,24 @@ function getParagraphArchitectureFailures({ sentences, user, context, today }) {
     const nameIndex = sentences.findIndex((sentence) => countWord(sentence, firstName(user.name)) > 0);
     if (nameIndex !== nameSentence - 1) {
       failures.push(`expected first name in sentence ${nameSentence}, got ${nameIndex + 1 || 0}.`);
+    }
+  }
+  if (expectedOpeningBucket && sentences[0]) {
+    const actualOpeningBucket = sentenceOpeningBucket(sentences[0]);
+    if (actualOpeningBucket !== expectedOpeningBucket) {
+      failures.push(`expected opening bucket ${expectedOpeningBucket}, got ${actualOpeningBucket}.`);
+    }
+  }
+  if (expectedFinalBucket && sentences.at(-1)) {
+    const actualFinalBucket = sentenceOpeningBucket(sentences.at(-1));
+    if (actualFinalBucket !== expectedFinalBucket) {
+      failures.push(`expected final bucket ${expectedFinalBucket}, got ${actualFinalBucket}.`);
+    }
+  }
+  if (Number.isFinite(expectedImperativeTarget)) {
+    const actualImperatives = sentences.filter((sentence) => sentenceOpeningBucket(sentence) === "imperative").length;
+    if (actualImperatives !== expectedImperativeTarget) {
+      failures.push(`expected imperative target ${expectedImperativeTarget}, got ${actualImperatives}.`);
     }
   }
   return failures;

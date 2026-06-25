@@ -100,7 +100,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-side birth place geocoding enrichment for uncatalogued profile locations
 - Runtime birth-place geocoder validation for HTTPS provider config, real user agents, valid coordinate ranges, and usable place labels
 - Runtime transactional email validation for safe recipients, subjects, and normalized Resend tags
-- Soul Guru v12 daily wisdom prompt with private reading fingerprints, stricter live repair checks, whole-sentence cache refreshes, and structure-similarity gates
+- Soul Guru v13 daily wisdom prompt with private reading fingerprints, surface-rhythm repair checks, whole-sentence cache refreshes, and structure-similarity gates
 - More Guidance v3 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
 - Five-profile More Guidance paid-reading quality gate for word counts, concrete cues, generic-phrase bans, and overview diversity
 - Sidereal chart-based Harmony compatibility with offline contract coverage

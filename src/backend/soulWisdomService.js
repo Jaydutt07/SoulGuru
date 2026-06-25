@@ -1,4 +1,5 @@
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
+import { getDailyWisdom } from "../localSoulWisdom.js";
 import {
   buildParagraphArchitecture,
   buildSoulWisdomInput,
@@ -13,7 +14,7 @@ import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v12";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v13";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
@@ -65,13 +66,15 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   });
   let outputText = await requestSoulWisdom(client, model, promptInput, env);
   let qualityAttempts = 1;
+  let candidateIssues = getSoulWisdomContractIssues(
+    normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
+    user,
+    contractContext,
+    { enforceArchitecture: true }
+  );
 
-  const fallback = payload.fallback || createFallbackReading(buildServerFallbackWisdom(user, astrologyContext));
-  const firstCandidate = normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom;
-  const firstCandidateIssues = getSoulWisdomContractIssues(firstCandidate, user, contractContext, {
-    enforceArchitecture: true
-  });
-  if (firstCandidateIssues.length) {
+  const fallback = payload.fallback || getDailyWisdom(user, date, payload.today || date);
+  while (candidateIssues.length && qualityAttempts < 3) {
     outputText = await requestSoulWisdom(
       client,
       model,
@@ -80,12 +83,18 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
         context: astrologyContext,
         today: payload.today || date,
         memoryContext,
-        rejectedWisdom: firstCandidate,
-        rejectionReason: firstCandidateIssues.join("; ")
+        rejectedWisdom: normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
+        rejectionReason: candidateIssues.join("; ")
       }),
       env
     );
-    qualityAttempts = 2;
+    qualityAttempts += 1;
+    candidateIssues = getSoulWisdomContractIssues(
+      normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
+      user,
+      contractContext,
+      { enforceArchitecture: true }
+    );
   }
 
   let reading = normalizeWisdomPayload(outputText, fallback);
@@ -104,7 +113,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     quality: {
       attempts: qualityAttempts,
       repaired: qualityAttempts > 1,
-      passed: !getSoulWisdomContractIssues(reading.wisdom, user, astrologyContext).length
+      passed: !getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true }).length
     },
     memory: {
       configured: Boolean(memory.configured),
@@ -226,15 +235,6 @@ function throwHttpError(message, statusCode) {
   throw error;
 }
 
-function buildServerFallbackWisdom(user, context) {
-  const name = firstName(user.name);
-  const scene = context.openingScene || context.attentionAnchor || context.dailyScene || "one practical detail";
-  const move = context.mentorMove || context.stabilizer || "make one promise smaller and keep it completely";
-  const caution = context.relationalCaution || context.relationshipMirror || "do not make another person's uncertainty your assignment";
-  const avoid = context.avoid || "over-explaining";
-  return `${capitalize(scene)} deserves less room in your mind than it has been taking. ${name}, make the day smaller on purpose: ${move}, then keep ${avoid} away from the conversation that needs your attention. If ${caution}, let that guide your pace without hardening you. Your job is not to solve every feeling before moving; it is to keep one real promise cleanly and leave enough space for the body to settle.`;
-}
-
 function buildMemoryQuery({ user, astrologyContext, date }) {
   return [
     firstName(user.name),
@@ -279,6 +279,9 @@ function getParagraphArchitectureIssues(text, user, architecture) {
   const issues = [];
   const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0);
   const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
+  const expectedOpeningBucket = String(architecture || "").match(/Opening bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
+  const expectedFinalBucket = String(architecture || "").match(/Final bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
+  const expectedImperativeTarget = Number(String(architecture || "").match(/Imperative target:\s*(\d+)/i)?.[1] || Number.NaN);
   const sentences = splitSentences(text);
   if (sentenceCount && sentences.length !== sentenceCount) {
     issues.push(`expected paragraph architecture sentence count ${sentenceCount}, got ${sentences.length}`);
@@ -289,7 +292,42 @@ function getParagraphArchitectureIssues(text, user, architecture) {
       issues.push(`expected first name in sentence ${nameSentence}, got ${nameIndex + 1 || 0}`);
     }
   }
+  if (expectedOpeningBucket && sentences[0]) {
+    const actualOpeningBucket = sentenceOpeningBucket(sentences[0]);
+    if (actualOpeningBucket !== expectedOpeningBucket) {
+      issues.push(`expected opening bucket ${expectedOpeningBucket}, got ${actualOpeningBucket}`);
+    }
+  }
+  if (expectedFinalBucket && sentences.at(-1)) {
+    const actualFinalBucket = sentenceOpeningBucket(sentences.at(-1));
+    if (actualFinalBucket !== expectedFinalBucket) {
+      issues.push(`expected final bucket ${expectedFinalBucket}, got ${actualFinalBucket}`);
+    }
+  }
+  if (Number.isFinite(expectedImperativeTarget)) {
+    const actualImperatives = sentences.filter((sentence) => sentenceOpeningBucket(sentence) === "imperative").length;
+    if (actualImperatives !== expectedImperativeTarget) {
+      issues.push(`expected imperative target ${expectedImperativeTarget}, got ${actualImperatives}`);
+    }
+  }
   return issues;
+}
+
+function sentenceOpeningBucket(sentence) {
+  const normalized = String(sentence || "").toLowerCase().trim();
+  if (/^(answer|begin|check|choose|close|decline|do|drink|eat|finish|give|handle|keep|leave|let|make|name|notice|protect|put|reduce|respond|schedule|send|separate|set|shrink|stand|stop|take|treat|use|wait|walk|write)\b/.test(normalized)) {
+    return "imperative";
+  }
+  if (/^(before|after|by evening|if|when|where|with)\b/.test(normalized)) {
+    return "condition";
+  }
+  if (/^[a-z]+,\b/.test(normalized)) {
+    return "name";
+  }
+  if (/^(a|an|the|one|your|that|this)\b/.test(normalized)) {
+    return "scene";
+  }
+  return "statement";
 }
 
 function splitSentences(text) {
@@ -394,10 +432,4 @@ function escapeRegex(value) {
 
 function firstName(name) {
   return String(name || "friend").trim().split(/\s+/)[0] || "friend";
-}
-
-function capitalize(text) {
-  const value = String(text || "").trim();
-  if (!value) return "";
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

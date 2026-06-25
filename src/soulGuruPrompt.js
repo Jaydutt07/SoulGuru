@@ -8,10 +8,13 @@ Every reading will be compared with other users' readings. If the cadence, openi
 Build a private fingerprint before writing: the opening scene seed, one specific emotional tension, one practical movement, one body/routine detail, and one relational or work consequence from the silent signals. The final paragraph must express that exact fingerprint in natural language without naming the signals.
 Make the fingerprint impossible to swap with another user: the ordinary object, the tension, the action, and the consequence must all belong to this user's hidden combination.
 Honor the supplied Reading fingerprint. It is a private composition route, not text to quote. Use it to decide which detail leads, where the emotional turn happens, and what kind of close feels earned.
-Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, consequence-first, or contradiction-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
+Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, consequence-first, contradiction-first, unfinished-action-first, or consequence-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
 Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
-Before returning, silently check: exact sentence count, exact first-name sentence, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no reusable "mentor advice" cadence, and no vague emotional forecast. Rewrite if any check fails.
+Follow the supplied Surface rhythm exactly. Opening bucket controls how sentence 1 begins; final bucket controls how the last sentence begins; imperative target controls how many sentences start with a command verb. These are quality controls to prevent repeated formats between users.
+If Opening bucket is "condition", start sentence 1 with Before, After, When, Where, or With. If it is "scene", start sentence 1 with The, A, An, One, Your, That, or This. If it is "statement", start sentence 1 with a concrete noun or body/detail phrase, not an article and not a command. If it is "imperative", start sentence 1 with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond.
+If Final bucket is "condition", start the final sentence with When, If, With, Before, After, or By evening. If it is "statement", start with a concrete noun, body detail, or earned conclusion, not an article and not a command. If it is "scene", start with The, A, One, Your, That, or This. If it is "imperative", start with a command verb from the same command list.
+Before returning, silently check: exact sentence count, exact first-name sentence, exact surface rhythm, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no reusable "mentor advice" cadence, no assembled guidance phrases, and no vague emotional forecast. Rewrite if any check fails.
 
 Output valid JSON only:
 {
@@ -28,6 +31,7 @@ Wisdom paragraph rules:
 - Use 3 to 6 sentences. Vary sentence length and punctuation. Do not use a fixed four-sentence formula.
 - Use at least three silent signals, including one concrete scene or behavior.
 - If Paragraph architecture says 4, 5, or 6 sentences, produce exactly that many sentences. If it says the first name belongs in sentence 2, 3, or 4, that placement is mandatory.
+- If Paragraph architecture includes Surface rhythm, match the opening bucket, final bucket, and imperative target exactly.
 - Do not copy any silent signal phrase verbatim; translate the signal into fresh, natural language.
 - The wisdom paragraph, innerWeather, todayMove, and release must not reuse the same distinctive phrase.
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
@@ -50,6 +54,8 @@ Wisdom paragraph rules:
 - Do not use hedging language such as "may", "might", or "could" to soften the main insight. Sound observant and precise, not fortune-cookie vague.
 - Do not write the same mentor pattern of "notice pressure, take one step, feel calmer." Find the user's particular friction and name the useful move.
 - Do not lean on the same mentor skeleton of "object, name, instruction, relationship caution, reassurance" unless the Paragraph architecture specifically demands it. Even then, vary the verbs, emotional turn, and close.
+- Do not use assembled-sounding labels inside the paragraph, including "relational note", "useful edge", "body cue", "proof of care", "practical truth", "first honest reset", "private test", "signal, not a sentence", or "evidence enough".
+- Do not make the user feel categorized. The line should feel like it was written after seeing one ordinary scene, one pressure pattern, and one doable correction from their specific day.
 
 Avoid these phrases and close variants:
 - "you may feel"
@@ -114,6 +120,7 @@ Silent astrology-derived signals:
 - Concrete day scene: ${context.dailyScene}
 - Opening scene seed: ${context.openingScene || context.dailyScene}
 - Paragraph architecture: ${buildParagraphArchitecture(user, context, today)}
+- Surface rhythm: ${buildSurfaceRhythm(user, context, today)}
 - Reading fingerprint: ${buildReadingFingerprint(user, context, today)}
 - Core need: ${context.coreNeed}
 - Personal edge: ${context.personalEdge}
@@ -243,6 +250,23 @@ export function isLowQualityWisdom(text) {
     /\bold pull\b/,
     /\bsteady action will speak\b/,
     /\byour steadiness grows\b/,
+    /\brelational note\b/,
+    /\brelational answer\b/,
+    /\brelational rule\b/,
+    /\brelationship rule\b/,
+    /\buseful edge\b/,
+    /\bbody cue\b/,
+    /\bcue to\b/,
+    /\bproof of care\b/,
+    /\bpractical truth\b/,
+    /\bfirst honest reset\b/,
+    /\bprivate test\b/,
+    /\bsignal, not a sentence\b/,
+    /\bevidence enough\b/,
+    /\bnervous system needs evidence\b/,
+    /\bnot decorative\b/,
+    /\bthe mood can catch up\b/,
+    /\bvisible edge\b/,
     /\bwrite the next step\b/,
     /\bnext step in one\b/,
     /\bone visible next step\b/,
@@ -394,7 +418,43 @@ export function buildParagraphArchitecture(user, context, today) {
     context.coreNeed,
     context.personalEdge
   ].filter(Boolean).join("|");
-  return architectures[mod(stableHash(key), architectures.length)];
+  const base = architectures[mod(stableHash(key), architectures.length)];
+  return `${base} ${buildSurfaceRhythm(user, context, today)}`;
+}
+
+export function buildSurfaceRhythm(user, context, today) {
+  const rhythms = [
+    "Opening bucket: condition. Final bucket: statement. Imperative target: 1. Sentence texture: one concrete correction, no slogan close.",
+    "Opening bucket: scene. Final bucket: condition. Imperative target: 0. Sentence texture: observation-led, with the close starting from timing or relationship consequence.",
+    "Opening bucket: statement. Final bucket: imperative. Imperative target: 1. Sentence texture: noun-led opening, spare command at the end.",
+    "Opening bucket: condition. Final bucket: scene. Imperative target: 0. Sentence texture: cause-and-effect, with an ordinary object returning in the close.",
+    "Opening bucket: scene. Final bucket: statement. Imperative target: 1. Sentence texture: object-first, practical middle, earned conclusion.",
+    "Opening bucket: statement. Final bucket: condition. Imperative target: 0. Sentence texture: sensory detail first, consequence last.",
+    "Opening bucket: imperative. Final bucket: statement. Imperative target: 2. Sentence texture: firm mentor note with one softened landing.",
+    "Opening bucket: condition. Final bucket: imperative. Imperative target: 1. Sentence texture: pressure first, direct close.",
+    "Opening bucket: statement. Final bucket: scene. Imperative target: 0. Sentence texture: unfinished detail first, ordinary proof last.",
+    "Opening bucket: scene. Final bucket: imperative. Imperative target: 2. Sentence texture: visible object, decisive repair.",
+    "Opening bucket: imperative. Final bucket: condition. Imperative target: 2. Sentence texture: command-led start, conditional relational close.",
+    "Opening bucket: condition. Final bucket: statement. Imperative target: 0. Sentence texture: restraint and consequence, no command-heavy cadence.",
+    "Opening bucket: statement. Final bucket: statement. Imperative target: 1. Sentence texture: private cost first, plain adult finish.",
+    "Opening bucket: scene. Final bucket: scene. Imperative target: 0. Sentence texture: object echo without repeating the same noun.",
+    "Opening bucket: imperative. Final bucket: imperative. Imperative target: 2. Sentence texture: compact, active, not harsh.",
+    "Opening bucket: condition. Final bucket: condition. Imperative target: 1. Sentence texture: timing frame at both ends, different starting words."
+  ];
+  const key = [
+    user.name,
+    user.birthDate,
+    user.birthTime,
+    user.birthPlace,
+    today,
+    context.openingScene,
+    context.dailyArea,
+    context.emotionalKnot,
+    context.decisionGate,
+    context.bodySignal,
+    context.relationalCaution
+  ].filter(Boolean).join("|");
+  return rhythms[mod(stableHash(key), rhythms.length)];
 }
 
 function stableHash(value) {

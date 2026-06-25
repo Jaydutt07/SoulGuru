@@ -3,6 +3,7 @@ import {
   isUncachedSoulWisdomAllowed,
   SOUL_WISDOM_PROMPT_VERSION
 } from "../src/backend/soulWisdomService.js";
+import { getDailyWisdom } from "../src/localSoulWisdom.js";
 
 const checks = [];
 
@@ -45,18 +46,16 @@ async function checkUncachedModeRequiresExplicitFlag() {
 
 async function checkExplicitUncachedModeReturnsUnstoredReading() {
   const user = soulUser("uncached-enabled");
-  const wisdomJson = JSON.stringify({
-    wisdom: "The keys gathered too late give the day one practical place to begin before the larger story gets loud. Tara, the pressure is not lack of effort; it is a private worry dressing itself as preparation. Name the real task, put it where you can see it, then keep the answer warm but brief if someone pulls for more than timing can honestly hold. By evening, trust one completed detail more than the argument still asking for attention, because your body needs evidence that the day can close.",
-    innerWeather: "Pressure becoming practical",
-    todayMove: "Name the real task",
-    release: "Stop rehearsing the larger worry"
-  });
+  const date = "2026-06-24";
+  const today = "Wednesday, June 24, 2026";
+  const wisdomJson = JSON.stringify(getDailyWisdom(user, date, today));
   const openAiRequests = [];
   const memoryUpserts = [];
 
   const result = await createDailySoulWisdom({
     user,
-    date: "2026-06-24"
+    date,
+    today
   }, {
     OPENAI_API_KEY: "test-openai-key",
     OPENAI_MODEL: "gpt-contract",
@@ -181,6 +180,7 @@ async function checkCachedReadingBypassesOpenAI() {
 
 async function checkCacheMissWritesAndSecondReadUsesCache() {
   const date = "2026-06-24";
+  const today = "Wednesday, June 24, 2026";
   const user = {
     id: "leela-cache",
     name: "Leela Nair",
@@ -190,12 +190,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     birthTime: "19:42",
     birthPlace: "Kochi"
   };
-  const wisdomJson = JSON.stringify({
-    wisdom: "The quiet room after the unsent sentence gives the unfinished decision a place to land before the next request turns ceremonial. Leela, social pressure is not asking for performance; it is asking for one clean shape you can keep. If someone wants certainty from you, answer with timing instead of defense. Put the deadline on paper before lunch, then close the extra notes that keep making the task feel bigger than the work. Keep the promise small enough to finish completely, and let that be the proof you carry into the evening.",
-    innerWeather: "Sensitive but ready to act",
-    todayMove: "Write the decision before lunch",
-    release: "Close every extra tab"
-  });
+  const wisdomJson = JSON.stringify(getDailyWisdom(user, date, today));
   const supabase = createFakeSupabase();
   const openAiRequests = [];
   const memoryUpserts = [];
@@ -227,7 +222,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   const first = await createDailySoulWisdom({
     user,
     date,
-    today: "Wednesday, June 24, 2026"
+    today
   }, {
     OPENAI_API_KEY: "test-openai-key",
     OPENAI_MODEL: "gpt-contract"
@@ -236,7 +231,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   const second = await createDailySoulWisdom({
     user,
     date,
-    today: "Wednesday, June 24, 2026"
+    today
   }, {
     OPENAI_API_KEY: "test-openai-key",
     OPENAI_MODEL: "gpt-contract"
@@ -303,12 +298,7 @@ async function checkSeedMismatchRepairsBeforeCaching() {
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
   });
-  const repairedWisdom = {
-    wisdom: "The old mental tab keeps reopening, but the answer is not more thinking; it is giving one task a visible place. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before private debate. Asha, you need less urgency around another person's reaction before the relationship tone starts deciding your whole day. If someone pulls for reassurance, answer with timing instead of a long defense, and let one completed detail give your body better evidence.",
-    innerWeather: "Pressure becoming practical",
-    todayMove: "Give one promise an edge",
-    release: "Stop feeding the debate"
-  };
+  const repairedWisdom = getDailyWisdom(user, date);
   const supabase = createFakeSupabase();
   const openAiRequests = [];
   const memoryUpserts = [];
@@ -373,12 +363,7 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
   });
-  const repairedWisdom = {
-    wisdom: "The old mental tab keeps reopening, but the answer is not more thinking; it is giving one task a visible place. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before private debate. Asha, notice where loyalty has become self-abandonment before the relationship tone starts deciding your whole day. If someone pulls for reassurance, answer with timing instead of a long defense, and let one completed detail give your body better evidence.",
-    innerWeather: "Pressure becoming practical",
-    todayMove: "Give one promise an edge",
-    release: "Stop feeding the debate"
-  };
+  const repairedWisdom = getDailyWisdom(user, date);
   const supabase = createFakeSupabase();
   const openAiRequests = [];
 
@@ -424,12 +409,8 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
 
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
-  const wisdomJson = JSON.stringify({
-    wisdom: "The list that grew because one item stayed unnamed gives the morning a plain beginning. Tara, the pressure is not lack of effort; it is a private worry turning preparation into a test of care. Start with the body before the story gets loud: drink water, eat something plain, and put the visible task where it can be finished. Leave one sentence unsent if someone pulls for more than timing can honestly hold. Let the quiet after that count as part of the work.",
-    innerWeather: "Focused under private pressure",
-    todayMove: "Finish the visible task",
-    release: "Leave one sentence unsent"
-  });
+  const date = "2026-06-24";
+  const wisdomJson = JSON.stringify(getDailyWisdom(user, date));
   const supabase = createFakeSupabase({ failDailyUpsert: true });
   const openAiRequests = [];
   const memoryUpserts = [];
@@ -440,7 +421,7 @@ async function checkCacheWriteFailureDoesNotReturnReading() {
     console.warn = () => {};
     await createDailySoulWisdom({
       user,
-      date: "2026-06-24"
+      date
     }, {
       OPENAI_API_KEY: "test-openai-key"
     }, {

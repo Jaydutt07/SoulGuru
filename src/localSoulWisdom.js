@@ -1,7 +1,7 @@
 import { buildAstrologyContext, buildTransitDateForUser } from "./astrologyEngine.js";
 import { buildParagraphArchitecture, cleanWisdomText, firstName, isLowQualityWisdom } from "./soulGuruPrompt.js";
 
-export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined)) {
+export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined), architectureKey = dateKey) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
   const builders = [
@@ -14,7 +14,10 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
     buildCoreNeedWisdom,
     buildPersonalEdgeWisdom
   ];
-  let wisdom = buildSignatureWisdom(user, context, seed, dateKey);
+  let wisdom = buildSignatureWisdom(user, context, seed, architectureKey);
+  for (let attempt = 1; isLowQualityWisdom(wisdom) && attempt <= 16; attempt += 1) {
+    wisdom = buildSignatureWisdom(user, context, seed + attempt * 97, architectureKey);
+  }
   if (isLowQualityWisdom(wisdom)) {
     wisdom = builders[seed % builders.length](user, context);
   }
@@ -45,30 +48,34 @@ export function getDailyFocus(user, dateKey = getTodayKey(new Date(), user.birth
 
 function buildSignatureWisdom(user, context, seed, dateKey) {
   const name = firstName(user.name);
-  const scene = sceneSeed(context, seed);
-  const opening = openingLine(scene, context, seed, name);
-  const nameInsight = nameLine(name, context, seed + 3);
-  const action = actionLine(context, seed + 7, name);
-  const body = bodyLine(context, seed + 11, name);
-  const relation = relationLine(name, context, seed + 13);
-  const closing = closingLine(context, seed + 19, name);
-  const relationClose = relationCloseLine(context, seed + 23, name);
   const architecture = buildParagraphArchitecture(user, context, dateKey);
-  const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 5);
-  const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
+  const constraints = parseArchitectureConstraints(architecture);
+  let fallback = "";
 
-  return buildArchitecturePlan({
-    opening,
-    nameInsight,
-    action,
-    body,
-    relation,
-    closing,
-    relationClose,
-    sentenceCount,
-    nameSentence,
-    seed
-  }).join(" ");
+  for (let attempt = 0; attempt < 90; attempt += 1) {
+    const nextSeed = seed + attempt * 41;
+    const scene = sceneSeed(context, nextSeed);
+    const plan = buildArchitecturePlan({
+      opening: openingLine(scene, context, nextSeed, name, constraints.openingBucket),
+      nameInsight: nameLine(name, context, nextSeed + 3),
+      action: actionLine(context, nextSeed + 7, name),
+      body: bodyLine(context, nextSeed + 11, name),
+      relation: relationLine(name, context, nextSeed + 13),
+      closing: closingLine(context, nextSeed + 19, name, constraints.finalBucket),
+      relationClose: relationCloseLine(context, nextSeed + 23, name, constraints.finalBucket),
+      sentenceCount: constraints.sentenceCount,
+      nameSentence: constraints.nameSentence,
+      seed: nextSeed
+    }).join(" ");
+
+    fallback ||= plan;
+    const wordCount = words(plan).length;
+    if (wordCount >= 72 && wordCount <= 100 && matchesArchitectureConstraints(plan, name, constraints) && !isLowQualityWisdom(plan)) {
+      return plan;
+    }
+  }
+
+  return fallback;
 }
 
 function buildArchitecturePlan({
@@ -183,22 +190,25 @@ function sceneSeed(context, seed = stableHash(`${context.openingScene}-${context
   return capitalize(variants[mod(seed, variants.length)]);
 }
 
-function openingLine(scene, context, seed, salt = "") {
+function openingLine(scene, context, seed, salt = "", preferredBucket = "") {
   const lowerScene = lowerFirst(scene);
   const lines = [
-    `Before you pass ${lowerScene} again, let the pressure become smaller and named.`,
-    `When your attention lands on ${lowerScene}, separate the task from the story around it.`,
-    `Keep ${lowerScene} in view long enough for attention to find a cleaner container.`,
-    `Notice ${lowerScene} before the mind turns it into a private test.`,
-    `${scene} can return the day to something practical and touchable.`,
-    `Use ${lowerScene} as the first honest reset before negotiating with the mood.`,
-    `Stay with ${lowerScene} until the day narrows to one honest action.`,
-    `Let ${lowerScene} mark the first repair, not the whole meaning of the day.`,
-    `Treat ${lowerScene} as a handle, not a verdict on the whole day.`,
-    `The practical truth starts with ${lowerScene}, not with the story rushing around it.`,
-    `Give ${lowerScene} one plain use before the mood turns it symbolic.`
+    `Before you pass ${lowerScene} again, give it one job instead of a whole argument.`,
+    `When your attention lands on ${lowerScene}, the useful part is the detail you can handle by hand.`,
+    `Keep ${lowerScene} in view until the day becomes about one kept action, not the whole mood.`,
+    `Notice ${lowerScene} before the mind hires it as evidence against you.`,
+    `${scene} can pull the day back into reach if you let it stay ordinary.`,
+    `Use ${lowerScene} to begin with facts before the feeling starts editing them.`,
+    `Stay with ${lowerScene} until the day narrows to the action you can actually finish.`,
+    `Let ${lowerScene} mark the repair that belongs to this hour, not the whole meaning of the day.`,
+    `Treat ${lowerScene} as a handle for the next decision, not a verdict on the whole day.`,
+    `${scene} belongs to the part of the day that needs less explaining and more handling.`,
+    `Give ${lowerScene} one plain use before worry turns it into a symbol.`,
+    `Pressure around ${lowerScene} loses force when the next action is physical.`,
+    `Attention returns to ${lowerScene} because one clear repair is overdue.`,
+    `Unfinished business around ${lowerScene} is smaller than the verdict forming around it.`
   ];
-  return pickLine(lines, seed, salt, scene, context.dailyArea, context.coreNeed, context.personalEdge);
+  return pickLine(linesForBucket(lines, preferredBucket), seed, salt, scene, context.dailyArea, context.coreNeed, context.personalEdge);
 }
 
 function nameLine(name, context, seed) {
@@ -207,15 +217,15 @@ function nameLine(name, context, seed) {
   const area = dailyAreaLabel(context.dailyArea);
   const edgeInstruction = lowerFirst(edge);
   const lines = [
-    `For ${name}, ${edgeInstruction} before ${area} starts sounding like a test of discipline.`,
-    `What ${name} needs is ${need} before the pressure around ${area} gets noisy.`,
+    `For ${name}, ${edgeInstruction} before ${area} starts sounding like a test nobody assigned.`,
+    `Before the pressure around ${area} borrows the whole room, ${name} needs ${need}.`,
     `Around ${area}, ${name} is not being asked for a perfect mood, only one clean shape.`,
     `Give today's need a specific shape, ${name}, or the whole day will start sounding like the same problem.`,
-    `The useful edge for ${name} is to ${edgeInstruction} without turning the moment into a measure of worth.`,
+    `For ${name}, the sharper work is to ${edgeInstruction} without turning the moment into a measure of worth.`,
     `A delay around ${area} does not get to decide the whole tone for ${name}.`,
     `Give ${area} a practical container, ${name}, while you practice this: ${edge}.`,
     `For ${name}, one observable choice protects the real need better than another internal argument.`,
-    `For ${name}, the urge to ${edgeInstruction} is a signal, not a sentence.`,
+    `For ${name}, the urge to ${edgeInstruction} needs a timed action, not another private debate.`,
     `Separate ${need} from the noise around ${area}, ${name}, before you answer anything urgent.`,
     `The real need under ${area}, ${name}, is ${need}; protect it with ordinary support.`,
     `Before ${area} becomes heavier than it has to be, ${name} needs to ${edgeInstruction}.`
@@ -243,17 +253,18 @@ function actionLine(context, seed, salt = "") {
   const action = fragment(context.decisionGate || context.mentorMove || context.stabilizer || "complete the nearest useful task");
   const work = fragment(context.workSignal || "finish one practical detail");
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
+  const bodyAction = bodyInfinitiveClause(body);
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
     `For the next hour, ${action}, then leave the larger story alone until the task has shape.`,
     `Make the next useful task visible by pairing ${work} with one plain instruction: ${action}.`,
     `Check the body first through this simple rule: ${body}, with ${avoid} kept out of the room.`,
-    `Give the next hour one visible edge: ${action}, no extra proving required.`,
+    `Give the next hour one clear edge: ${action}, then stop negotiating with the part that wants applause.`,
     `Give the work a plain place by choosing to ${work}, while the extra possibilities stay unopened for now.`,
-    `Before the day scatters, ${action}; the mood can catch up after the action has form.`,
+    `Before the day scatters, ${action}; let the feeling respond after the action has form.`,
     `Shrink the decision until it can be done today: ${action}.`,
-    `Treat the body cue as useful data by choosing to ${body}, then complete the nearest piece of work without dramatizing it.`,
-    `The first proof of care can be practical: ${work}, with no further negotiation from the mood.`,
+    `Treat the body's vote as useful data by choosing to ${bodyAction}, then complete the nearest piece of work without dramatizing it.`,
+    `Care becomes practical here: ${work}, with no further negotiation from the mood.`,
     `Give the action a time and a place by choosing to ${action}.`,
     `Let the body lead the timing through this move: ${body}, then handle the practical part after that.`,
     `Reduce the work to one visible movement: ${work}, and let the rest wait its turn.`
@@ -264,15 +275,17 @@ function actionLine(context, seed, salt = "") {
 function bodyLine(context, seed, salt = "") {
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const cue = bodyCueClause(body);
+  const bodyMove = bodyMoveClause(body);
+  const bodyPractice = bodyPracticeClause(body);
   const weather = innerWeatherClause(context.innerWeather || "the mood is asking for less noise");
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
-    `Let ${cue} set the sequence before ${avoid} begins inventing meanings.`,
+    `Let ${cue} set the sequence before ${avoid} begins making the day louder.`,
     `The mood becomes more useful when ${cue} comes before any final interpretation.`,
-    `Keep the body in the room today with ${cue}, then let the mind make a smaller claim.`,
+    `Keep the body in the room today: ${bodyMove}, then let the mind make a smaller claim.`,
     `Treat ${weather} as information, but let ${cue} decide the pace of the next move.`,
-    `Before the pressure gets a story, give the body one plain vote through ${body}.`,
-    `A practical body cue matters here because ${avoid} will make the day sound larger than it is.`
+    `Before the pressure gets a story, give the body one plain vote through ${bodyPractice}.`,
+    `The body deserves a practical vote here because ${avoid} will make the day sound larger than it is.`
   ];
   return pickLine(lines, seed, salt, body, cue, weather, avoid, context.openingScene, context.dailyArea);
 }
@@ -283,13 +296,13 @@ function relationLine(name, context, seed) {
   const lines = [
     `With other people, ${relation}; warmth does not require unlimited availability.`,
     `If a conversation pulls for more, keep the answer shorter than the worry around it.`,
-    `Keep this relational note close: ${lowerFirst(relation)}, so your pace softens without erasing your position.`,
+    `In the next conversation, ${lowerFirst(relation)}, so your pace softens without erasing your position.`,
     `The relationship tone improves when you stop offering extra words just to calm the air.`,
     `Respond from proportion: kind, brief, and clear enough that resentment has less room.`,
     `Do not confuse care with staying open to every demand that arrives without timing.`,
     `If someone needs an answer, give one that respects both warmth and timing.`,
-    `Let the next reply be useful, not decorative; care does not need a long defense.`,
-    `Treat this as the relational rule: ${lowerFirst(relation)}, while everything else stays simpler.`,
+    `Let the next reply be useful and short enough to remain true.`,
+    `Let the relationship stay simple here: ${lowerFirst(relation)}, while everything else waits its turn.`,
     `Where ${avoid} usually takes over, answer with a clean time, a clean no, or a clean yes.`,
     `Keep the door open only as far as your body can honestly support.`,
     `The kinder answer is the one you can keep without quietly punishing yourself later.`
@@ -297,18 +310,20 @@ function relationLine(name, context, seed) {
   return pickLine(lines, seed, name, relation, avoid, context.dailyArea);
 }
 
-function relationCloseLine(context, seed, salt = "") {
+function relationCloseLine(context, seed, salt = "", preferredBucket = "") {
   const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising", seed);
   const permission = fragment(context.closingPermission || "one small finish can be enough");
   const lines = [
-    `Let the next reply follow this rule: ${lowerFirst(relation)}, then let the rest of the day stay modest and workable.`,
+    `Let the next reply stay plain: ${lowerFirst(relation)}, then let the rest of the day stay modest and workable.`,
     `With other people, ${relation}; the day can still end with one useful detail finished.`,
-    `Keep the relational answer simple enough to keep, and let one ordinary finish count without decoration.`,
+    `Keep the answer simple enough to keep, and let one ordinary finish count without decoration.`,
     `When the room asks for more explanation, ${relation}, and leave with one less loose end.`,
     `${capitalize(permission)}; let warmth have timing without another performance.`,
-    `A cleaner reply and one finished task will support you better than solving the whole emotional weather.`
+    `A cleaner reply and one finished task will support you better than solving the whole emotional weather.`,
+    `Warmth with timing will serve better than another performance.`,
+    `Finished work and a cleaner reply are enough to carry into evening.`
   ];
-  return pickLine(lines, seed, salt, relation, permission, context.dailyArea);
+  return pickLine(linesForBucket(lines, preferredBucket), seed, salt, relation, permission, context.dailyArea);
 }
 
 function bodyCueClause(text) {
@@ -321,6 +336,55 @@ function bodyCueClause(text) {
     return `the cue to ${lowerFirst(value)}`;
   }
   return `the body cue to ${lowerFirst(value)}`;
+}
+
+function bodyMoveClause(text) {
+  const value = fragment(text);
+  if (!value) return "let the body settle before choosing words";
+  if (/^do not\b/i.test(value)) {
+    return lowerFirst(value).replace(/^do not\b/i, "avoid");
+  }
+  if (/^sleep matters more than\b/i.test(value)) {
+    return lowerFirst(value).replace(/^sleep matters\b/i, "let sleep matter");
+  }
+  return lowerFirst(value);
+}
+
+function bodyInfinitiveClause(text) {
+  const value = fragment(text);
+  if (!value) return "let the body settle before choosing words";
+  if (/^do not\b/i.test(value)) {
+    return lowerFirst(value).replace(/^do not\b/i, "avoid");
+  }
+  if (/^sleep matters more than\b/i.test(value)) {
+    return lowerFirst(value).replace(/^sleep matters\b/i, "let sleep matter");
+  }
+  if (/^(eat|leave|walk|drink|lower|protect|notice|step|start|let)\b/i.test(value)) {
+    return lowerFirst(value);
+  }
+  return `honor ${lowerFirst(value)}`;
+}
+
+function bodyPracticeClause(text) {
+  const value = fragment(text);
+  if (!value) return "letting the body settle before choosing words";
+  const replacements = [
+    [/^do not negotiate\b/i, "not negotiating"],
+    [/^eat\b/i, "eating"],
+    [/^leave\b/i, "leaving"],
+    [/^walk\b/i, "walking"],
+    [/^sleep matters\b/i, "letting sleep matter"],
+    [/^drink\b/i, "drinking"],
+    [/^lower\b/i, "lowering"],
+    [/^protect\b/i, "protecting"],
+    [/^notice\b/i, "noticing"],
+    [/^step\b/i, "stepping"],
+    [/^start\b/i, "starting"],
+    [/^let\b/i, "letting"]
+  ];
+  const match = replacements.find(([pattern]) => pattern.test(value));
+  if (match) return lowerFirst(value).replace(match[0], match[1]);
+  return `honoring ${lowerFirst(value)}`;
 }
 
 function innerWeatherClause(text) {
@@ -496,7 +560,7 @@ function sceneVariants(raw) {
   ];
 }
 
-function closingLine(context, seed, salt = "") {
+function closingLine(context, seed, salt = "", preferredBucket = "") {
   const lines = [
     "A completed detail will change the room before it changes the whole mood.",
     "One clean finish can stand in for the certainty the mind keeps requesting.",
@@ -504,7 +568,7 @@ function closingLine(context, seed, salt = "") {
     "The useful proof today is a kept limit, a finished task, or one reply with no extra weight.",
     closingPermissionLine(context.closingPermission),
     "A plain finish will do more for your confidence than another hour of private negotiation.",
-    "Your nervous system needs evidence, so give it one action that stays done.",
+    "The body will believe what stays finished before it believes another perfect explanation.",
     "Leave the day with one less loose end and one fewer explanation than usual.",
     "Plain and workable will serve you better than impressive.",
     "Protect the small repair, then let silence do some of the healing.",
@@ -512,9 +576,11 @@ function closingLine(context, seed, salt = "") {
     "One ordinary repair is enough to remind the day that you are participating.",
     "Let the finish be modest; the nervous system believes repetition more than intensity.",
     "Let the evidence stay ordinary: a limit kept, a task closed, a body less braced.",
-    "End the loop before it asks for another version of the same answer."
+    "End the loop before it asks for another version of the same answer.",
+    "Plain work will carry more truth than another perfect explanation.",
+    "Silence after a kept promise can be allowed to count."
   ];
-  return pickLine(lines, seed, salt, context.dailyArea, context.closingPermission, context.innerWeather, context.personalEdge);
+  return pickLine(linesForBucket(lines, preferredBucket), seed, salt, context.dailyArea, context.closingPermission, context.innerWeather, context.personalEdge);
 }
 
 function closingPermissionLine(permission) {
@@ -524,6 +590,71 @@ function closingPermissionLine(permission) {
     return `${capitalize(phrase)}; let that stand before you reopen the larger question.`;
   }
   return `${capitalize(phrase)}.`;
+}
+
+function parseArchitectureConstraints(architecture) {
+  return {
+    sentenceCount: Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 5),
+    nameSentence: Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0),
+    openingBucket: String(architecture || "").match(/Opening bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase() || "",
+    finalBucket: String(architecture || "").match(/Final bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase() || "",
+    imperativeTarget: Number(String(architecture || "").match(/Imperative target:\s*(\d+)/i)?.[1] || Number.NaN)
+  };
+}
+
+function matchesArchitectureConstraints(text, name, constraints) {
+  const sentences = splitSentences(text);
+  if (constraints.sentenceCount && sentences.length !== constraints.sentenceCount) return false;
+  if (constraints.nameSentence) {
+    const nameIndex = sentences.findIndex((sentence) => countWord(sentence, name) > 0);
+    if (nameIndex !== constraints.nameSentence - 1) return false;
+  }
+  if (constraints.openingBucket && sentenceOpeningBucket(sentences[0]) !== constraints.openingBucket) return false;
+  if (constraints.finalBucket && sentenceOpeningBucket(sentences.at(-1)) !== constraints.finalBucket) return false;
+  if (Number.isFinite(constraints.imperativeTarget)) {
+    const imperativeCount = sentences.filter((sentence) => sentenceOpeningBucket(sentence) === "imperative").length;
+    if (imperativeCount !== constraints.imperativeTarget) return false;
+  }
+  return true;
+}
+
+function linesForBucket(lines, preferredBucket) {
+  if (!preferredBucket) return lines;
+  const filtered = lines.filter((line) => sentenceOpeningBucket(line) === preferredBucket);
+  return filtered.length ? filtered : lines;
+}
+
+function splitSentences(text) {
+  return String(text || "")
+    .trim()
+    .match(/[^.!?]+[.!?]+/g)
+    ?.map((sentence) => sentence.trim()) || [];
+}
+
+function sentenceOpeningBucket(sentence) {
+  const normalized = String(sentence || "").toLowerCase().trim();
+  if (/^(answer|begin|check|choose|close|decline|do|drink|eat|finish|give|handle|keep|leave|let|make|name|notice|protect|put|reduce|respond|schedule|send|separate|set|shrink|stand|stop|take|treat|use|wait|walk|write)\b/.test(normalized)) {
+    return "imperative";
+  }
+  if (/^(before|after|by evening|if|when|where|with)\b/.test(normalized)) {
+    return "condition";
+  }
+  if (/^[a-z]+,\b/.test(normalized)) {
+    return "name";
+  }
+  if (/^(a|an|the|one|your|that|this)\b/.test(normalized)) {
+    return "scene";
+  }
+  return "statement";
+}
+
+function countWord(text, word) {
+  const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
+  return (String(text || "").match(pattern) || []).length;
+}
+
+function words(text) {
+  return String(text || "").split(/\s+/).filter(Boolean);
 }
 
 function normalizeLocalWisdom(text) {
@@ -587,6 +718,10 @@ function stableHash(value) {
   return String(value || "").split("").reduce((hash, char) => {
     return (hash * 31 + char.charCodeAt(0)) >>> 0;
   }, 7);
+}
+
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function mod(value, length) {

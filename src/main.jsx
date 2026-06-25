@@ -43,9 +43,9 @@ import { firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
 const SESSION_KEY = "soulguru.session.v1";
-const SOUL_READING_CACHE_VERSION = "soul-wisdom-v12";
-const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v12";
-const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v12";
+const SOUL_READING_CACHE_VERSION = "soul-wisdom-v13";
+const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v13";
+const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v13";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
