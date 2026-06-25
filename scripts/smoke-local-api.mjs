@@ -191,12 +191,12 @@ async function checkMoreGuidanceDeep() {
       }
     },
     fallback: {
-      overview: "Smoke, the deeper pattern is about making one practical duty visible before it turns into emotional noise. Give the day a clear finish line, keep over-explaining away from sensitive conversations, and let one completed action rebuild trust in your timing. This paid map should feel fuller than a daily cue while still staying grounded in ordinary choices, body rhythm, work focus, and cleaner relationship timing.",
-      thisWeek: "This week, protect the first useful task from distraction. Shorten one reply, name one cost before saying yes, and let a small completed promise carry more weight than another long explanation.",
-      thisMonth: "This month, watch what repeats in saved readings. If the same pressure returns through different duties, treat it as a pattern asking for structure, not a reason to panic.",
-      practice: "For seven days, write one evening line about what became lighter because you handled it directly.",
-      focus: "Make the pattern visible",
-      watch: "Over-explaining under pressure"
+      overview: "The notebook beside the calendar is not decoration; it is where practical work keeps absorbing feelings that belong in a cleaner conversation. Smoke, the pattern is not lack of effort, it is letting one unfinished duty collect emotional weight until every reply starts sounding urgent. The paid map is to put that duty on the page, name the cost of keeping it vague, and finish the part that can close within two hours. Keep over-explaining away from the next reply. In relationships, answer with timing; in work, close the loop that already has enough facts. Progress becomes believable when one visible system replaces private negotiation.",
+      thisWeek: "Begin with water, food, or ten quiet minutes, then protect one practical block before the day has too many opinions in it. Put the returning promise on paper, give it a start time, and make the reply around it shorter than habit wants. Let the finished detail carry more weight than explanation.",
+      thisMonth: "Turn the repeating pressure into one visible weekly system. Track where it appears through work, money, family, rest, or communication under different names. Review saved readings every seventh day, circle the repeating cost, and let one habit become the container that holds it.",
+      practice: "For seven days, use one body cue and one written limit before the first difficult reply. At night, write one line about what became lighter because the limit stayed visible.",
+      focus: "Put one duty on paper",
+      watch: "Over-explaining before timing is clear"
     }
   });
   const guidance = result.body?.guidance || {};

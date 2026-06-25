@@ -32,6 +32,7 @@ import {
 } from "./authClient.js";
 import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
 import { generateCompatibility } from "./compatibility.js";
+import { buildFallbackDeepGuidance } from "./deepGuidance.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
 import { enrichUserWithPlace } from "./placeResolver.js";
@@ -2347,15 +2348,7 @@ function getCheckpointStatus(progress, startsAt, endsBefore) {
 function buildLocalDeepGuidance(user) {
   const dateKey = getTodayKey(new Date(), user.birthTimezone || undefined);
   const context = buildAstrologyContext(user, buildDateFromKey(dateKey, user));
-  const name = firstName(user.name);
-  return {
-    overview: `${name}, the deeper pattern right now is about giving ${context.dailyArea} a cleaner shape before it turns into pressure. ${capitalize(context.attentionAnchor || context.dailyScene)} deserves a direct action, not another private debate. Let ${context.mentorMove || context.stabilizer} become the rule for the next few days. In relationships, ${context.relationalCaution || context.relationshipMirror}; in work, ${context.workSignal}. This is how guidance becomes real: one repeatable rhythm, one honest limit, and one task finished before the mood gets to rename the whole day.`,
-    thisWeek: `This week, start with ${context.bodySignal}, then protect the practical task that has enough information already. Keep replies shorter than the worry around them, and let one completed action restore trust in your timing.`,
-    thisMonth: `This month, save the readings that repeat a theme. If the same pressure appears through different people or duties, treat it as a pattern asking for structure instead of a problem asking for panic.`,
-    practice: `For seven days, write one evening line: what became lighter because I handled it directly? Let that record become proof you can return to yourself.`,
-    focus: toCue(context.mentorMove || context.stabilizer),
-    watch: toCue(context.avoid)
-  };
+  return buildFallbackDeepGuidance(user, context);
 }
 
 function toCue(text) {

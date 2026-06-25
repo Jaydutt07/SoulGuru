@@ -99,6 +99,54 @@ async function checkExplicitLocalAccessReturnsUnstoredGuidance() {
   ].every(Boolean));
 }
 
+async function checkGeneratedLocalPaidGuidanceIsHighQuality() {
+  const user = {
+    ...paidUser("generated-local-paid"),
+    soulGuruSubscription: {
+      active: true,
+      name: "Soul Guru + Astro Solve",
+      astroBonusQuestions: 15
+    }
+  };
+  const memoryUpserts = [];
+  const result = await createMoreGuidanceReading({
+    user,
+    subscription: user.soulGuruSubscription,
+    date: "2026-06-25"
+  }, {
+    MORE_GUIDANCE_ALLOW_LOCAL_ACCESS: "true",
+    MORE_GUIDANCE_DISABLE_OPENAI: "true"
+  }, {
+    supabase: null,
+    upsertGuidanceMemory: async (payload) => {
+      memoryUpserts.push(payload);
+      return { configured: false, upserted: false };
+    }
+  });
+  const text = [
+    result.guidance?.overview,
+    result.guidance?.thisWeek,
+    result.guidance?.thisMonth,
+    result.guidance?.practice,
+    result.guidance?.focus,
+    result.guidance?.watch
+  ].filter(Boolean).join("\n");
+
+  pushCheck("Generated local paid guidance uses v3 quality fallback", [
+    result.allowed === true,
+    result.source === "local-fallback",
+    result.promptVersion === DEEP_GUIDANCE_PROMPT_VERSION,
+    result.quality?.passed === true,
+    words(result.guidance?.overview).length >= 105,
+    words(result.guidance?.thisWeek).length >= 45,
+    words(result.guidance?.thisMonth).length >= 45,
+    words(result.guidance?.practice).length >= 30,
+    !/the deeper pattern|you may feel|trust the process|^This week,|^This month,/im.test(text),
+    memoryUpserts.length === 1,
+    memoryUpserts[0].kind === "more-guidance-reading"
+  ].every(Boolean));
+}
+
 async function checkDashboardReturnsThreeMonthTracking() {
   const user = paidUser("dashboard-member");
   const now = new Date("2026-07-16T00:00:00.000Z");
@@ -896,6 +944,10 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function words(text) {
+  return String(text || "").split(/\s+/).filter(Boolean);
+}
+
 function pushCheck(label, passed) {
   checks.push({ label, passed });
 }
@@ -911,6 +963,7 @@ function printReport() {
 async function main() {
   await checkLocalAccessRequiresExplicitFlag();
   await checkExplicitLocalAccessReturnsUnstoredGuidance();
+  await checkGeneratedLocalPaidGuidanceIsHighQuality();
   await checkDashboardReturnsThreeMonthTracking();
   await checkDashboardReadFailuresReturnErrors();
   checkSubscriptionTrackingLifecycle();

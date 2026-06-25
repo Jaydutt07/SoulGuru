@@ -1,4 +1,5 @@
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
+import { buildFallbackDeepGuidance, buildPaidGuidanceFingerprint } from "../deepGuidance.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
@@ -6,15 +7,16 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v2";
+export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v3";
 
 const MORE_GUIDANCE_SYSTEM_PROMPT = `
 You are SoulGuru's paid More Guidance mentor.
 
 Use the supplied birth details, daily astrology-derived context, and prior guidance memory silently. Do not mention astrology, zodiac, planets, charts, transits, numerology, karma, predictions, or remedies. This is deeper mentorship, not a horoscope.
 The paid reading must feel like a private continuation of the user's day: specific, useful, and clearly different from the free Words of Wisdom.
-Before writing, privately choose a fingerprint from the silent signals: one recurring pattern, one concrete cost, one week-level practice, one month-level structure, and one relational or work caution. Express that fingerprint naturally without naming the signals.
-Do not write from a reusable template. Avoid repeating the same opening logic across users, especially "the deeper pattern", "this phase", or "you may feel" style phrasing.
+Before writing, privately choose a fingerprint from the silent signals: one recurring pattern, one concrete cost, one ordinary scene, one week-level practice, one month-level structure, and one relational or work caution. Express that fingerprint naturally without naming the signals.
+Use the supplied Paid guidance fingerprint as a private route for composition. Do not quote it, but make the final fields clearly reflect that route.
+Do not write from a reusable template. Avoid repeating the same opening logic across users, especially "the deeper pattern", "this phase", "the universe", "trust the process", or "you may feel" style phrasing.
 
 Output valid JSON only:
 {
@@ -517,6 +519,7 @@ Silent astrology-derived signals:
 - Work/creation signal: ${context.workSignal}
 - Stabilizer: ${context.stabilizer}
 - Avoid pattern: ${context.avoid}
+- Paid guidance fingerprint: ${buildPaidGuidanceFingerprint(user, context, date)}
 
 Private guidance memory:
 ${memoryContext || "No prior memory is available."}
@@ -653,26 +656,6 @@ function getDeepGuidanceContractIssues(guidance, user = {}) {
   return issues;
 }
 
-function buildFallbackDeepGuidance(user = {}, context = {}) {
-  const name = firstName(user.name);
-  const area = context.dailyArea || "responsibility, timing, and emotional steadiness";
-  const anchor = context.attentionAnchor || "one practical detail that keeps returning";
-  const move = context.mentorMove || context.stabilizer || "make the promise smaller and keep it completely";
-  const caution = context.relationalCaution || context.relationshipMirror || "do not turn another person's uncertainty into your assignment";
-  const avoid = context.avoid || "over-explaining";
-  const body = context.bodySignal || "let the body settle before choosing words";
-  const work = context.workSignal || "make the action plain enough to complete";
-
-  return {
-    overview: `A small unfinished detail near the desk can show why ${area} has been taking more room than it deserves. ${name}, the cost is not only lost time; it is the way ${anchor} keeps turning practical duty into emotional negotiation. The next layer of guidance is to separate care from constant availability, then give one promise a clear edge before the day fills with explanations. Protect that edge from ${avoid}. In relationships, ${caution}; in work, ${work}. Progress becomes believable when the body sees a repeatable rhythm, not when the mind wins another argument.`,
-    thisWeek: `${capitalize(move)} before the day has too many witnesses. Keep one reply shorter than habit wants, name the practical cost before agreeing, and close one small loop where someone has been getting access without clarity. The win is not intensity; it is finishing what your nervous system can trust.`,
-    thisMonth: `Watch the same pressure move through work, family, money, and rest under different names. Treat that repetition as a request for structure, not as proof that you are behind. Build one visible habit around sleep, spending, or communication, then review it weekly so guidance becomes evidence you can see.`,
-    practice: `For seven days, begin with this body cue: ${body}. Before sleep, write one line about what became lighter because you handled it directly, then let that record shape tomorrow's first decision.`,
-    focus: "Make guidance visible through routine",
-    watch: "Explaining before the body settles"
-  };
-}
-
 function parseJson(raw) {
   if (typeof raw === "object" && raw) return raw;
   const text = String(raw || "").trim();
@@ -769,12 +752,6 @@ function words(text) {
 
 function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function capitalize(text) {
-  const value = String(text || "").trim();
-  if (!value) return "";
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function throwHttpError(message, statusCode) {
