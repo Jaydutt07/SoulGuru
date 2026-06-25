@@ -140,6 +140,8 @@ function checkShani(env) {
   for (const key of priceKeys) {
     if (!hasEnv(env, key)) {
       missingEnv.push(key);
+    } else if (!isPositiveIntegerEnv(env, key)) {
+      missingEnv.push(`${key}=positive integer`);
     }
   }
 
@@ -206,9 +208,13 @@ function checkRazorpay(env) {
   const missingEnv = [
     "RAZORPAY_KEY_ID",
     "RAZORPAY_KEY_SECRET",
-    "RAZORPAY_WEBHOOK_SECRET",
-    "MORE_GUIDANCE_PRICE_PAISE"
+    "RAZORPAY_WEBHOOK_SECRET"
   ].filter((name) => !hasEnv(env, name));
+  if (!hasEnv(env, "MORE_GUIDANCE_PRICE_PAISE")) {
+    missingEnv.push("MORE_GUIDANCE_PRICE_PAISE");
+  } else if (!isPositiveIntegerEnv(env, "MORE_GUIDANCE_PRICE_PAISE")) {
+    missingEnv.push("MORE_GUIDANCE_PRICE_PAISE=positive integer");
+  }
   const localActivationEnabled = String(env.PAYMENTS_ALLOW_LOCAL_ACTIVATION || "false").toLowerCase() === "true";
   if (localActivationEnabled) {
     missingEnv.push("PAYMENTS_ALLOW_LOCAL_ACTIVATION=false");
@@ -280,4 +286,10 @@ function sanitizeCheck(check) {
 
 function hasEnv(env, name) {
   return Boolean(String(env[name] || "").trim());
+}
+
+function isPositiveIntegerEnv(env, name) {
+  const value = String(env[name] || "").trim();
+  if (!/^\d+$/.test(value)) return false;
+  return Number(value) > 0;
 }

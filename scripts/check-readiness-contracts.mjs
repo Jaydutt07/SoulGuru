@@ -9,6 +9,7 @@ checkLocalAstroSolvesQuotaIsNotReady();
 checkLocalMoreGuidanceAccessIsNotReady();
 checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
+checkInvalidPaymentPricesAreNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -129,6 +130,32 @@ function checkMissingShaniPricesAreNotReady() {
     report.ok === false,
     shaniAccess?.status === "fail",
     shaniAccess?.missingEnv.includes("SHANI_PLAN_FULL_PRICE_PAISE")
+  ].every(Boolean));
+}
+
+function checkInvalidPaymentPricesAreNotReady() {
+  const moreGuidanceReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    MORE_GUIDANCE_PRICE_PAISE: "not-a-number"
+  });
+  const razorpay = moreGuidanceReport.checks.find((check) => check.id === "razorpay");
+  const shaniReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    SHANI_PLAN_3M_PRICE_PAISE: "0",
+    SHANI_PLAN_6M_PRICE_PAISE: "-100",
+    SHANI_PLAN_1Y_PRICE_PAISE: "99.5"
+  });
+  const shaniAccess = shaniReport.checks.find((check) => check.id === "shaniMembershipAccess");
+
+  pushCheck("Readiness rejects invalid Razorpay and Shani price env values", [
+    moreGuidanceReport.ok === false,
+    razorpay?.status === "fail",
+    razorpay?.missingEnv.includes("MORE_GUIDANCE_PRICE_PAISE=positive integer"),
+    shaniReport.ok === false,
+    shaniAccess?.status === "fail",
+    shaniAccess?.missingEnv.includes("SHANI_PLAN_3M_PRICE_PAISE=positive integer"),
+    shaniAccess?.missingEnv.includes("SHANI_PLAN_6M_PRICE_PAISE=positive integer"),
+    shaniAccess?.missingEnv.includes("SHANI_PLAN_1Y_PRICE_PAISE=positive integer")
   ].every(Boolean));
 }
 

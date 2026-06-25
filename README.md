@@ -363,6 +363,7 @@ The settings drawer shows the configured Clerk secure-session state and exposes 
 `POST /api/create-razorpay-order`
 
 Creates a Razorpay checkout order for Soul Guru + Astro Solve. The backend owns the plan price from `MORE_GUIDANCE_PRICE_PAISE` and INR currency; client-supplied amount/currency values are ignored. The request must include a stable SoulGuru user identity (`authUserId`, `id`, phone, or email), so paid access is never issued to an anonymous key. The browser receives the public order details and a backend-signed order token; `RAZORPAY_KEY_SECRET` stays on the server.
+Production readiness requires `MORE_GUIDANCE_PRICE_PAISE` and all Shani plan prices to be positive integer paise values.
 
 `POST /api/verify-razorpay-payment`
 
