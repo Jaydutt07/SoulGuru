@@ -11,6 +11,7 @@ checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
 checkInvalidRazorpayWebhookIsNotReady();
+checkInvalidOtpDeliveryIsNotReady();
 checkInvalidServiceUrlsAreNotReady();
 checkInvalidDomainDnsIsNotReady();
 checkInvalidEmailSenderIsNotReady();
@@ -61,6 +62,7 @@ function checkPlaceholderValuesAreNotReady() {
     ...fullEnv(),
     OPENAI_API_KEY: "fake-openai-key",
     SUPABASE_SERVICE_ROLE_KEY: "replace-with-service-role",
+    OTP_SMS_WEBHOOK_TOKEN: "replace-with-sms-token",
     PLACE_GEOCODER_URL: "<geocoder-url>",
     RAZORPAY_KEY_SECRET: "<razorpay-secret>",
     RAZORPAY_WEBHOOK_URL: "<razorpay-webhook-url>",
@@ -74,6 +76,7 @@ function checkPlaceholderValuesAreNotReady() {
   const openai = report.checks.find((check) => check.id === "openai");
   const supabase = report.checks.find((check) => check.id === "supabase");
   const birthPlaceAccuracy = report.checks.find((check) => check.id === "birthPlaceAccuracy");
+  const otp = report.checks.find((check) => check.id === "otp");
   const razorpay = report.checks.find((check) => check.id === "razorpay");
   const transactionalEmail = report.checks.find((check) => check.id === "transactionalEmail");
   const rateLimit = report.checks.find((check) => check.id === "rateLimit");
@@ -85,6 +88,7 @@ function checkPlaceholderValuesAreNotReady() {
     report.ok === false,
     openai?.missingEnv.includes("OPENAI_API_KEY"),
     supabase?.missingEnv.includes("SUPABASE_SERVICE_ROLE_KEY"),
+    otp?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN"),
     birthPlaceAccuracy?.missingEnv.includes("PLACE_GEOCODER_URL"),
     razorpay?.missingEnv.includes("RAZORPAY_KEY_SECRET"),
     razorpay?.missingEnv.includes("RAZORPAY_WEBHOOK_URL"),
@@ -239,6 +243,41 @@ function checkInvalidRazorpayWebhookIsNotReady() {
   ].every(Boolean));
 }
 
+function checkInvalidOtpDeliveryIsNotReady() {
+  const emailOnlyReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    OTP_SMS_WEBHOOK_URL: "",
+    OTP_SMS_WEBHOOK_TOKEN: "",
+    RESEND_API_KEY: "re_contract_key_123456",
+    RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+  });
+  const weakTokenReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    OTP_SMS_WEBHOOK_TOKEN: "short"
+  });
+  const demoReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    OTP_DEMO_ENABLED: "true"
+  });
+
+  const emailOnly = emailOnlyReport.checks.find((check) => check.id === "otp");
+  const weakToken = weakTokenReport.checks.find((check) => check.id === "otp");
+  const demo = demoReport.checks.find((check) => check.id === "otp");
+
+  pushCheck("Readiness requires token-authenticated SMS OTP delivery", [
+    emailOnlyReport.ok === false,
+    emailOnly?.status === "fail",
+    emailOnly?.missingEnv.includes("OTP_SMS_WEBHOOK_URL"),
+    emailOnly?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN"),
+    weakTokenReport.ok === false,
+    weakToken?.status === "fail",
+    weakToken?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN>=16 characters"),
+    demoReport.ok === false,
+    demo?.status === "fail",
+    demo?.missingEnv.includes("OTP_DEMO_ENABLED=false")
+  ].every(Boolean));
+}
+
 function checkInvalidServiceUrlsAreNotReady() {
   const supabaseReport = buildDeploymentReadiness({
     ...fullEnv(),
@@ -371,6 +410,7 @@ function criticalEnv() {
     SUPABASE_SERVICE_ROLE_KEY: "service-role-contract-secret-123456",
     OTP_HASH_SECRET: "soulguru-otp-hash-secret-with-at-least-32-chars",
     OTP_SMS_WEBHOOK_URL: "https://sms.soulguru.app/send",
+    OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-contract-token",
     RAZORPAY_KEY_ID: "rzp_test_contract123456",
     RAZORPAY_KEY_SECRET: "razorpay-contract-secret-123456",
     RAZORPAY_WEBHOOK_SECRET: "razorpay-webhook-secret-123456",

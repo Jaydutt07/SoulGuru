@@ -133,7 +133,7 @@ This project is being built toward the stack shown in the product planning image
 15. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
 16. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 17. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
-18. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
+18. Configure token-authenticated phone OTP delivery through `OTP_SMS_WEBHOOK_URL` and `OTP_SMS_WEBHOOK_TOKEN`, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
 19. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
 20. Run `npm run public-env:check:strict`.
 21. Run `npm run payments:check`.

@@ -247,6 +247,7 @@ function checkOtpReadinessRequiresStrongSecret() {
     SUPABASE_URL: "https://example.supabase.co",
     SUPABASE_SERVICE_ROLE_KEY: "service-role",
     OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
+    OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-token-123",
     RAZORPAY_KEY_ID: "rzp_test_contract",
     RAZORPAY_KEY_SECRET: "razorpay-secret",
     RAZORPAY_WEBHOOK_SECRET: "webhook-secret",

@@ -215,23 +215,29 @@ function checkShani(env) {
 function checkOtp(env) {
   const missingBase = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
     .filter((name) => !hasEnv(env, name));
+  const hasOtpSecret = hasEnv(env, "OTP_HASH_SECRET");
   const otpSecret = String(env.OTP_HASH_SECRET || "").trim();
   const hasSms = hasEnv(env, "OTP_SMS_WEBHOOK_URL");
-  const hasEmail = hasEnv(env, "RESEND_API_KEY") && hasEnv(env, "RESEND_FROM_EMAIL");
+  const hasSmsToken = hasEnv(env, "OTP_SMS_WEBHOOK_TOKEN");
+  const smsToken = String(env.OTP_SMS_WEBHOOK_TOKEN || "").trim();
   const demoEnabled = String(env.OTP_DEMO_ENABLED || "false").toLowerCase() === "true";
-  const deliveryConfigured = hasSms || hasEmail;
   const missingEnv = [...missingBase];
 
-  if (!otpSecret) {
+  if (!hasOtpSecret) {
     missingEnv.push("OTP_HASH_SECRET");
   } else if (otpSecret.length < 32) {
     missingEnv.push("OTP_HASH_SECRET>=32 characters");
   }
-  if (!deliveryConfigured) {
-    missingEnv.push("OTP_SMS_WEBHOOK_URL or RESEND_API_KEY+RESEND_FROM_EMAIL");
+  if (!hasSms) {
+    missingEnv.push("OTP_SMS_WEBHOOK_URL");
   }
   if (hasSms && !isHttpsUrl(env.OTP_SMS_WEBHOOK_URL)) {
     missingEnv.push("OTP_SMS_WEBHOOK_URL=https URL");
+  }
+  if (!hasSmsToken) {
+    missingEnv.push("OTP_SMS_WEBHOOK_TOKEN");
+  } else if (smsToken.length < 16) {
+    missingEnv.push("OTP_SMS_WEBHOOK_TOKEN>=16 characters");
   }
   if (demoEnabled) {
     missingEnv.push("OTP_DEMO_ENABLED=false");
@@ -246,11 +252,12 @@ function checkOtp(env) {
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
       "OTP_HASH_SECRET>=32 characters",
-      "OTP_SMS_WEBHOOK_URL or RESEND_API_KEY+RESEND_FROM_EMAIL",
+      "OTP_SMS_WEBHOOK_URL",
+      "OTP_SMS_WEBHOOK_TOKEN>=16 characters",
       "OTP_DEMO_ENABLED=false"
     ],
     missingEnv,
-    advice: missingEnv.length ? "Configure Supabase-backed OTP storage, a strong OTP hash secret, and a real SMS/email delivery path." : ""
+    advice: missingEnv.length ? "Configure Supabase-backed OTP storage, a strong OTP hash secret, and a token-authenticated SMS delivery path." : ""
   };
 }
 
