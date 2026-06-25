@@ -83,7 +83,7 @@ This project is being built toward the stack shown in the product planning image
 - Vercel security/cache headers for browser hardening, no-store API responses, and immutable asset caching
 - Strict deployed backend smoke contract so production-ready checks require authenticated protected POST routes
 - Combined release readiness runner for local and strict production preflight checks
-- API request parsing contract for malformed JSON, body-size limits, and client-error status codes
+- API request parsing contract for malformed JSON, body-size limits, client-error status codes, and sanitized server-error payloads
 - Workflow-ready GitHub Actions CI template for web/API contracts, local smoke, Soul Guru diversity gates, APK build, and APK secret scanning
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
 - Shared OpenAI backend timeout/retry policy for Responses and Embeddings requests

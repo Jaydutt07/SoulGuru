@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import fs from "node:fs";
 import {
   getClientIp,
   getHttpMethod,
@@ -11,6 +12,7 @@ import {
 const checks = [];
 
 checkBasicRequestHelpers();
+checkDevApiUsesSharedErrorSanitizer();
 await checkJsonParsingContract();
 await checkOversizedBodyContract();
 await checkErrorResponseContract();
@@ -37,6 +39,19 @@ function checkBasicRequestHelpers() {
     response.headers["Content-Type"] === "application/json",
     response.headers["Cache-Control"] === "no-store",
     JSON.parse(response.body).ok === true
+  ].every(Boolean));
+}
+
+function checkDevApiUsesSharedErrorSanitizer() {
+  const source = fs.readFileSync("vite.config.js", "utf8");
+  const rawErrorResponses = source.match(/sendJson\(res,\s*error\.statusCode/g) || [];
+
+  pushCheck("Dev API routes use shared sanitized error responses", [
+    source.includes("sendErrorJson"),
+    rawErrorResponses.length === 0,
+    source.includes('route: "soul-wisdom"'),
+    source.includes('route: "more-guidance"'),
+    source.includes('route: "auth-otp"')
   ].every(Boolean));
 }
 
@@ -94,6 +109,25 @@ async function checkErrorResponseContract() {
     response.statusCode === 400,
     response.headers["Content-Type"] === "application/json",
     JSON.parse(response.body).error === "Invalid JSON request body"
+  ].every(Boolean));
+
+  const serverResponse = createResponse();
+  const serverError = new Error("Supabase service_role secret failed against https://internal.example");
+  await sendErrorJson({
+    method: "POST",
+    url: "/api/more-guidance",
+    headers: {}
+  }, serverResponse, serverError, {
+    route: "more-guidance",
+    fallbackMessage: "Unable to load More Guidance"
+  });
+
+  pushCheck("Server errors return safe fallback messages without leaking internals", [
+    serverResponse.statusCode === 500,
+    serverResponse.headers["Content-Type"] === "application/json",
+    JSON.parse(serverResponse.body).error === "Unable to load More Guidance",
+    !serverResponse.body.includes("service_role"),
+    !serverResponse.body.includes("internal.example")
   ].every(Boolean));
 }
 

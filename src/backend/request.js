@@ -12,13 +12,14 @@ export function sendJson(res, statusCode, payload, headers = {}) {
 export async function sendErrorJson(req, res, error, options = {}) {
   const statusCode = Number(error?.statusCode || options.statusCode || 500);
   const fallbackMessage = options.fallbackMessage || "Unable to process request";
+  const publicMessage = getPublicErrorMessage(error, statusCode, fallbackMessage);
   await captureApiError(error, {
     req,
     route: options.route,
     statusCode,
     extra: options.extra
   }, process.env);
-  sendJson(res, statusCode, { error: error?.message || fallbackMessage });
+  sendJson(res, statusCode, { error: publicMessage });
 }
 
 export function getHttpMethod(req) {
@@ -82,4 +83,11 @@ function createHttpError(message, statusCode, code) {
   error.statusCode = statusCode;
   error.code = code;
   return error;
+}
+
+function getPublicErrorMessage(error, statusCode, fallbackMessage) {
+  if (statusCode >= 500) {
+    return fallbackMessage;
+  }
+  return String(error?.message || fallbackMessage || "Unable to process request");
 }

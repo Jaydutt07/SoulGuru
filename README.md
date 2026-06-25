@@ -136,7 +136,7 @@ Check Upstash rate limiting, hashed Redis keys, pipeline requests, and emergency
 npm run rate-limit:check
 ```
 
-Check API request parsing, invalid JSON, oversized body, and error response behavior:
+Check API request parsing, invalid JSON, oversized body, client-error responses, and sanitized server-error payloads:
 
 ```bash
 npm run request:check

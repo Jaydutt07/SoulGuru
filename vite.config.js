@@ -16,7 +16,7 @@ import { buildDeploymentReadiness } from "./src/backend/readinessService.js";
 import { createPanditGuidance, getShaniDashboard } from "./src/backend/shaniService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
-import { parseJsonRequest, sendJson } from "./src/backend/request.js";
+import { parseJsonRequest, sendErrorJson, sendJson } from "./src/backend/request.js";
 
 function soulGuruApiPlugin() {
   return {
@@ -75,7 +75,7 @@ function soulGuruApiPlugin() {
           const result = await createDailySoulWisdom(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create guidance" });
+          await sendErrorJson(req, res, error, { route: "soul-wisdom", fallbackMessage: "Unable to create guidance" });
         }
       });
 
@@ -108,7 +108,7 @@ function soulGuruApiPlugin() {
           const order = await createRazorpayOrder(payload, runtimeEnv);
           sendJson(res, 200, { ...order, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create order" });
+          await sendErrorJson(req, res, error, { route: "razorpay-order", fallbackMessage: "Unable to create order" });
         }
       });
 
@@ -141,7 +141,7 @@ function soulGuruApiPlugin() {
           const result = await verifyRazorpayCheckoutPayment(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to verify payment" });
+          await sendErrorJson(req, res, error, { route: "razorpay-verify", fallbackMessage: "Unable to verify payment" });
         }
       });
 
@@ -174,7 +174,7 @@ function soulGuruApiPlugin() {
           const order = await createShaniRazorpayOrder(payload, runtimeEnv);
           sendJson(res, 200, { ...order, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create Shani order" });
+          await sendErrorJson(req, res, error, { route: "shani-razorpay-order", fallbackMessage: "Unable to create Shani order" });
         }
       });
 
@@ -207,7 +207,7 @@ function soulGuruApiPlugin() {
           const result = await verifyShaniRazorpayCheckoutPayment(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to verify Shani payment" });
+          await sendErrorJson(req, res, error, { route: "shani-razorpay-verify", fallbackMessage: "Unable to verify Shani payment" });
         }
       });
 
@@ -240,7 +240,7 @@ function soulGuruApiPlugin() {
           const result = await createAstroSolve(payload, runtimeEnv);
           sendJson(res, result.allowed === false ? 402 : 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to create Astro Solves answer" });
+          await sendErrorJson(req, res, error, { route: "astro-solve", fallbackMessage: "Unable to create Astro Solves answer" });
         }
       });
 
@@ -289,7 +289,7 @@ function soulGuruApiPlugin() {
           }, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to update guidance memory" });
+          await sendErrorJson(req, res, error, { route: "guidance-memory", fallbackMessage: "Unable to update guidance memory" });
         }
       });
 
@@ -334,7 +334,7 @@ function soulGuruApiPlugin() {
           const result = await getMoreGuidanceDashboard(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to load More Guidance" });
+          await sendErrorJson(req, res, error, { route: "more-guidance", fallbackMessage: "Unable to load More Guidance" });
         }
       });
 
@@ -373,7 +373,7 @@ function soulGuruApiPlugin() {
           const result = await getShaniDashboard(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to load Shani guidance" });
+          await sendErrorJson(req, res, error, { route: "shani-guidance", fallbackMessage: "Unable to load Shani guidance" });
         }
       });
 
@@ -406,7 +406,7 @@ function soulGuruApiPlugin() {
           const result = await handleUserProfile(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate, auth });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to update profile" });
+          await sendErrorJson(req, res, error, { route: "user-profile", fallbackMessage: "Unable to update profile" });
         }
       });
 
@@ -440,7 +440,7 @@ function soulGuruApiPlugin() {
             : await requestOtp(payload, runtimeEnv);
           sendJson(res, 200, { ...result, rate });
         } catch (error) {
-          sendJson(res, error.statusCode || 500, { error: error.message || "Unable to process OTP" });
+          await sendErrorJson(req, res, error, { route: "auth-otp", fallbackMessage: "Unable to process OTP" });
         }
       });
     }
