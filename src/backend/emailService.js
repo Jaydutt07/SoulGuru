@@ -3,8 +3,8 @@ import { fetchWithTimeout } from "./fetchWithTimeout.js";
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 export async function sendEmail({ to, subject, html, text, tags = [] }, env = process.env, deps = {}) {
-  if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) {
-    return { sent: false, skipped: true };
+  if (!isResendConfigured(env)) {
+    return { sent: false, skipped: true, reason: "Resend is not configured" };
   }
 
   if (!to || !subject || (!html && !text)) {
@@ -40,6 +40,14 @@ export async function sendEmail({ to, subject, html, text, tags = [] }, env = pr
   return { sent: true, id: data.id };
 }
 
+export function isResendConfigured(env = process.env) {
+  return [
+    hasConfiguredValue(env.RESEND_API_KEY),
+    hasConfiguredValue(env.RESEND_FROM_EMAIL),
+    isValidEmailSender(env.RESEND_FROM_EMAIL)
+  ].every(Boolean);
+}
+
 export function buildMembershipEmail({ name = "there", endsAt }) {
   const endLabel = endsAt ? new Date(endsAt).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -67,4 +75,29 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function hasConfiguredValue(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!normalized) return false;
+  if (normalized.startsWith("${{") || normalized.startsWith("$")) return false;
+  if (/^(true|false|null|undefined)$/i.test(normalized)) return false;
+  if (/^(your|replace|change|changeme|placeholder|example|dummy|fake|todo|xxx|xxxx|redacted)(?:[-_\s].*)?$/i.test(normalized)) {
+    return false;
+  }
+  if (/^<[^>]+>$/.test(normalized)) return false;
+  if (/^\*+$/.test(normalized)) return false;
+
+  return true;
+}
+
+function isValidEmailSender(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || /\r|\n/.test(normalized)) return false;
+  const angleMatch = normalized.match(/<([^<>]+)>$/);
+  const email = angleMatch ? angleMatch[1] : normalized;
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email.trim());
 }

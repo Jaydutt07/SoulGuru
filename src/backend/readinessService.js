@@ -10,6 +10,7 @@ export function buildDeploymentReadiness(env = process.env) {
     checkMoreGuidance(env),
     checkShani(env),
     checkOtp(env),
+    checkTransactionalEmail(env),
     checkRazorpay(env),
     checkRateLimit(env),
     checkPinecone(env),
@@ -227,6 +228,30 @@ function checkOtp(env) {
   };
 }
 
+function checkTransactionalEmail(env) {
+  const missingEnv = [];
+  if (!hasEnv(env, "RESEND_API_KEY")) {
+    missingEnv.push("RESEND_API_KEY");
+  }
+  if (!hasEnv(env, "RESEND_FROM_EMAIL")) {
+    missingEnv.push("RESEND_FROM_EMAIL");
+  } else if (!isValidEmailSender(env.RESEND_FROM_EMAIL)) {
+    missingEnv.push("RESEND_FROM_EMAIL=valid email sender");
+  }
+
+  return {
+    id: "transactionalEmail",
+    label: "Transactional emails",
+    severity: "warning",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Configure Resend so OTP fallback and paid membership confirmation emails are deliverable."
+      : ""
+  };
+}
+
 function checkRazorpay(env) {
   const requiredEnv = [
     "RAZORPAY_KEY_ID",
@@ -384,6 +409,14 @@ function isValidSentryDsn(value) {
   } catch {
     return false;
   }
+}
+
+function isValidEmailSender(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || /\r|\n/.test(normalized)) return false;
+  const angleMatch = normalized.match(/<([^<>]+)>$/);
+  const email = angleMatch ? angleMatch[1] : normalized;
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email.trim());
 }
 
 function isPlaceholderValue(value) {

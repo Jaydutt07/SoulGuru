@@ -1,4 +1,4 @@
-import { buildMembershipEmail, sendEmail } from "../src/backend/emailService.js";
+import { buildMembershipEmail, isResendConfigured, sendEmail } from "../src/backend/emailService.js";
 
 const checks = [];
 
@@ -36,6 +36,14 @@ async function checkUnconfiguredAndInvalidEmailSkipsNetwork() {
     RESEND_API_KEY: "re_contract",
     RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
   }, deps);
+  const placeholderConfig = await sendEmail({
+    to: "asha@example.com",
+    subject: "Hello",
+    text: "Body"
+  }, {
+    RESEND_API_KEY: "fake-resend-key",
+    RESEND_FROM_EMAIL: "<sender-email>"
+  }, deps);
 
   pushCheck("Email service skips network when unconfigured or missing fields", [
     unconfigured.sent === false,
@@ -43,7 +51,24 @@ async function checkUnconfiguredAndInvalidEmailSkipsNetwork() {
     missingFields.sent === false,
     missingFields.skipped === true,
     /missing/i.test(missingFields.reason || ""),
+    placeholderConfig.sent === false,
+    placeholderConfig.skipped === true,
+    /resend is not configured/i.test(placeholderConfig.reason || ""),
     fetchCalls === 0
+  ].every(Boolean));
+  pushCheck("Email service treats only real Resend env values as configured", [
+    isResendConfigured({
+      RESEND_API_KEY: "re_contract_key",
+      RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    }) === true,
+    isResendConfigured({
+      RESEND_API_KEY: "placeholder",
+      RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    }) === false,
+    isResendConfigured({
+      RESEND_API_KEY: "re_contract_key",
+      RESEND_FROM_EMAIL: "SoulGuru <not-an-email>"
+    }) === false
   ].every(Boolean));
 }
 

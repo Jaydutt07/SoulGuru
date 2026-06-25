@@ -1,5 +1,5 @@
 import { createHmac, randomInt } from "node:crypto";
-import { sendEmail } from "./emailService.js";
+import { isResendConfigured, sendEmail } from "./emailService.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
@@ -160,7 +160,7 @@ async function deliverOtp({ phone, email, code, purpose }, env) {
     return sendSmsWebhook({ phone, code, purpose }, env);
   }
 
-  if (email && env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
+  if (email && isResendConfigured(env)) {
     const emailPayload = buildOtpEmail({ code, purpose, expiryMinutes: getExpiryMinutes(env) });
     const result = await sendEmail({
       to: email,

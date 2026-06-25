@@ -166,7 +166,7 @@ Check bounded backend fetch behavior for vendor APIs such as Razorpay, Resend, U
 npm run backend-fetch:check
 ```
 
-Check Resend email payloads, skips, errors, and membership email escaping:
+Check Resend email payloads, configured-env gating, errors, and membership email escaping:
 
 ```bash
 npm run email:check
@@ -405,7 +405,7 @@ Basic API health check for deployment.
 
 `GET /api/readiness`
 
-Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
+Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Resend transactional email, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
 URL-shaped production env values such as `SUPABASE_URL`, `OTP_SMS_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, Sentry DSNs, PostHog host, and `PINECONE_HOST` are validated for production-safe shape before readiness can pass.
 Placeholder-looking values such as `fake-*`, `replace-*`, `dummy`, `placeholder`, `$VAR`, or `<secret>` are treated as missing in readiness output.
 
@@ -431,12 +431,14 @@ SHANI_PLAN_FULL_PRICE_PAISE=149900
 
 Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false`, `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false`, and `SHANI_ALLOW_LOCAL_ACCESS=false` outside isolated local testing. Real More Guidance and Shani purchases must be persisted in Supabase before the app unlocks paid guidance.
 
-For confirmation emails:
+For OTP fallback and paid membership confirmation emails:
 
 ```bash
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 ```
+
+Production readiness requires a real Resend key and a valid sender such as `SoulGuru <hello@your-domain.com>`.
 
 For phone OTP delivery, configure your SMS provider behind a webhook:
 

@@ -41,7 +41,7 @@ This project is being built toward the stack shown in the product planning image
 - Production-gated Razorpay checkout activation requiring persisted Supabase subscription storage
 - Offline Razorpay order, checkout signature, and webhook contract checker
 - Resend helper for subscription confirmation emails
-- Offline Resend email contract checker for API payloads, errors, skips, and membership email escaping
+- Offline Resend email contract checker for API payloads, configured-env gating, errors, skips, and membership email escaping
 - Optional PostHog and Sentry frontend hooks with privacy-safe user properties
 - Server-side Sentry envelope capture for sanitized 5xx API failures
 - Offline Sentry/PostHog observability contract checker for initialization, backend API capture, and analytics privacy
@@ -125,7 +125,7 @@ This project is being built toward the stack shown in the product planning image
 12. Apply `supabase/migrations/012_shani_membership.sql`.
 13. Run `npm run supabase:schema:check` against the Supabase project.
 14. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-15. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
+15. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
 16. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
 17. Run `npm run public-env:check:strict`.
 18. Run `npm run payments:check`.

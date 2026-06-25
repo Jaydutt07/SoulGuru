@@ -11,6 +11,7 @@ checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
 checkInvalidServiceUrlsAreNotReady();
+checkInvalidEmailSenderIsNotReady();
 checkPlaceholderValuesAreNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
@@ -58,6 +59,7 @@ function checkPlaceholderValuesAreNotReady() {
     OPENAI_API_KEY: "fake-openai-key",
     SUPABASE_SERVICE_ROLE_KEY: "replace-with-service-role",
     RAZORPAY_KEY_SECRET: "<razorpay-secret>",
+    RESEND_API_KEY: "fake-resend-key",
     UPSTASH_REDIS_REST_TOKEN: "$UPSTASH_TOKEN",
     PINECONE_API_KEY: "dummy-pinecone-key",
     VITE_POSTHOG_KEY: "placeholder"
@@ -65,6 +67,7 @@ function checkPlaceholderValuesAreNotReady() {
   const openai = report.checks.find((check) => check.id === "openai");
   const supabase = report.checks.find((check) => check.id === "supabase");
   const razorpay = report.checks.find((check) => check.id === "razorpay");
+  const transactionalEmail = report.checks.find((check) => check.id === "transactionalEmail");
   const rateLimit = report.checks.find((check) => check.id === "rateLimit");
   const pinecone = report.checks.find((check) => check.id === "pinecone");
   const observability = report.checks.find((check) => check.id === "observability");
@@ -74,9 +77,24 @@ function checkPlaceholderValuesAreNotReady() {
     openai?.missingEnv.includes("OPENAI_API_KEY"),
     supabase?.missingEnv.includes("SUPABASE_SERVICE_ROLE_KEY"),
     razorpay?.missingEnv.includes("RAZORPAY_KEY_SECRET"),
+    transactionalEmail?.missingEnv.includes("RESEND_API_KEY"),
     rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_TOKEN"),
     pinecone?.missingEnv.includes("PINECONE_API_KEY"),
     observability?.missingEnv.includes("VITE_POSTHOG_KEY")
+  ].every(Boolean));
+}
+
+function checkInvalidEmailSenderIsNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    RESEND_FROM_EMAIL: "SoulGuru <not-an-email>"
+  });
+  const transactionalEmail = report.checks.find((check) => check.id === "transactionalEmail");
+
+  pushCheck("Readiness rejects malformed transactional email sender", [
+    report.ok === false,
+    transactionalEmail?.status === "fail",
+    transactionalEmail?.missingEnv.includes("RESEND_FROM_EMAIL=valid email sender")
   ].every(Boolean));
 }
 
@@ -226,6 +244,7 @@ function checkReadinessPayloadDoesNotLeakSecretValues() {
     env.OTP_HASH_SECRET,
     env.RAZORPAY_KEY_SECRET,
     env.RAZORPAY_WEBHOOK_SECRET,
+    env.RESEND_API_KEY,
     env.UPSTASH_REDIS_REST_TOKEN,
     env.PINECONE_API_KEY,
     env.CLERK_SECRET_KEY
@@ -248,7 +267,9 @@ function fullEnv() {
     CLERK_REQUIRE_AUTH: "true",
     VITE_SENTRY_DSN: "https://public@sentry.soulguru.app/1",
     VITE_POSTHOG_KEY: "phc_contract_123456",
-    VITE_POSTHOG_HOST: "https://analytics.soulguru.app"
+    VITE_POSTHOG_HOST: "https://analytics.soulguru.app",
+    RESEND_API_KEY: "re_contract_key_123456",
+    RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
   };
 }
 
