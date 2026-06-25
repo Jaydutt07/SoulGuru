@@ -107,6 +107,7 @@ This project is being built toward the stack shown in the product planning image
 - Shared #Numbers numerology engine with deterministic card/value contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice
+- Frontend More Guidance page contract for backend dashboard sync, deep guidance, 3-month tracking, history, saved advice, and production fallback boundaries
 - Server-backed More Guidance tracking contract with days left, month status, progress, and milestones
 - Fail-closed More Guidance dashboard reads so paid history and saved advice cannot silently disappear
 - Fail-closed Astro Solves quota checks so unreadable subscription/count state cannot spend OpenAI or return uncounted answers

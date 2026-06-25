@@ -226,7 +226,7 @@ Check the Razorpay payment/signature contract and client checkout flow without c
 npm run payments:check
 ```
 
-Check the paid More Guidance subscription/cache contract without contacting OpenAI or Supabase:
+Check the paid More Guidance subscription/cache contract and client paid-page flow without contacting OpenAI or Supabase:
 
 ```bash
 npm run more-guidance:check
@@ -464,7 +464,7 @@ Server-only Pinecone memory route. It upserts saved guidance, daily readings, an
 
 `POST /api/more-guidance`
 
-Loads the More Guidance dashboard from Supabase, including subscription status, 3-month tracking progress, reading history, and saved advice. Dashboard reads fail closed instead of returning empty synced data when subscription, history, or saved-advice state cannot be loaded. It also creates the paid deeper guidance map and saves advice into `saved_guidance`. Production requires persisted subscription access and daily caching in `more_guidance_readings`; `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing. Production builds must also keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend.
+Loads the More Guidance dashboard from Supabase, including subscription status, 3-month tracking progress, reading history, and saved advice. Dashboard reads fail closed instead of returning empty synced data when subscription, history, or saved-advice state cannot be loaded. It also creates the paid deeper guidance map and saves advice into `saved_guidance`. Production requires persisted subscription access and daily caching in `more_guidance_readings`; `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing. Production builds must also keep `VITE_LOCAL_PAID_FALLBACK=false` so paid access, history, saved advice, and deeper readings come from the backend. `npm run more-guidance:check` covers this backend behavior plus the frontend subscription page, dashboard sync, tracking, history, saved advice, and no-unstored-guidance guard.
 
 `POST /api/shani-guidance`
 

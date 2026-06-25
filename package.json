@@ -32,7 +32,7 @@
     "mobile:detect-lan": "node scripts/build-local-mobile-apk.mjs --print-url",
     "mobile:backend:check": "node scripts/check-mobile-backend-contracts.mjs",
     "memory:check": "node scripts/check-memory-contracts.mjs",
-    "more-guidance:check": "node scripts/check-more-guidance-contracts.mjs",
+    "more-guidance:check": "node scripts/check-more-guidance-contracts.mjs && node scripts/check-client-more-guidance-contracts.mjs",
     "numbers:check": "node scripts/check-numbers-contracts.mjs",
     "observability:check": "node scripts/check-observability-contracts.mjs",
     "openai:check": "node scripts/check-openai-contracts.mjs",
