@@ -46,6 +46,7 @@ function checkVercelApiFunctionConfig() {
 function checkVercelSecurityHeaders() {
   const headers = findHeaderSet("/(.*)");
   const byKey = headerMap(headers);
+  const csp = parseCsp(byKey["content-security-policy"] || "");
   pushCheck("Vercel applies baseline browser security headers", [
     byKey["strict-transport-security"] === "max-age=63072000; includeSubDomains; preload",
     byKey["x-content-type-options"] === "nosniff",
@@ -57,6 +58,38 @@ function checkVercelSecurityHeaders() {
     byKey["permissions-policy"]?.includes("payment=(self)")
   ].every(Boolean), [
     "Expected HSTS, nosniff, frame denial, referrer policy, and restricted permissions policy."
+  ]);
+
+  pushCheck("Vercel applies production Content Security Policy", [
+    cspDirectiveIncludes(csp, "default-src", "'self'"),
+    cspDirectiveIncludes(csp, "base-uri", "'self'"),
+    cspDirectiveIncludes(csp, "object-src", "'none'"),
+    cspDirectiveIncludes(csp, "frame-ancestors", "'none'"),
+    cspDirectiveIncludes(csp, "script-src", "'self'"),
+    cspDirectiveIncludes(csp, "script-src", "https://checkout.razorpay.com"),
+    cspDirectiveIncludes(csp, "script-src", "https://*.clerk.accounts.dev"),
+    cspDirectiveIncludes(csp, "script-src", "https://*.clerk.com"),
+    cspDirectiveIncludes(csp, "script-src", "https://*.soulguru.app"),
+    cspDirectiveIncludes(csp, "connect-src", "'self'"),
+    cspDirectiveIncludes(csp, "connect-src", "https://api.razorpay.com"),
+    cspDirectiveIncludes(csp, "connect-src", "https://checkout.razorpay.com"),
+    cspDirectiveIncludes(csp, "connect-src", "https://*.clerk.accounts.dev"),
+    cspDirectiveIncludes(csp, "connect-src", "https://*.soulguru.app"),
+    cspDirectiveIncludes(csp, "connect-src", "https://*.sentry.io"),
+    cspDirectiveIncludes(csp, "connect-src", "https://*.posthog.com"),
+    cspDirectiveIncludes(csp, "connect-src", "https://*.i.posthog.com"),
+    cspDirectiveIncludes(csp, "img-src", "data:"),
+    cspDirectiveIncludes(csp, "img-src", "blob:"),
+    cspDirectiveIncludes(csp, "style-src", "'unsafe-inline'"),
+    cspDirectiveIncludes(csp, "frame-src", "https://checkout.razorpay.com"),
+    cspDirectiveIncludes(csp, "frame-src", "https://api.razorpay.com"),
+    cspDirectiveIncludes(csp, "frame-src", "https://*.soulguru.app"),
+    cspDirectiveIncludes(csp, "worker-src", "blob:"),
+    cspDirectiveIncludes(csp, "manifest-src", "'self'"),
+    cspDirectiveIncludes(csp, "form-action", "'self'"),
+    csp.has("upgrade-insecure-requests")
+  ].every(Boolean), [
+    "Expected CSP to restrict defaults, block framing/objects, and explicitly allow Razorpay, Clerk, Sentry, and PostHog browser origins."
   ]);
 }
 
@@ -165,6 +198,21 @@ function headerMap(headers) {
     String(header.key || "").toLowerCase(),
     String(header.value || "")
   ]));
+}
+
+function parseCsp(value) {
+  return new Map(String(value || "")
+    .split(";")
+    .map((directive) => directive.trim())
+    .filter(Boolean)
+    .map((directive) => {
+      const [name, ...tokens] = directive.split(/\s+/);
+      return [String(name || "").toLowerCase(), tokens];
+    }));
+}
+
+function cspDirectiveIncludes(csp, directive, token) {
+  return (csp.get(directive) || []).includes(token);
 }
 
 function readJson(file) {

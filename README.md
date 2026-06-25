@@ -94,7 +94,7 @@ Check `.env.example`, production fallback defaults, and the public env allowlist
 npm run env:check
 ```
 
-Check the Vercel deployment config, security/cache headers, and deploy-ignore safety rules:
+Check the Vercel deployment config, CSP/security/cache headers, and deploy-ignore safety rules:
 
 ```bash
 npm run deployment:check
