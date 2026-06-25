@@ -6,6 +6,7 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 const DEFAULT_EXPIRY_MINUTES = 10;
 const DEFAULT_MAX_ATTEMPTS = 5;
 const MIN_OTP_HASH_SECRET_LENGTH = 32;
+const MIN_SMS_WEBHOOK_TOKEN_LENGTH = 16;
 
 export async function requestOtp(payload, env = process.env, deps = {}) {
   const phone = normalizePhone(payload.phone || payload.user?.phone);
@@ -33,6 +34,7 @@ export async function requestOtp(payload, env = process.env, deps = {}) {
   }
 
   assertOtpHashSecret(env);
+  assertOtpDeliveryConfigured({ email }, env);
 
   const { data, error } = await supabase
     .from("auth_otp_challenges")
@@ -156,8 +158,9 @@ export async function verifyOtp(payload, env = process.env, deps = {}) {
 }
 
 async function deliverOtp({ phone, email, code, purpose }, env) {
-  if (env.OTP_SMS_WEBHOOK_URL) {
-    return sendSmsWebhook({ phone, code, purpose }, env);
+  const smsWebhookUrl = getSmsWebhookUrl(env);
+  if (smsWebhookUrl) {
+    return sendSmsWebhook({ phone, code, purpose }, env, smsWebhookUrl);
   }
 
   if (email && isResendConfigured(env)) {
@@ -184,16 +187,15 @@ async function deliverOtp({ phone, email, code, purpose }, env) {
   throw createHttpError("OTP delivery is not configured", 500);
 }
 
-async function sendSmsWebhook({ phone, code, purpose }, env) {
+async function sendSmsWebhook({ phone, code, purpose }, env, smsWebhookUrl = getSmsWebhookUrl(env)) {
   const message = `Your SoulGuru OTP is ${code}. It expires in ${getExpiryMinutes(env)} minutes.`;
+  const smsWebhookToken = getSmsWebhookToken(env);
   const headers = {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${smsWebhookToken}`
   };
-  if (env.OTP_SMS_WEBHOOK_TOKEN) {
-    headers.Authorization = `Bearer ${env.OTP_SMS_WEBHOOK_TOKEN}`;
-  }
 
-  const response = await fetchWithTimeout(env.OTP_SMS_WEBHOOK_URL, {
+  const response = await fetchWithTimeout(smsWebhookUrl, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -247,10 +249,60 @@ function assertOtpHashSecret(env) {
 
 function getOtpHashSecret(env) {
   const secret = String(env.OTP_HASH_SECRET || "").trim();
-  if (secret.length < MIN_OTP_HASH_SECRET_LENGTH) {
-    throw createHttpError(`OTP_HASH_SECRET must be at least ${MIN_OTP_HASH_SECRET_LENGTH} characters`, 500);
+  if (isPlaceholderSecret(secret) || secret.length < MIN_OTP_HASH_SECRET_LENGTH) {
+    throw createHttpError(`OTP_HASH_SECRET must be a real secret at least ${MIN_OTP_HASH_SECRET_LENGTH} characters long`, 500);
   }
   return secret;
+}
+
+function assertOtpDeliveryConfigured({ email }, env) {
+  if (getSmsWebhookUrl(env)) {
+    getSmsWebhookToken(env);
+    return;
+  }
+
+  if (email && isResendConfigured(env)) {
+    return;
+  }
+
+  if (shouldExposeDemoCode(env)) {
+    return;
+  }
+
+  throw createHttpError("OTP delivery is not configured", 500);
+}
+
+function getSmsWebhookUrl(env) {
+  const url = String(env.OTP_SMS_WEBHOOK_URL || "").trim();
+  return isPlaceholderSecret(url) ? "" : url;
+}
+
+function getSmsWebhookToken(env) {
+  const token = String(env.OTP_SMS_WEBHOOK_TOKEN || "").trim();
+  if (isPlaceholderSecret(token)) {
+    throw createHttpError("OTP_SMS_WEBHOOK_TOKEN must be configured for SMS OTP delivery", 500);
+  }
+  if (token.length < MIN_SMS_WEBHOOK_TOKEN_LENGTH) {
+    throw createHttpError(`OTP_SMS_WEBHOOK_TOKEN must be at least ${MIN_SMS_WEBHOOK_TOKEN_LENGTH} characters`, 500);
+  }
+  return token;
+}
+
+function isPlaceholderSecret(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!normalized) return true;
+  if (normalized.startsWith("${{") || normalized.startsWith("$")) return true;
+  if (/^(true|false|null|undefined)$/i.test(normalized)) return true;
+  if (/^(your|replace|change|changeme|placeholder|example|dummy|fake|todo|xxx|xxxx|redacted)(?:[-_\s].*)?$/i.test(normalized)) {
+    return true;
+  }
+  if (/^<[^>]+>$/.test(normalized)) return true;
+  if (/^\*+$/.test(normalized)) return true;
+
+  return false;
 }
 
 function createOtpCode() {

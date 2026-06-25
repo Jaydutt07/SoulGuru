@@ -18,7 +18,9 @@ async function checkSupabaseOtpRequestStoresHashAndHidesDemoCode() {
   }, {
     OTP_HASH_SECRET: otpSecret,
     OTP_DEMO_ENABLED: "false",
-    OTP_EXPIRY_MINUTES: "12"
+    OTP_EXPIRY_MINUTES: "12",
+    OTP_SMS_WEBHOOK_URL: "https://sms.example.test/send",
+    OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-token-123"
   }, {
     supabase,
     createOtpCode: () => "123456",
@@ -72,7 +74,9 @@ async function checkOtpInsertFailureDoesNotDeliverCode() {
       purpose: "login"
     }, {
       OTP_HASH_SECRET: otpSecret,
-      OTP_DEMO_ENABLED: "false"
+      OTP_DEMO_ENABLED: "false",
+      OTP_SMS_WEBHOOK_URL: "https://sms.example.test/send",
+      OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-token-123"
     }, {
       supabase,
       createOtpCode: () => "123456",
@@ -119,6 +123,129 @@ async function checkOtpHashSecretIsRequiredBeforeDelivery() {
     deliveries.length === 0,
     supabase.state.challenges.size === 0
   ].every(Boolean));
+}
+
+async function checkOtpDeliveryConfigIsRequiredBeforeStorage() {
+  const supabase = createFakeSupabase();
+
+  await expectRejects(
+    "Supabase OTP request requires configured delivery before storage",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false"
+    }, {
+      supabase,
+      createOtpCode: () => "123456"
+    }),
+    /OTP delivery is not configured/i,
+    500
+  );
+
+  pushCheck("Missing OTP delivery config leaves no stored challenge", supabase.state.challenges.size === 0);
+}
+
+async function checkSmsWebhookTokenIsRequiredBeforeStorage() {
+  const missingTokenSupabase = createFakeSupabase();
+  const placeholderTokenSupabase = createFakeSupabase();
+
+  await expectRejects(
+    "SMS OTP webhook requires bearer token before storage",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      OTP_SMS_WEBHOOK_URL: "https://sms.example.test/send"
+    }, {
+      supabase: missingTokenSupabase,
+      createOtpCode: () => "123456"
+    }),
+    /OTP_SMS_WEBHOOK_TOKEN.*configured/i,
+    500
+  );
+
+  await expectRejects(
+    "SMS OTP webhook rejects placeholder token before storage",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      OTP_SMS_WEBHOOK_URL: "https://sms.example.test/send",
+      OTP_SMS_WEBHOOK_TOKEN: "replace-with-sms-token"
+    }, {
+      supabase: placeholderTokenSupabase,
+      createOtpCode: () => "123456"
+    }),
+    /OTP_SMS_WEBHOOK_TOKEN.*configured/i,
+    500
+  );
+
+  pushCheck("Invalid SMS webhook token leaves no stored challenge", [
+    missingTokenSupabase.state.challenges.size === 0,
+    placeholderTokenSupabase.state.challenges.size === 0
+  ].every(Boolean));
+}
+
+async function checkSmsWebhookSendsBearerToken() {
+  const supabase = createFakeSupabase();
+  const fetchCalls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    fetchCalls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ messageId: "sms-contract-message" })
+    };
+  };
+
+  try {
+    const result = await requestOtp({
+      phone,
+      email,
+      purpose: "create"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      OTP_EXPIRY_MINUTES: "9",
+      OTP_SMS_WEBHOOK_URL: "https://sms.example.test/send",
+      OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-token-123"
+    }, {
+      supabase,
+      createOtpCode: () => "123456"
+    });
+    const challenge = supabase.state.challenges.get(result.challengeId);
+    const requestBody = JSON.parse(fetchCalls[0]?.options?.body || "{}");
+
+    pushCheck("SMS OTP webhook sends bearer token and phone payload", [
+      fetchCalls.length === 1,
+      fetchCalls[0].url === "https://sms.example.test/send",
+      fetchCalls[0].options.method === "POST",
+      fetchCalls[0].options.headers.Authorization === "Bearer sms-webhook-token-123",
+      requestBody.to === phone,
+      requestBody.code === "123456",
+      requestBody.purpose === "create",
+      requestBody.message.includes("123456")
+    ].every(Boolean));
+    pushCheck("SMS OTP webhook success updates stored delivery channel", [
+      result.delivery?.sent === true,
+      result.delivery?.channel === "sms-webhook",
+      result.delivery?.id === "sms-contract-message",
+      challenge.delivery_channel === "sms-webhook",
+      challenge.metadata?.deliveryId === "sms-contract-message"
+    ].every(Boolean));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 async function checkVerifyOtpAttemptsAndSuccess() {
@@ -444,6 +571,9 @@ async function main() {
   await checkSupabaseOtpRequestStoresHashAndHidesDemoCode();
   await checkOtpInsertFailureDoesNotDeliverCode();
   await checkOtpHashSecretIsRequiredBeforeDelivery();
+  await checkOtpDeliveryConfigIsRequiredBeforeStorage();
+  await checkSmsWebhookTokenIsRequiredBeforeStorage();
+  await checkSmsWebhookSendsBearerToken();
   await checkVerifyOtpAttemptsAndSuccess();
   await checkMaxAttemptsAndExpiryBlockVerification();
   checkOtpReadinessRequiresStrongSecret();

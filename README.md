@@ -359,7 +359,7 @@ The server uses `SUPABASE_SERVICE_ROLE_KEY` only in backend code. Do not expose 
 
 `POST /api/auth-otp`
 
-Requests and verifies backend-controlled OTP challenges. With Supabase configured, OTP codes are stored as HMAC-SHA256 hashes in `auth_otp_challenges` before delivery is attempted, require a 32+ character `OTP_HASH_SECRET`, expire after `OTP_EXPIRY_MINUTES`, and enforce `OTP_MAX_ATTEMPTS`. Production readiness requires phone OTP through `OTP_SMS_WEBHOOK_URL` plus `OTP_SMS_WEBHOOK_TOKEN`; Resend remains available for email fallback/transactional delivery, and local development can fall back to demo OTP.
+Requests and verifies backend-controlled OTP challenges. With Supabase configured, OTP codes are stored as HMAC-SHA256 hashes in `auth_otp_challenges`, require a real 32+ character `OTP_HASH_SECRET`, expire after `OTP_EXPIRY_MINUTES`, and enforce `OTP_MAX_ATTEMPTS`. The backend preflights delivery before writing a challenge, so missing/insecure delivery config cannot create orphaned OTP rows. Production readiness requires phone OTP through `OTP_SMS_WEBHOOK_URL` plus `OTP_SMS_WEBHOOK_TOKEN`; Resend remains available for email fallback/transactional delivery, and local development can fall back to demo OTP.
 
 `POST /api/soul-wisdom`
 
@@ -469,7 +469,7 @@ OTP_EXPIRY_MINUTES=10
 OTP_MAX_ATTEMPTS=5
 OTP_DEMO_ENABLED=false
 ```
-Production readiness requires the SMS webhook token to be present and at least 16 characters long.
+Production readiness and runtime delivery require the SMS webhook token to be present, non-placeholder, and at least 16 characters long. The backend sends it to the SMS webhook as a Bearer token.
 
 Run all Supabase migrations. `002_payment_events.sql` adds idempotent webhook event storage and provider metadata on subscriptions. `003_astro_solves_metadata.sql` adds Astro Solves model, prompt, profile, and astrology context fields. `004_saved_guidance_profile.sql` links saved guidance to user profiles. `005_auth_otp_challenges.sql` adds backend OTP challenge storage. `006_unique_subscription_payments.sql` keeps Razorpay payment activation idempotent. `007_birth_place_resolution.sql` stores resolved birth timezone and place metadata for location-aware readings. `008_more_guidance_readings.sql` adds daily caching for paid deeper guidance maps. `009_unique_subscription_provider_ids.sql` keeps Razorpay subscription lifecycle events idempotent. `010_schema_contract_rpc.sql` adds a service-role-only schema metadata RPC for live deployment verification. `011_schema_contract_constraints.sql` extends that RPC so live checks can verify primary-key and unique constraints. `012_shani_membership.sql` adds Shani remedy memberships and stored Pandit guidance history.
 
