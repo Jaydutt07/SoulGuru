@@ -46,7 +46,7 @@ async function checkUncachedModeRequiresExplicitFlag() {
 async function checkExplicitUncachedModeReturnsUnstoredReading() {
   const user = soulUser("uncached-enabled");
   const wisdomJson = JSON.stringify({
-    wisdom: "The keys gathered too late give the day one practical place to begin. Tara, the pressure is not lack of effort; it is the way a private worry keeps dressing itself as preparation. Write the sentence that names the real task, then give the next hour to the smallest visible finish. Keep the answer warm but brief if someone pulls for more. By evening, trust the completed detail more than the argument still asking for attention.",
+    wisdom: "The keys gathered too late give the day one practical place to begin before the larger story gets loud. Tara, the pressure is not lack of effort; it is a private worry dressing itself as preparation. Name the real task, put it where you can see it, then keep the answer warm but brief if someone pulls for more than timing can honestly hold. By evening, trust one completed detail more than the argument still asking for attention, because your body needs evidence that the day can close.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Name the real task",
     release: "Stop rehearsing the larger worry"
@@ -191,7 +191,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     birthPlace: "Kochi"
   };
   const wisdomJson = JSON.stringify({
-    wisdom: "The quiet room after the unsent sentence gives the unfinished decision a place to land. Leela, care needs a shape before the next request turns into performance. Put the deadline on paper before lunch, then close the extra notes that keep making the task feel ceremonial. If someone wants certainty from you, answer with timing instead of defense. A finished practical detail will settle more of the room than another perfect explanation. Keep the promise small enough to keep completely.",
+    wisdom: "The quiet room after the unsent sentence gives the unfinished decision a place to land before the next request turns ceremonial. Leela, social pressure is not asking for performance; it is asking for one clean shape you can keep. If someone wants certainty from you, answer with timing instead of defense. Put the deadline on paper before lunch, then close the extra notes that keep making the task feel bigger than the work. Keep the promise small enough to finish completely, and let that be the proof you carry into the evening.",
     innerWeather: "Sensitive but ready to act",
     todayMove: "Write the decision before lunch",
     release: "Close every extra tab"
@@ -304,7 +304,7 @@ async function checkSeedMismatchRepairsBeforeCaching() {
     release: "Stop feeding the debate"
   });
   const repairedWisdom = {
-    wisdom: "The old mental tab in your mind keeps reopening because one task has not been given a place. Asha, the useful pressure is not about doing everything; it is about giving one promise a visible edge before the day scatters. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    wisdom: "The old mental tab keeps reopening, but the answer is not more thinking; it is giving one task a visible place. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before private debate. Asha, you need less urgency around another person's reaction before the relationship tone starts deciding your whole day. If someone pulls for reassurance, answer with timing instead of a long defense, and let one completed detail give your body better evidence.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
@@ -368,13 +368,13 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
     birthPlace: "Mumbai"
   };
   const mechanicalWisdomJson = JSON.stringify({
-    wisdom: "The old mental tab in your mind keeps reopening because one task has not been given a place. Asha, Notice where loyalty has become self-abandonment before the day turns home rhythm into a test. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    wisdom: "The old mental tab keeps reopening, but the answer is not more thinking; it is giving one task a visible place. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before private debate. Asha, Notice where loyalty has become self-abandonment before the relationship tone starts deciding your whole day. If someone pulls for reassurance, answer with timing instead of a long defense, and let one completed detail give your body better evidence.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
   });
   const repairedWisdom = {
-    wisdom: "The old mental tab in your mind keeps reopening because one task has not been given a place. Asha, notice where loyalty has become self-abandonment before the day turns home rhythm into a test. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    wisdom: "The old mental tab keeps reopening, but the answer is not more thinking; it is giving one task a visible place. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before private debate. Asha, notice where loyalty has become self-abandonment before the relationship tone starts deciding your whole day. If someone pulls for reassurance, answer with timing instead of a long defense, and let one completed detail give your body better evidence.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
@@ -425,7 +425,7 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const wisdomJson = JSON.stringify({
-    wisdom: "The list that grew because one item stayed unnamed gives the morning a plain beginning. Tara, make the first action visible before worry turns the whole day into a performance. The pressure underneath this is not weakness; it is the habit of measuring care by how much tension you can carry. Finish the useful task, leave one sentence unsent, and give your body proof that progress does not need drama. Let the quiet after that count as part of the work.",
+    wisdom: "The list that grew because one item stayed unnamed gives the morning a plain beginning. Start with the body before worry turns the whole day into a performance. Tara, proof through follow-through matters more than carrying tension as evidence of care. Finish the useful task and leave one sentence unsent. If someone asks for more, answer with timing instead of a long explanation. Let the quiet after that count as part of the work.",
     innerWeather: "Focused under private pressure",
     todayMove: "Finish the visible task",
     release: "Leave one sentence unsent"

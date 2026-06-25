@@ -26,6 +26,8 @@ Required for AI readings:
 ```bash
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.5
+OPENAI_TIMEOUT_MS=45000
+OPENAI_MAX_RETRIES=1
 SOUL_WISDOM_ALLOW_UNCACHED=false
 ASTRO_SOLVE_MODEL=gpt-5.5
 ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=false
@@ -144,6 +146,12 @@ Check Sentry/PostHog initialization, backend API error capture, and analytics pr
 
 ```bash
 npm run observability:check
+```
+
+Check OpenAI backend timeout/retry policy for Responses and Embeddings calls:
+
+```bash
+npm run openai:check
 ```
 
 Check Resend email payloads, skips, errors, and membership email escaping:
@@ -275,6 +283,7 @@ The CI template checks:
 - `npm run rate-limit:check`
 - `npm run readiness:check`
 - `npm run observability:check`
+- `npm run openai:check`
 - `npm run email:check`
 - `npm run supabase:migrations:check`
 - `npm run soul:cache:check`
@@ -550,6 +559,7 @@ Before release:
 - Run `npm run rate-limit:check`.
 - Run `npm run readiness:check`.
 - Run `npm run observability:check`.
+- Run `npm run openai:check`.
 - Run `npm run email:check`.
 - Run `npm run supabase:migrations:check`.
 - Run `npm run production:check` locally and verify `/api/readiness` on the deployed backend.

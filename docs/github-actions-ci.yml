@@ -68,6 +68,9 @@ jobs:
       - name: Verify observability contracts
         run: npm run observability:check
 
+      - name: Verify OpenAI backend contracts
+        run: npm run openai:check
+
       - name: Verify email contracts
         run: npm run email:check
 

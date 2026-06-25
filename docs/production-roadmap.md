@@ -84,6 +84,7 @@ This project is being built toward the stack shown in the product planning image
 - Combined release readiness runner for local and strict production preflight checks
 - Workflow-ready GitHub Actions CI template for web/API contracts, local smoke, Soul Guru diversity gates, APK build, and APK secret scanning
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
+- Shared OpenAI backend timeout/retry policy for Responses and Embeddings requests
 - Astronomy-based birth/transit context replacing hash-only astrology
 - Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows
 - Server-side birth place geocoding enrichment for uncatalogued profile locations
@@ -121,7 +122,7 @@ This project is being built toward the stack shown in the product planning image
 11. Apply `supabase/migrations/011_schema_contract_constraints.sql`.
 12. Apply `supabase/migrations/012_shani_membership.sql`.
 13. Run `npm run supabase:schema:check` against the Supabase project.
-14. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+14. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 15. Configure OTP delivery through `OTP_SMS_WEBHOOK_URL` or Resend email fallback.
 16. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
 17. Run `npm run public-env:check:strict`.

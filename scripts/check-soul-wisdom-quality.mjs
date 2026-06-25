@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
-import { firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { buildParagraphArchitecture, firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
 import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
 const includeAi = process.argv.includes("--include-ai");
@@ -142,6 +142,14 @@ function evaluateReading({ user, source, result }) {
   }
   if (openingSceneCategory === "device" && expectedSceneCategory !== "device") {
     failures.push("opened with phone/message/screen imagery even though the seeded scene was not device-based.");
+  }
+  if (source === "openai") {
+    failures.push(...getParagraphArchitectureFailures({
+      sentences,
+      user,
+      context,
+      today: formatDateForPrompt(date)
+    }));
   }
 
   return {
@@ -321,6 +329,23 @@ function hasMechanicalDirectAddressCasing(text, name) {
 
 function hasAwkwardTemplateJoin(text) {
   return /\bLet\s+(?:answer|choose|clean|close|complete|document|finish|letting|make|protect|separate|turn)\b/i.test(String(text || ""));
+}
+
+function getParagraphArchitectureFailures({ sentences, user, context, today }) {
+  const architecture = buildParagraphArchitecture(user, context, today);
+  const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0);
+  const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
+  const failures = [];
+  if (sentenceCount && sentences.length !== sentenceCount) {
+    failures.push(`expected paragraph architecture sentence count ${sentenceCount}, got ${sentences.length}.`);
+  }
+  if (nameSentence) {
+    const nameIndex = sentences.findIndex((sentence) => countWord(sentence, firstName(user.name)) > 0);
+    if (nameIndex !== nameSentence - 1) {
+      failures.push(`expected first name in sentence ${nameSentence}, got ${nameIndex + 1 || 0}.`);
+    }
+  }
+  return failures;
 }
 
 function words(text) {

@@ -24,6 +24,7 @@ Wisdom paragraph rules:
 - Use the requested blueprint, but do not make the blueprint visible.
 - Use 3 to 6 sentences. Vary sentence length and punctuation. Do not use a fixed four-sentence formula.
 - Use at least three silent signals, including one concrete scene or behavior.
+- If Paragraph architecture says 4, 5, or 6 sentences, produce exactly that many sentences. If it says the first name belongs in sentence 2, 3, or 4, that placement is mandatory.
 - Do not copy any silent signal phrase verbatim; translate the signal into fresh, natural language.
 - The wisdom paragraph, innerWeather, todayMove, and release must not reuse the same distinctive phrase.
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
@@ -297,7 +298,7 @@ function isLowQualityCue(text) {
   ].some((pattern) => pattern.test(normalized));
 }
 
-function buildParagraphArchitecture(user, context, today) {
+export function buildParagraphArchitecture(user, context, today) {
   const architectures = [
     "4 sentences: scene observation; first name plus emotional friction in sentence 2; practical action and relational caution in sentence 3; grounded close in sentence 4.",
     "5 sentences: scene observation; body or routine signal; first name plus emotional truth in sentence 3; concrete action; relational close.",

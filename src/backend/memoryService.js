@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import OpenAI from "openai";
+import { createOpenAIClient, requestOpenAIEmbedding } from "./openaiClient.js";
 
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_TOP_K = 4;
@@ -115,11 +115,11 @@ export function buildMemoryContext(memoryResult) {
 }
 
 async function createEmbedding(input, env) {
-  const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-  const response = await client.embeddings.create({
+  const client = createOpenAIClient(env.OPENAI_API_KEY, env);
+  const response = await requestOpenAIEmbedding(client, {
     model: env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
     input
-  });
+  }, env);
   return response.data[0].embedding;
 }
 

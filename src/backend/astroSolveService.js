@@ -1,5 +1,5 @@
-import OpenAI from "openai";
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
+import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertGuidanceMemory } from "./memoryService.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
@@ -38,7 +38,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   const model = env.ASTRO_SOLVE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
   const userKey = buildUserKey(user);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
-  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
+  const makeOpenAIClient = deps.createOpenAIClient || createOpenAIClient;
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
 
   if (!question) {
@@ -67,8 +67,8 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   }
 
   const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
-  const client = createOpenAIClient(apiKey);
-  const response = await client.responses.create({
+  const client = makeOpenAIClient(apiKey, env);
+  const response = await requestOpenAIResponse(client, {
     model,
     instructions: ASTRO_SOLVE_SYSTEM_PROMPT,
     input: buildAstroSolveInput({
@@ -77,7 +77,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
       context: astrologyContext,
       today: payload.today || date
     })
-  });
+  }, env);
 
   const answer = normalizeAstroSolveAnswer(response.output_text, payload.fallback);
   const result = {

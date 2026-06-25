@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import {
+  buildParagraphArchitecture,
   buildSoulWisdomInput,
   buildSoulWisdomRepairInput,
   createFallbackReading,
@@ -9,6 +9,7 @@ import {
   SOUL_WISDOM_SYSTEM_PROMPT
 } from "../soulGuruPrompt.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
+import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
@@ -23,7 +24,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
-  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
+  const makeOpenAIClient = deps.createOpenAIClient || createOpenAIClient;
 
   if (supabase) {
     const cached = await readCachedReading(supabase, userKey, date);
@@ -51,19 +52,25 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     topK: Number(env.PINECONE_TOP_K || 4)
   }, env);
   const memoryContext = buildMemoryContext(memory);
-  const client = createOpenAIClient(apiKey);
+  const client = makeOpenAIClient(apiKey, env);
+  const contractContext = {
+    ...astrologyContext,
+    paragraphArchitecture: buildParagraphArchitecture(user, astrologyContext, payload.today || date)
+  };
   const promptInput = buildSoulWisdomInput({
     user,
     context: astrologyContext,
     today: payload.today || date,
     memoryContext
   });
-  let outputText = await requestSoulWisdom(client, model, promptInput);
+  let outputText = await requestSoulWisdom(client, model, promptInput, env);
   let qualityAttempts = 1;
 
   const fallback = payload.fallback || createFallbackReading(buildServerFallbackWisdom(user, astrologyContext));
   const firstCandidate = normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom;
-  const firstCandidateIssues = getSoulWisdomContractIssues(firstCandidate, user, astrologyContext);
+  const firstCandidateIssues = getSoulWisdomContractIssues(firstCandidate, user, contractContext, {
+    enforceArchitecture: true
+  });
   if (firstCandidateIssues.length) {
     outputText = await requestSoulWisdom(
       client,
@@ -75,13 +82,14 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
         memoryContext,
         rejectedWisdom: firstCandidate,
         rejectionReason: firstCandidateIssues.join("; ")
-      })
+      }),
+      env
     );
     qualityAttempts = 2;
   }
 
   let reading = normalizeWisdomPayload(outputText, fallback);
-  if (getSoulWisdomContractIssues(reading.wisdom, user, astrologyContext).length) {
+  if (getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true }).length) {
     reading = fallback;
   }
   const result = {
@@ -141,12 +149,12 @@ export function isUncachedSoulWisdomAllowed(env = process.env) {
   return String(env.SOUL_WISDOM_ALLOW_UNCACHED || "false").toLowerCase() === "true";
 }
 
-async function requestSoulWisdom(client, model, input) {
-  const response = await client.responses.create({
+async function requestSoulWisdom(client, model, input, env = process.env) {
+  const response = await requestOpenAIResponse(client, {
     model,
     instructions: SOUL_WISDOM_SYSTEM_PROMPT,
     input
-  });
+  }, env);
   return response.output_text;
 }
 
@@ -240,7 +248,7 @@ function buildMemoryQuery({ user, astrologyContext, date }) {
   ].filter(Boolean).join(" | ");
 }
 
-function getSoulWisdomContractIssues(wisdom, user, context = {}) {
+function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
   const text = String(wisdom || "");
   const issues = [];
   const wordCount = words(text).length;
@@ -261,7 +269,34 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}) {
   if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
     issues.push(`opening did not use seeded scene "${openingSeed}"`);
   }
+  if (options.enforceArchitecture) {
+    issues.push(...getParagraphArchitectureIssues(text, user, context.paragraphArchitecture));
+  }
   return issues;
+}
+
+function getParagraphArchitectureIssues(text, user, architecture) {
+  const issues = [];
+  const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0);
+  const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
+  const sentences = splitSentences(text);
+  if (sentenceCount && sentences.length !== sentenceCount) {
+    issues.push(`expected paragraph architecture sentence count ${sentenceCount}, got ${sentences.length}`);
+  }
+  if (nameSentence) {
+    const nameIndex = sentences.findIndex((sentence) => countWord(sentence, firstName(user.name)) > 0);
+    if (nameIndex !== nameSentence - 1) {
+      issues.push(`expected first name in sentence ${nameSentence}, got ${nameIndex + 1 || 0}`);
+    }
+  }
+  return issues;
+}
+
+function splitSentences(text) {
+  return String(text || "")
+    .trim()
+    .match(/[^.!?]+[.!?]+/g)
+    ?.map((sentence) => sentence.trim()) || [];
 }
 
 function hasMechanicalDirectAddressCasing(text, name) {

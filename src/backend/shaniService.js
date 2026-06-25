@@ -1,5 +1,5 @@
-import OpenAI from "openai";
 import { getSaadeSatiFromChart } from "../astrologyEngine.js";
+import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
@@ -80,7 +80,7 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
   const report = payload.report || buildShaniReport(user, now);
   const model = env.SHANI_PANDIT_MODEL || env.OPENAI_MODEL || "gpt-5.5";
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
-  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
+  const makeOpenAIClient = deps.createOpenAIClient || createOpenAIClient;
 
   if (!question) {
     throwHttpError("A Shani question is required", 400);
@@ -110,12 +110,12 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
   const openAiDisabled = String(env.SHANI_PANDIT_DISABLE_OPENAI || "false").toLowerCase() === "true";
 
   if (env.OPENAI_API_KEY && !openAiDisabled) {
-    const client = createOpenAIClient(env.OPENAI_API_KEY);
-    const response = await client.responses.create({
+    const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
+    const response = await requestOpenAIResponse(client, {
       model,
       instructions: SHANI_PANDIT_SYSTEM_PROMPT,
       input: buildPanditInput({ user, question, report, membership })
-    });
+    }, env);
     answer = normalizePanditAnswer(response.output_text, fallback);
     source = "openai";
   }

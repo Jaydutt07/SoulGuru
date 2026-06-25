@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
+import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
@@ -156,7 +156,7 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
-  const createOpenAIClient = deps.createOpenAIClient || ((apiKey) => new OpenAI({ apiKey }));
+  const makeOpenAIClient = deps.createOpenAIClient || createOpenAIClient;
   const subscription = payload.subscription || user.soulGuruSubscription || {};
 
   if (!supabase && !isLocalMoreGuidanceAllowed(env)) {
@@ -207,14 +207,14 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
       ].filter(Boolean).join(" | "),
       topK: Number(env.PINECONE_TOP_K || 4)
     }, env);
-    const client = createOpenAIClient(env.OPENAI_API_KEY);
+    const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
     const firstInput = buildMoreGuidanceInput({
       user,
       context: astrologyContext,
       date,
       memoryContext: buildMemoryContext(memory)
     });
-    let outputText = await requestMoreGuidance(client, model, firstInput);
+    let outputText = await requestMoreGuidance(client, model, firstInput, env);
     let attempts = 1;
     let candidate = normalizeDeepGuidance(outputText, fallback);
     let candidateIssues = getDeepGuidanceContractIssues(candidate, user);
@@ -230,7 +230,8 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
           memoryContext: buildMemoryContext(memory),
           rejectedGuidance: candidate,
           rejectionReason: candidateIssues.join("; ")
-        })
+        }),
+        env
       );
       attempts = 2;
       candidate = normalizeDeepGuidance(outputText, fallback);
@@ -307,12 +308,12 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
   return result;
 }
 
-async function requestMoreGuidance(client, model, input) {
-  const response = await client.responses.create({
+async function requestMoreGuidance(client, model, input, env = process.env) {
+  const response = await requestOpenAIResponse(client, {
     model,
     instructions: MORE_GUIDANCE_SYSTEM_PROMPT,
     input
-  });
+  }, env);
   return response.output_text;
 }
 
