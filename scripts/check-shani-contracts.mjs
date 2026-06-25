@@ -233,7 +233,16 @@ async function checkOpenAiAnswerIsStoredForMember() {
   const openAiRequests = [];
   const result = await createPanditGuidance({
     user,
-    question: "I am afraid about my career. What should I do?"
+    question: "I am afraid about my career. What should I do?",
+    report: {
+      active: true,
+      phaseIndex: 2,
+      phaseTitle: "Peak phase",
+      moonSign: "Pisces",
+      saturnSign: "Pisces",
+      endLabel: "Estimated completion: Mar 17, 2031",
+      summary: "Peak phase pressure around responsibility and work conduct."
+    }
   }, {
     OPENAI_API_KEY: "fake-openai-key",
     SHANI_PANDIT_MODEL: "gpt-contract"
@@ -245,11 +254,7 @@ async function checkOpenAiAnswerIsStoredForMember() {
           create: async (request) => {
             openAiRequests.push(request);
             return {
-              output_text: JSON.stringify({
-                text: "Mira, this career pressure needs slower decisions and cleaner promises. During this Shani period, treat fear as a signal to complete what is already pending before chasing a new escape. Keep one work duty visible, speak with fewer claims, and let consistent effort become the offering.",
-                practice: "For seven days, finish one delayed work task before noon and offer quiet service on Saturday.",
-                caution: "Avoid dramatic resignations or fear-led promises."
-              })
+              output_text: passingPanditAnswerJson()
             };
           }
         }
@@ -262,11 +267,20 @@ async function checkOpenAiAnswerIsStoredForMember() {
     result.stored === true,
     result.source === "openai",
     result.model === "gpt-contract",
+    result.quality?.passed === true,
     openAiRequests.length === 1,
     openAiRequests[0].instructions.includes("Output valid JSON only"),
     supabase.state.messages.length === 1,
     supabase.state.messages[0].source === "openai"
   ].every(Boolean));
+}
+
+function passingPanditAnswerJson() {
+  return JSON.stringify({
+    text: "Mira, this career pressure belongs to the Peak phase lesson: finish responsibility before chasing escape. Shani is not asking for fear; Shani is asking for visible conduct. Moon in Pisces shows why uncertainty becomes heavy in the body, while Saturn in Pisces asks for a cleaner work rhythm, fewer claims, and one completed duty that can be inspected. For the next seven days, keep the question practical: what work can be documented, repaid, or completed before another promise is made?",
+    practice: "For seven days, finish one delayed work task before noon, light a sesame-oil lamp on Saturday, and offer quiet service without display.",
+    caution: "Avoid dramatic resignations, fear-led promises, or public complaints; let proof of duty lead."
+  });
 }
 
 function createFakeSupabase({

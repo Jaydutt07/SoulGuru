@@ -47,6 +47,8 @@
     "request:check": "node scripts/check-request-contracts.mjs",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",
     "shani:check": "node scripts/check-shani-contracts.mjs",
+    "shani:quality": "node scripts/check-shani-quality.mjs",
+    "shani:quality:ai": "node scripts/check-shani-quality.mjs --include-ai",
     "soul:cache:check": "node scripts/check-soul-wisdom-cache.mjs",
     "soul:quality": "node scripts/check-soul-wisdom-quality.mjs",
     "soul:quality:extended": "node scripts/check-soul-wisdom-quality.mjs --case-set=extended --max-similarity=0.35",

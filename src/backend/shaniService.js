@@ -1,27 +1,36 @@
 import { getSaadeSatiFromChart } from "../astrologyEngine.js";
+import {
+  buildFallbackPanditAnswer,
+  buildPanditFingerprint,
+  getPanditAnswerIssues
+} from "../shaniGuidance.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SHANI_PANDIT_PROMPT_VERSION = "shani-pandit-v1";
+export const SHANI_PANDIT_PROMPT_VERSION = "shani-pandit-v2";
 
 const SHANI_PANDIT_SYSTEM_PROMPT = `
 You are SoulGuru's Shani remedy guide for paid members.
 
 Use the supplied Saade Sati report and user question. You may mention Shani, Saade Sati, phase, discipline, remedy, and prayer because this tab is explicitly about Shani. Never create fear, certainty, threats, or guaranteed outcomes.
+Privately use the supplied Pandit fingerprint: pressure type, exact question cue, Moon sign, Saturn sign, phase, timeline, plan, lesson, and remedy route. Do not quote the fingerprint, but make the answer clearly shaped by it.
+Do not write reusable filler such as "Do not fear this phase", "trust the process", "just pray", "Shani is angry", or broad reassurance. The member is paying for a precise guide, not a horoscope paragraph.
 
 Output valid JSON only:
 {
-  "text": "65 to 105 words",
-  "practice": "18 to 40 words",
-  "caution": "12 to 28 words"
+  "text": "75 to 115 words",
+  "practice": "18 to 42 words",
+  "caution": "12 to 30 words"
 }
 
 Rules:
 - Address the user by first name at most once.
-- Make the answer feel personal: connect the phase, the user's question, one likely pressure, and one practical remedy.
+- Make the answer feel personal: connect the phase, the user's actual question cue, one likely pressure, Moon/Saturn context, and one practical remedy.
 - Keep a priestly mentor tone: calm, grounded, devotional, direct, and emotionally clean.
-- Avoid generic filler, markdown, bullets, emojis, medical/legal/financial claims, and anything outside JSON.
+- The practice must guide the next seven days and include a grounded remedy: Saturday seva, lamp, breath, service, repayment, restraint, or duty completion.
+- If the topic involves health, safety, legal conflict, violence, or severe distress, include a concise instruction to seek qualified support while still giving Shani guidance.
+- Avoid generic filler, markdown, bullets, emojis, fear, medical/legal/financial claims, and anything outside JSON.
 `.trim();
 
 const SHANI_MEMBERSHIP_SELECT = [
@@ -104,20 +113,47 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
     };
   }
 
-  const fallback = buildFallbackPanditAnswer({ user, question, report });
+  const fallback = normalizePanditAnswer(buildFallbackPanditAnswer({ user, question, report, membership }));
   let answer = fallback;
   let source = "local-fallback";
+  let quality = {
+    attempts: 0,
+    repaired: false,
+    passed: getPanditAnswerIssues(answer, { user, question, report }).length === 0,
+    fallbackUsed: true
+  };
   const openAiDisabled = String(env.SHANI_PANDIT_DISABLE_OPENAI || "false").toLowerCase() === "true";
 
   if (env.OPENAI_API_KEY && !openAiDisabled) {
     const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
-    const response = await requestOpenAIResponse(client, {
-      model,
-      instructions: SHANI_PANDIT_SYSTEM_PROMPT,
-      input: buildPanditInput({ user, question, report, membership })
-    }, env);
-    answer = normalizePanditAnswer(response.output_text, fallback);
-    source = "openai";
+    let outputText = await requestPanditGuidance(client, model, buildPanditInput({ user, question, report, membership }), env);
+    let attempts = 1;
+    let candidate = normalizePanditAnswer(outputText, fallback);
+    let candidateIssues = getPanditAnswerIssues(candidate, { user, question, report });
+
+    if (candidateIssues.length) {
+      outputText = await requestPanditGuidance(client, model, buildPanditRepairInput({
+        user,
+        question,
+        report,
+        membership,
+        rejectedAnswer: candidate,
+        rejectionReason: candidateIssues.join("; ")
+      }), env);
+      attempts = 2;
+      candidate = normalizePanditAnswer(outputText, fallback);
+      candidateIssues = getPanditAnswerIssues(candidate, { user, question, report });
+    }
+
+    const fallbackUsed = candidateIssues.length > 0;
+    answer = fallbackUsed ? fallback : candidate;
+    source = fallbackUsed ? "quality-fallback" : "openai";
+    quality = {
+      attempts,
+      repaired: attempts > 1,
+      passed: getPanditAnswerIssues(answer, { user, question, report }).length === 0,
+      fallbackUsed
+    };
   }
 
   const result = {
@@ -128,6 +164,7 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
     source,
     model,
     promptVersion: SHANI_PANDIT_PROMPT_VERSION,
+    quality,
     stored: false
   };
 
@@ -416,6 +453,7 @@ Shani context:
 - Saturn sign: ${report.saturnSign || "unknown"}
 - Timeline label: ${report.endLabel || "unknown"}
 - Summary: ${report.summary || "none"}
+- Pandit fingerprint: ${buildPanditFingerprint({ user, question, report, membership })}
 
 Membership:
 - Plan: ${membership.planName || membership.planId || "unknown"}
@@ -429,31 +467,30 @@ Answer as the member's Pandit guide with a practical remedy and one caution for 
 `.trim();
 }
 
-function buildFallbackPanditAnswer({ user = {}, question = "", report = {} } = {}) {
-  const name = firstName(user.name);
-  const phase = report.phaseTitle || "this Shani period";
-  const pressure = inferPressure(question);
-  const action = report.active
-    ? "finish one delayed duty before adding a new promise"
-    : "keep Saturday simple: clean one space, offer quiet service, and repay one small obligation";
+function buildPanditRepairInput({ user, question, report, membership, rejectedAnswer = {}, rejectionReason = "" }) {
+  return `
+${buildPanditInput({ user, question, report, membership })}
 
-  return {
-    text: `${name}, treat ${pressure} as a call for cleaner conduct, not panic. In ${String(phase).toLowerCase()}, Shani responds to patience, truth, and completed responsibility. Keep your words fewer, your timing slower, and your promises smaller for now. ${capitalize(action)} so the pressure has somewhere practical to release.`,
-    practice: "On Saturday, light a clean lamp, serve someone without display, and write one responsibility you will finish before sunset.",
-    caution: "Do not use fear as discipline; let steadiness become the remedy."
-  };
+The previous answer failed quality review:
+${rejectionReason}
+
+Rejected answer:
+${JSON.stringify(rejectedAnswer)}
+
+Rewrite with a different sentence structure. Keep JSON only, connect the answer to the actual question, Shani phase, Moon/Saturn context, a seven-day practice, and one grounded caution.
+`.trim();
 }
 
-function inferPressure(question) {
-  const lower = String(question || "").toLowerCase();
-  if (/work|job|career|money|business/.test(lower)) return "this work pressure";
-  if (/love|marriage|partner|family|relationship/.test(lower)) return "this relationship pressure";
-  if (/health|sleep|anxiety|fear|stress/.test(lower)) return "this body and mind pressure";
-  if (/court|legal|enemy|conflict|fight/.test(lower)) return "this conflict";
-  return "this pressure";
+async function requestPanditGuidance(client, model, input, env = process.env) {
+  const response = await requestOpenAIResponse(client, {
+    model,
+    instructions: SHANI_PANDIT_SYSTEM_PROMPT,
+    input
+  }, env);
+  return response.output_text;
 }
 
-function normalizePanditAnswer(raw, fallback) {
+function normalizePanditAnswer(raw, fallback = buildFallbackPanditAnswer()) {
   const parsed = parseJson(raw);
   const source = parsed || (typeof raw === "object" && raw ? raw : { text: raw });
   return {
@@ -546,9 +583,4 @@ function formatDate(date) {
     day: "numeric",
     year: "numeric"
   }).format(parseDate(date));
-}
-
-function capitalize(text) {
-  const value = String(text || "");
-  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
 }

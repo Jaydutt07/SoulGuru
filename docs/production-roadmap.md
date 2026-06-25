@@ -79,6 +79,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed Shani dashboard and Pandit route with fail-closed membership, OpenAI, and storage guards
 - Member-only Shani remedy guide map with phase focus, seven-day guidance, monthly action, practices, and renewal timing
 - Offline Shani contract checker for local-access flags, persisted membership checks, and stored Pandit answers
+- Offline Shani Pandit quality checker for phase specificity, concrete remedies, grounded caution wording, and paid-member scenario diversity
 - Live Supabase schema checker for migration/table/column/index/constraint contract verification
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing

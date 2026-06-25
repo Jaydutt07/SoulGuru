@@ -223,6 +223,18 @@ Check Shani remedy membership and Pandit guidance contracts without contacting O
 npm run shani:check
 ```
 
+Check Shani Pandit answer quality, phase specificity, concrete remedies, caution wording, and five paid-member scenarios:
+
+```bash
+npm run shani:quality
+```
+
+Run the same quality gate with live OpenAI Shani Pandit answers:
+
+```bash
+npm run shani:quality:ai
+```
+
 Check the mobile backend validator contract with local mock backends:
 
 ```bash
@@ -440,7 +452,7 @@ Loads the More Guidance dashboard from Supabase, including subscription status, 
 
 `POST /api/shani-guidance`
 
-Loads the Shani/Saade Sati dashboard and verifies Shani remedy membership from Supabase. Active members receive a server-owned guide map with phase focus, next-seven-days guidance, monthly action, daily practices, renewal timing, and Pandit history. The Pandit action requires an active row in `shani_remedy_memberships`, refuses to call OpenAI before membership is verified, and saves every paid answer to `shani_pandit_messages` before production displays it. `SHANI_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing; production keeps the guide map and Pandit locked until a persisted membership exists.
+Loads the Shani/Saade Sati dashboard and verifies Shani remedy membership from Supabase. Active members receive a server-owned guide map with phase focus, next-seven-days guidance, monthly action, daily practices, renewal timing, and Pandit history. The Pandit action requires an active row in `shani_remedy_memberships`, refuses to call OpenAI before membership is verified, and saves every paid answer to `shani_pandit_messages` before production displays it. The v2 Pandit prompt repairs weak/generic answers once and then falls back to a phase-specific, remedy-focused local answer instead of returning fear-based or vague filler. `SHANI_ALLOW_LOCAL_ACCESS=true` is only for isolated local testing; production keeps the guide map and Pandit locked until a persisted membership exists.
 
 `GET /api/health`
 

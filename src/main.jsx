@@ -37,6 +37,7 @@ import { buildFallbackDeepGuidance } from "./deepGuidance.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
 import { enrichUserWithPlace } from "./placeResolver.js";
+import { buildFallbackPanditAnswer } from "./shaniGuidance.js";
 import { firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
@@ -2454,14 +2455,15 @@ function getCountdown(endDate, now) {
 }
 
 function buildPanditReply(text, user, report) {
-  const lower = text.toLowerCase();
-  if (/remedy|upay|what should|do/.test(lower)) {
-    return `For ${firstName(user.name)}, begin with consistency: light a clean lamp on Saturday, serve someone quietly, avoid harsh speech, and finish one delayed duty. Remedies work best when your conduct becomes lighter.`;
-  }
-  if (/fear|scared|bad|problem/.test(lower)) {
-    return `Do not fear this ${report.phaseTitle.toLowerCase()}. Shani tests truth, patience, and responsibility. Make your routine honest, reduce ego reactions, and ask for help before pressure becomes isolation.`;
-  }
-  return `Keep the question simple and the action sincere. For the next seven days, protect your sleep, speak less in anger, and complete one pending responsibility. Then watch what starts becoming lighter.`;
+  return formatPanditAnswer(buildFallbackPanditAnswer({
+    user,
+    question: text,
+    report,
+    membership: {
+      active: true,
+      planName: "Local Shani preview"
+    }
+  }));
 }
 
 function buildLocalShaniRemedyMap(report, membership = {}, now = new Date()) {

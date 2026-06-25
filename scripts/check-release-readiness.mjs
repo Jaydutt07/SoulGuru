@@ -43,12 +43,15 @@ if (includeAi) {
   if (hasEnv("OPENAI_API_KEY")) {
     await runStep("Soul Guru live OpenAI reading quality", "npm", ["run", "soul:quality:ai"]);
     await runStep("Astro Solves live OpenAI answer quality", "npm", ["run", "astro:quality:ai"]);
+    await runStep("Shani Pandit live OpenAI answer quality", "npm", ["run", "shani:quality:ai"]);
   } else if (allowMissingExternal) {
     skipStep("Soul Guru live OpenAI reading quality", "OPENAI_API_KEY is not configured.");
     skipStep("Astro Solves live OpenAI answer quality", "OPENAI_API_KEY is not configured.");
+    skipStep("Shani Pandit live OpenAI answer quality", "OPENAI_API_KEY is not configured.");
   } else {
     failStep("Soul Guru live OpenAI reading quality", "OPENAI_API_KEY is required for --include-ai.");
     failStep("Astro Solves live OpenAI answer quality", "OPENAI_API_KEY is required for --include-ai.");
+    failStep("Shani Pandit live OpenAI answer quality", "OPENAI_API_KEY is required for --include-ai.");
   }
 }
 
@@ -58,6 +61,7 @@ await runStep("Payment contract checks", "npm", ["run", "payments:check"]);
 await runStep("More Guidance contract checks", "npm", ["run", "more-guidance:check"]);
 await runStep("More Guidance paid reading quality", "npm", ["run", "more-guidance:quality"]);
 await runStep("Shani contract checks", "npm", ["run", "shani:check"]);
+await runStep("Shani Pandit answer quality", "npm", ["run", "shani:quality"]);
 await runStep("Mobile backend validation contract checks", "npm", ["run", "mobile:backend:check"]);
 await runStep("Local API smoke", "npm", ["run", "local:smoke"]);
 await runStep("Deployment smoke contract checks", "npm", ["run", "deployment:smoke:check"]);
