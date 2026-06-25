@@ -23,10 +23,14 @@ await ensureBackendHealth(apiBaseUrl, { skipHealth });
 const env = {
   ...process.env,
   ...detectAndroidBuildEnv(),
-  VITE_API_BASE_URL: apiBaseUrl
+  VITE_API_BASE_URL: apiBaseUrl,
+  VITE_LOCAL_AUTH_FALLBACK: "true",
+  VITE_LOCAL_PAID_FALLBACK: "true",
+  VITE_DEMO_PAYMENTS: "true"
 };
 
 console.log(`Building local phone APK with VITE_API_BASE_URL=${apiBaseUrl}`);
+console.log("Local preview flags enabled: demo OTP, demo payments, and local paid guidance fallback.");
 console.log("Keep the dev server running with: npm run dev:lan");
 
 const result = spawnSync("npm", ["run", "android:apk"], {

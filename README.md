@@ -535,6 +535,7 @@ npm run android:apk:local
 ```
 
 That command auto-detects your Mac's LAN IP and builds `SoulGuru-debug.apk` with `VITE_API_BASE_URL=http://YOUR_LAN_IP:5173`. Your phone and Mac must be on the same network, and the dev server must stay running while you test AI/backend features on the phone.
+This local APK intentionally enables demo OTP, demo payments, and local paid guidance fallback so the unfinished production stack does not block phone QA. Use it only for LAN testing; `npm run android:apk:backend` keeps those fallbacks disabled and requires a ready deployed backend.
 
 Use this command for the APK you want to test on a phone after Vercel is deployed:
 

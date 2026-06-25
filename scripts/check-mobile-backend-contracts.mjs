@@ -1,9 +1,11 @@
 import http from "node:http";
+import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
 const checks = [];
 
+checkLocalApkBuildEnablesPreviewFlags();
 await checkReadyBackendPasses();
 await checkNotReadyBackendFailsByDefault();
 await checkNotReadyBackendCanBeAllowedForStaging();
@@ -14,6 +16,17 @@ printReport();
 
 if (failed.length > 0) {
   process.exit(1);
+}
+
+function checkLocalApkBuildEnablesPreviewFlags() {
+  const source = fs.readFileSync("scripts/build-local-mobile-apk.mjs", "utf8");
+  pushCheck("Local phone APK build enables only local preview fallback flags", [
+    source.includes('VITE_LOCAL_AUTH_FALLBACK: "true"'),
+    source.includes('VITE_LOCAL_PAID_FALLBACK: "true"'),
+    source.includes('VITE_DEMO_PAYMENTS: "true"'),
+    source.includes("Local preview flags enabled"),
+    source.includes('VITE_API_BASE_URL: apiBaseUrl')
+  ].every(Boolean));
 }
 
 async function checkReadyBackendPasses() {
