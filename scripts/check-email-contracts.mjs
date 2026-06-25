@@ -3,6 +3,7 @@ import { buildMembershipEmail, isResendConfigured, sendEmail } from "../src/back
 const checks = [];
 
 await checkUnconfiguredAndInvalidEmailSkipsNetwork();
+await checkUnsafeEmailFieldsSkipNetwork();
 await checkResendPayloadContract();
 await checkResendErrorContract();
 checkMembershipEmailContract();
@@ -75,11 +76,15 @@ async function checkUnconfiguredAndInvalidEmailSkipsNetwork() {
 async function checkResendPayloadContract() {
   const seen = [];
   const result = await sendEmail({
-    to: "asha@example.com",
-    subject: "Your SoulGuru login OTP",
+    to: "Asha <ASHA@example.com>",
+    subject: "Your   SoulGuru login   OTP",
     text: "Your SoulGuru OTP is 123456.",
     html: "<p>Your SoulGuru OTP is <strong>123456</strong>.</p>",
-    tags: [{ name: "category", value: "otp" }]
+    tags: [
+      { name: "Category", value: "otp" },
+      { name: "Bad Tag!", value: "Membership Email" },
+      { name: "", value: "ignored" }
+    ]
   }, {
     RESEND_API_KEY: "re_contract_key",
     RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
@@ -104,8 +109,50 @@ async function checkResendPayloadContract() {
     request.body.html.includes("<strong>123456</strong>"),
     request.body.tags[0].name === "category",
     request.body.tags[0].value === "otp",
+    request.body.tags[1].name === "bad-tag",
+    request.body.tags[1].value === "membership-email",
+    request.body.tags.length === 2,
     result.sent === true,
     result.id === "email_contract_1"
+  ].every(Boolean));
+}
+
+async function checkUnsafeEmailFieldsSkipNetwork() {
+  let fetchCalls = 0;
+  const deps = {
+    fetch: async () => {
+      fetchCalls += 1;
+      return okJson({});
+    }
+  };
+  const env = {
+    RESEND_API_KEY: "re_contract_key",
+    RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+  };
+  const badRecipient = await sendEmail({
+    to: "asha@example.com\nbcc: attacker@example.com",
+    subject: "Hello",
+    text: "Body"
+  }, env, deps);
+  const badSubject = await sendEmail({
+    to: "asha@example.com",
+    subject: "Hello\r\nBcc: attacker@example.com",
+    text: "Body"
+  }, env, deps);
+  const badAddress = await sendEmail({
+    to: "not-an-email",
+    subject: "Hello",
+    text: "Body"
+  }, env, deps);
+
+  pushCheck("Email service skips network for unsafe recipient or subject fields", [
+    badRecipient.sent === false,
+    /invalid email fields/i.test(badRecipient.reason || ""),
+    badSubject.sent === false,
+    /invalid email fields/i.test(badSubject.reason || ""),
+    badAddress.sent === false,
+    /invalid email fields/i.test(badAddress.reason || ""),
+    fetchCalls === 0
   ].every(Boolean));
 }
 

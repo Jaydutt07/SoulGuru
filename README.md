@@ -459,6 +459,7 @@ RESEND_FROM_EMAIL=
 ```
 
 Production readiness requires a real Resend key and a valid sender such as `SoulGuru <hello@your-domain.com>`.
+At runtime, the email service skips network delivery for malformed recipients, header-like subject/recipient values, or missing content, and normalizes Resend tags before sending.
 
 For phone OTP delivery, configure your SMS provider behind a webhook:
 
