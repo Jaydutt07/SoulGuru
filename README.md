@@ -406,6 +406,7 @@ Basic API health check for deployment.
 `GET /api/readiness`
 
 Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
+URL-shaped production env values such as `SUPABASE_URL`, `OTP_SMS_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, Sentry DSNs, PostHog host, and `PINECONE_HOST` are validated for production-safe shape before readiness can pass.
 
 ## Payments And Emails
 

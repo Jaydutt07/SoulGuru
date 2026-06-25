@@ -4,20 +4,14 @@ export function buildDeploymentReadiness(env = process.env) {
       "OPENAI_API_KEY",
       "OPENAI_MODEL"
     ], "Set OpenAI server env vars before enabling Soul Guru and Astro Solves AI routes."),
-    checkRequired(env, "supabase", "Supabase persistence", [
-      "SUPABASE_URL",
-      "SUPABASE_SERVICE_ROLE_KEY"
-    ], "Configure Supabase and apply all migrations before production launch."),
+    checkSupabase(env),
     checkSoulWisdom(env),
     checkAstroSolves(env),
     checkMoreGuidance(env),
     checkShani(env),
     checkOtp(env),
     checkRazorpay(env),
-    checkRequired(env, "rateLimit", "Upstash rate limiting", [
-      "UPSTASH_REDIS_REST_URL",
-      "UPSTASH_REDIS_REST_TOKEN"
-    ], "Configure Upstash so AI, OTP, and payment routes are protected from abuse.", "warning"),
+    checkRateLimit(env),
     checkPinecone(env),
     checkClerk(env),
     checkObservability(env)
@@ -57,11 +51,22 @@ function checkRequired(env, id, label, requiredEnv, advice, severity = "critical
 
 function checkObservability(env) {
   const missingEnv = [];
-  if (!hasEnv(env, "SENTRY_DSN") && !hasEnv(env, "VITE_SENTRY_DSN")) {
+  const sentryDsnKey = hasEnv(env, "SENTRY_DSN")
+    ? "SENTRY_DSN"
+    : hasEnv(env, "VITE_SENTRY_DSN")
+      ? "VITE_SENTRY_DSN"
+      : "";
+
+  if (!sentryDsnKey) {
     missingEnv.push("SENTRY_DSN or VITE_SENTRY_DSN");
+  } else if (!isValidSentryDsn(env[sentryDsnKey])) {
+    missingEnv.push(`${sentryDsnKey}=valid Sentry DSN`);
   }
   if (!hasEnv(env, "VITE_POSTHOG_KEY")) {
     missingEnv.push("VITE_POSTHOG_KEY");
+  }
+  if (hasEnv(env, "VITE_POSTHOG_HOST") && !isHttpsUrl(env.VITE_POSTHOG_HOST)) {
+    missingEnv.push("VITE_POSTHOG_HOST=https URL");
   }
 
   return {
@@ -69,11 +74,33 @@ function checkObservability(env) {
     label: "Observability",
     severity: "warning",
     status: missingEnv.length ? "fail" : "pass",
-    requiredEnv: ["SENTRY_DSN or VITE_SENTRY_DSN", "VITE_POSTHOG_KEY"],
+    requiredEnv: ["SENTRY_DSN or VITE_SENTRY_DSN", "VITE_POSTHOG_KEY", "VITE_POSTHOG_HOST=https URL"],
     missingEnv,
     advice: missingEnv.length
       ? "Configure Sentry error tracking and PostHog analytics for production monitoring."
       : ""
+  };
+}
+
+function checkSupabase(env) {
+  const missingEnv = [];
+  if (!hasEnv(env, "SUPABASE_URL")) {
+    missingEnv.push("SUPABASE_URL");
+  } else if (!isHttpsUrl(env.SUPABASE_URL)) {
+    missingEnv.push("SUPABASE_URL=https URL");
+  }
+  if (!hasEnv(env, "SUPABASE_SERVICE_ROLE_KEY")) {
+    missingEnv.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return {
+    id: "supabase",
+    label: "Supabase persistence",
+    severity: "critical",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+    missingEnv,
+    advice: missingEnv.length ? "Configure Supabase and apply all migrations before production launch." : ""
   };
 }
 
@@ -176,6 +203,9 @@ function checkOtp(env) {
   if (!deliveryConfigured) {
     missingEnv.push("OTP_SMS_WEBHOOK_URL or RESEND_API_KEY+RESEND_FROM_EMAIL");
   }
+  if (hasSms && !isHttpsUrl(env.OTP_SMS_WEBHOOK_URL)) {
+    missingEnv.push("OTP_SMS_WEBHOOK_URL=https URL");
+  }
   if (demoEnabled) {
     missingEnv.push("OTP_DEMO_ENABLED=false");
   }
@@ -239,6 +269,9 @@ function checkPinecone(env) {
     "OPENAI_EMBEDDING_MODEL"
   ];
   const missing = requiredEnv.filter((name) => !hasEnv(env, name));
+  if (hasEnv(env, "PINECONE_HOST") && !isHttpsUrlOrHost(env.PINECONE_HOST)) {
+    missing.push("PINECONE_HOST=valid HTTPS URL or host");
+  }
   return {
     id: "pinecone",
     label: "Long-term guidance memory",
@@ -247,6 +280,28 @@ function checkPinecone(env) {
     requiredEnv,
     missingEnv: missing,
     advice: missing.length ? "Configure Pinecone and embeddings to enable long-term personalized guidance memory." : ""
+  };
+}
+
+function checkRateLimit(env) {
+  const missingEnv = [];
+  if (!hasEnv(env, "UPSTASH_REDIS_REST_URL")) {
+    missingEnv.push("UPSTASH_REDIS_REST_URL");
+  } else if (!isHttpsUrl(env.UPSTASH_REDIS_REST_URL)) {
+    missingEnv.push("UPSTASH_REDIS_REST_URL=https URL");
+  }
+  if (!hasEnv(env, "UPSTASH_REDIS_REST_TOKEN")) {
+    missingEnv.push("UPSTASH_REDIS_REST_TOKEN");
+  }
+
+  return {
+    id: "rateLimit",
+    label: "Upstash rate limiting",
+    severity: "warning",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+    missingEnv,
+    advice: missingEnv.length ? "Configure Upstash so AI, OTP, and payment routes are protected from abuse." : ""
   };
 }
 
@@ -292,4 +347,40 @@ function isPositiveIntegerEnv(env, name) {
   const value = String(env[name] || "").trim();
   if (!/^\d+$/.test(value)) return false;
   return Number(value) > 0;
+}
+
+function isHttpsUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    return url.protocol === "https:" && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isHttpsUrlOrHost(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || /\s/.test(normalized)) return false;
+
+  if (/^https?:\/\//i.test(normalized)) {
+    return isHttpsUrl(normalized);
+  }
+
+  if (/[/?#]/.test(normalized)) return false;
+  try {
+    const url = new URL(`https://${normalized}`);
+    return Boolean(url.hostname) && url.pathname === "/" && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+function isValidSentryDsn(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    const projectId = url.pathname.split("/").filter(Boolean).pop();
+    return url.protocol === "https:" && Boolean(url.username) && Boolean(url.hostname) && Boolean(projectId);
+  } catch {
+    return false;
+  }
 }

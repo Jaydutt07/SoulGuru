@@ -10,6 +10,7 @@ checkLocalMoreGuidanceAccessIsNotReady();
 checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
+checkInvalidServiceUrlsAreNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -159,6 +160,47 @@ function checkInvalidPaymentPricesAreNotReady() {
   ].every(Boolean));
 }
 
+function checkInvalidServiceUrlsAreNotReady() {
+  const supabaseReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    SUPABASE_URL: "not-a-url"
+  });
+  const otpReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    OTP_SMS_WEBHOOK_URL: "http://sms.example.test"
+  });
+  const vendorReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    UPSTASH_REDIS_REST_URL: "http://upstash.example.test",
+    PINECONE_HOST: "bad host",
+    SENTRY_DSN: "not-a-dsn",
+    VITE_POSTHOG_HOST: "not-a-url"
+  });
+
+  const supabase = supabaseReport.checks.find((check) => check.id === "supabase");
+  const otp = otpReport.checks.find((check) => check.id === "otp");
+  const rateLimit = vendorReport.checks.find((check) => check.id === "rateLimit");
+  const pinecone = vendorReport.checks.find((check) => check.id === "pinecone");
+  const observability = vendorReport.checks.find((check) => check.id === "observability");
+
+  pushCheck("Readiness rejects malformed service URLs and DSNs", [
+    supabaseReport.ok === false,
+    supabase?.status === "fail",
+    supabase?.missingEnv.includes("SUPABASE_URL=https URL"),
+    otpReport.ok === false,
+    otp?.status === "fail",
+    otp?.missingEnv.includes("OTP_SMS_WEBHOOK_URL=https URL"),
+    vendorReport.ok === false,
+    rateLimit?.status === "fail",
+    rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_URL=https URL"),
+    pinecone?.status === "fail",
+    pinecone?.missingEnv.includes("PINECONE_HOST=valid HTTPS URL or host"),
+    observability?.status === "fail",
+    observability?.missingEnv.includes("SENTRY_DSN=valid Sentry DSN"),
+    observability?.missingEnv.includes("VITE_POSTHOG_HOST=https URL")
+  ].every(Boolean));
+}
+
 function checkReadinessPayloadDoesNotLeakSecretValues() {
   const env = fullEnv();
   const serialized = JSON.stringify(buildDeploymentReadiness(env));
@@ -196,14 +238,15 @@ function fullEnv() {
     UPSTASH_REDIS_REST_URL: "https://upstash.example.test",
     UPSTASH_REDIS_REST_TOKEN: "fake-upstash-token",
     PINECONE_API_KEY: "fake-pinecone-key",
-    PINECONE_HOST: "https://pinecone.example.test",
+    PINECONE_HOST: "memory-index.svc.pinecone.io",
     PINECONE_INDEX: "soulguru-memory",
     OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
     CLERK_SECRET_KEY: "fake-clerk-key",
     VITE_CLERK_PUBLISHABLE_KEY: "pk_test_contract",
     CLERK_REQUIRE_AUTH: "true",
-    VITE_SENTRY_DSN: "https://sentry.example/1",
-    VITE_POSTHOG_KEY: "phc_contract"
+    VITE_SENTRY_DSN: "https://public@sentry.example/1",
+    VITE_POSTHOG_KEY: "phc_contract",
+    VITE_POSTHOG_HOST: "https://analytics.soulguru.example"
   };
 }
 
