@@ -508,7 +508,7 @@ PINECONE_TOP_K=4
 GUIDANCE_MEMORY_RATE_LIMIT=60
 ```
 
-Create a Pinecone index that matches the configured OpenAI embedding model. The backend uses `PINECONE_HOST` for REST upsert/query calls and stores user memory in hashed per-user namespaces.
+Create a Pinecone index that matches the configured OpenAI embedding model. The backend uses `PINECONE_HOST` for REST upsert/query calls and stores user memory in hashed per-user namespaces. Runtime memory calls reject placeholder keys, non-HTTPS/local Pinecone hosts, and oversized search requests before contacting OpenAI or Pinecone; stored metadata is scalar-only, length-bounded, and redacts raw emails or phone numbers.
 
 ## OTP And Clerk Auth
 

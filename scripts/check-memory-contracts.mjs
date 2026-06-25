@@ -23,6 +23,7 @@ const user = {
 };
 
 await checkUnconfiguredMemoryDegradesWithoutCalls();
+await checkInvalidMemoryConfigSkipsCalls();
 await checkSearchContract();
 await checkUpsertContract();
 await checkFailureDegradesSafely();
@@ -70,6 +71,48 @@ async function checkUnconfiguredMemoryDegradesWithoutCalls() {
   ].every(Boolean));
 }
 
+async function checkInvalidMemoryConfigSkipsCalls() {
+  let embedCalls = 0;
+  let fetchCalls = 0;
+  const deps = {
+    createEmbedding: async () => {
+      embedCalls += 1;
+      return [1, 2, 3];
+    },
+    fetch: async () => {
+      fetchCalls += 1;
+      return okJson({});
+    }
+  };
+
+  const placeholder = await searchGuidanceMemory({
+    user,
+    query: "remember this"
+  }, {
+    ...env,
+    PINECONE_API_KEY: "placeholder"
+  }, deps);
+  const insecureHost = await upsertGuidanceMemory({
+    user,
+    text: "remember this",
+    kind: "daily-soul-reading"
+  }, {
+    ...env,
+    PINECONE_HOST: "http://localhost:8080"
+  }, deps);
+
+  pushCheck("Memory service rejects placeholder keys and unsafe Pinecone hosts before network calls", [
+    placeholder.configured === false,
+    insecureHost.configured === false,
+    embedCalls === 0,
+    fetchCalls === 0,
+    isGuidanceMemoryConfigured({
+      ...env,
+      PINECONE_HOST: "https://memory-index.svc.pinecone.io/path"
+    }) === false
+  ].every(Boolean));
+}
+
 async function checkSearchContract() {
   const seen = {
     embeddings: [],
@@ -77,8 +120,8 @@ async function checkSearchContract() {
   };
   const result = await searchGuidanceMemory({
     user,
-    query: "saturn pressure and moon transit around a work decision",
-    topK: 2
+    query: `  ${"saturn pressure and moon transit around a work decision ".repeat(80)}  `,
+    topK: 50
   }, env, {
     createEmbedding: async (input, receivedEnv) => {
       seen.embeddings.push({ input, model: receivedEnv.OPENAI_EMBEDDING_MODEL });
@@ -114,7 +157,8 @@ async function checkSearchContract() {
   pushCheck("Memory search uses server-side embedding and Pinecone query contract", [
     isGuidanceMemoryConfigured(env) === true,
     seen.embeddings.length === 1,
-    seen.embeddings[0].input === "saturn pressure and moon transit around a work decision",
+    seen.embeddings[0].input.length === 1400,
+    !/\s{2,}/.test(seen.embeddings[0].input),
     seen.embeddings[0].model === "text-embedding-3-large",
     request.url === "https://memory-index.svc.pinecone.io/query",
     request.method === "POST",
@@ -124,7 +168,7 @@ async function checkSearchContract() {
     !JSON.stringify(body).includes(user.email),
     !JSON.stringify(body).includes(user.name),
     body.vector.join(",") === "0.11,0.22,0.33",
-    body.topK === 2,
+    body.topK === 10,
     body.includeMetadata === true,
     body.includeValues === false
   ].every(Boolean));
@@ -155,6 +199,9 @@ async function checkUpsertContract() {
       active: true,
       generatedAt: new Date("2026-06-24T00:00:00.000Z"),
       nested: { unsafe: "object" },
+      unsafeEmail: "asha@example.com",
+      unsafePhone: "+91 90000 00001",
+      "Bad Key!": "cleaned",
       omitMe: null
     }
   }, env, {
@@ -183,7 +230,8 @@ async function checkUpsertContract() {
     !JSON.stringify(request.body).includes(user.name),
     vector.id.match(/^daily-soul-reading-[a-f0-9]{12}-source2026-06-24$/),
     vector.values.join(",") === "0.44,0.55,0.66",
-    vector.metadata.text.length === 1400,
+    vector.metadata.text.length <= 1400,
+    vector.metadata.text.length > 1000,
     vector.metadata.kind === "daily-soul-reading",
     vector.metadata.sourceId === "source/2026-06-24!"
   ].every(Boolean));
@@ -192,8 +240,13 @@ async function checkUpsertContract() {
     vector.metadata.score === 7,
     vector.metadata.active === true,
     vector.metadata.generatedAt === "2026-06-24T00:00:00.000Z",
-    vector.metadata.nested === "[object Object]",
+    vector.metadata.unsafeEmail === "[redacted-email]",
+    vector.metadata.unsafePhone === "[redacted-phone]",
+    vector.metadata.BadKey === "cleaned",
+    !("nested" in vector.metadata),
     !("omitMe" in vector.metadata),
+    !JSON.stringify(vector.metadata).includes("asha@example.com"),
+    !JSON.stringify(vector.metadata).includes("+91 90000 00001"),
     result.configured === true,
     result.upserted === true,
     result.id === vector.id,

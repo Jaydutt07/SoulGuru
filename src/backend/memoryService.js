@@ -5,27 +5,37 @@ import { createOpenAIClient, requestOpenAIEmbedding } from "./openaiClient.js";
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_TOP_K = 4;
 const MAX_MEMORY_TEXT_CHARS = 1400;
+const MAX_MEMORY_MATCHES = 10;
+const MAX_METADATA_VALUE_CHARS = 512;
+const MAX_METADATA_KEY_CHARS = 48;
+const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+const PHONE_CANDIDATE_PATTERN = /\+?\d[\d\s().-]{7,}\d/g;
 
 export function isGuidanceMemoryConfigured(env = process.env) {
-  return Boolean(env.OPENAI_API_KEY && env.PINECONE_API_KEY && env.PINECONE_HOST);
+  return Boolean(
+    hasConfiguredValue(env.OPENAI_API_KEY) &&
+    hasConfiguredValue(env.PINECONE_API_KEY) &&
+    getConfiguredPineconeHost(env.PINECONE_HOST)
+  );
 }
 
 export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TOP_K }, env = process.env, deps = {}) {
-  if (!isGuidanceMemoryConfigured(env) || !query) {
+  const cleanQuery = normalizeMemoryText(query);
+  if (!isGuidanceMemoryConfigured(env) || !cleanQuery) {
     return { configured: false, matches: [] };
   }
 
   try {
     const makeEmbedding = deps.createEmbedding || createEmbedding;
     const fetchImpl = deps.fetch || globalThis.fetch;
-    const vector = await makeEmbedding(query, env);
+    const vector = await makeEmbedding(cleanQuery, env);
     const response = await fetchWithTimeout(`${normalizePineconeHost(env.PINECONE_HOST)}/query`, {
       method: "POST",
       headers: pineconeHeaders(env),
       body: JSON.stringify({
         namespace: buildUserNamespace(user),
         vector,
-        topK,
+        topK: normalizeTopK(topK),
         includeMetadata: true,
         includeValues: false
       })
@@ -43,11 +53,11 @@ export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TO
     return {
       configured: true,
       matches: (data.matches || []).map((match) => ({
-        id: match.id,
-        score: match.score,
-        text: match.metadata?.text || "",
-        kind: match.metadata?.kind || "",
-        createdAt: match.metadata?.createdAt || ""
+        id: sanitizeIdentifierPart(match.id, 96),
+        score: Number(match.score) || 0,
+        text: normalizeMemoryText(match.metadata?.text),
+        kind: sanitizeIdentifierPart(match.metadata?.kind, 48),
+        createdAt: normalizeMemoryText(match.metadata?.createdAt, 64)
       })).filter((match) => match.text)
     };
   } catch (error) {
@@ -63,14 +73,14 @@ export async function upsertGuidanceMemory({
   sourceId = "",
   metadata = {}
 }, env = process.env, deps = {}) {
-  if (!isGuidanceMemoryConfigured(env) || !text) {
+  const cleanText = normalizeMemoryText(text);
+  if (!isGuidanceMemoryConfigured(env) || !cleanText) {
     return { configured: false, upserted: false };
   }
 
   try {
     const makeEmbedding = deps.createEmbedding || createEmbedding;
     const fetchImpl = deps.fetch || globalThis.fetch;
-    const cleanText = String(text || "").replace(/\s+/g, " ").trim().slice(0, MAX_MEMORY_TEXT_CHARS);
     const vector = await makeEmbedding(cleanText, env);
     const id = buildMemoryId({ user, kind, sourceId, text: cleanText });
     const response = await fetchWithTimeout(`${normalizePineconeHost(env.PINECONE_HOST)}/vectors/upsert`, {
@@ -134,15 +144,13 @@ async function createEmbedding(input, env) {
 
 function pineconeHeaders(env) {
   return {
-    "Api-Key": env.PINECONE_API_KEY,
+    "Api-Key": String(env.PINECONE_API_KEY || "").trim(),
     "Content-Type": "application/json"
   };
 }
 
 function normalizePineconeHost(host) {
-  const value = String(host || "").trim();
-  if (!value) return "";
-  return value.startsWith("http") ? value.replace(/\/$/, "") : `https://${value.replace(/\/$/, "")}`;
+  return getConfiguredPineconeHost(host);
 }
 
 function buildUserNamespace(user) {
@@ -151,7 +159,9 @@ function buildUserNamespace(user) {
 
 function buildMemoryId({ user, kind, sourceId, text }) {
   const suffix = sourceId || crypto.createHash("sha256").update(text).digest("hex").slice(0, 16);
-  return `${kind}-${hashUser(user).slice(0, 12)}-${String(suffix).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48)}`;
+  const safeKind = sanitizeIdentifierPart(kind || "guidance", 48) || "guidance";
+  const safeSuffix = sanitizeIdentifierPart(suffix, 48) || crypto.createHash("sha256").update(text).digest("hex").slice(0, 16);
+  return `${safeKind}-${hashUser(user).slice(0, 12)}-${safeSuffix}`;
 }
 
 function hashUser(user) {
@@ -162,10 +172,95 @@ function hashUser(user) {
 function sanitizeMetadata(metadata) {
   return Object.fromEntries(Object.entries(metadata).flatMap(([key, value]) => {
     if (value === null || value === undefined) return [];
-    if (["string", "number", "boolean"].includes(typeof value)) return [[key, value]];
-    if (value instanceof Date) return [[key, value.toISOString()]];
-    return [[key, String(value)]];
+    const safeKey = sanitizeMetadataKey(key);
+    if (!safeKey) return [];
+    if (value instanceof Date) return [[safeKey, value.toISOString()]];
+    if (typeof value === "string") {
+      return [[safeKey, sanitizeMetadataString(value, safeKey === "text" ? MAX_MEMORY_TEXT_CHARS : MAX_METADATA_VALUE_CHARS)]];
+    }
+    if (typeof value === "number") return Number.isFinite(value) ? [[safeKey, value]] : [];
+    if (typeof value === "boolean") return [[safeKey, value]];
+    return [];
   }));
+}
+
+function getConfiguredPineconeHost(host) {
+  const value = String(host || "").trim();
+  if (!hasConfiguredValue(value)) return "";
+
+  try {
+    const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    if (url.protocol !== "https:" || !url.hostname) return "";
+    if (url.username || url.password || url.search || url.hash) return "";
+    if (isLocalOrPrivateHost(url.hostname)) return "";
+    const pathname = url.pathname === "/" ? "" : url.pathname.replace(/\/+$/, "");
+    if (pathname) return "";
+    return `https://${url.hostname}`;
+  } catch {
+    return "";
+  }
+}
+
+function normalizeTopK(value) {
+  const number = Math.floor(Number(value));
+  if (!Number.isFinite(number)) return DEFAULT_TOP_K;
+  return Math.min(MAX_MEMORY_MATCHES, Math.max(1, number));
+}
+
+function normalizeMemoryText(value, maxChars = MAX_MEMORY_TEXT_CHARS) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxChars);
+}
+
+function sanitizeMetadataKey(key) {
+  return sanitizeIdentifierPart(key, MAX_METADATA_KEY_CHARS);
+}
+
+function sanitizeMetadataString(value, maxChars = MAX_METADATA_VALUE_CHARS) {
+  return normalizeMemoryText(value, maxChars)
+    .replace(EMAIL_PATTERN, "[redacted-email]")
+    .replace(PHONE_CANDIDATE_PATTERN, (candidate) => {
+      const digits = candidate.replace(/\D/g, "");
+      return digits.length >= 10 ? "[redacted-phone]" : candidate;
+    });
+}
+
+function sanitizeIdentifierPart(value, maxChars = 64) {
+  return String(value || "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "")
+    .slice(0, maxChars);
+}
+
+function hasConfiguredValue(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!normalized) return false;
+  if (normalized.startsWith("${{") || normalized.startsWith("$")) return false;
+  if (/^(true|false|null|undefined)$/i.test(normalized)) return false;
+  if (/^(your|replace|change|changeme|placeholder|example|dummy|fake|todo|xxx|xxxx|redacted)(?:[-_\s].*)?$/i.test(normalized)) {
+    return false;
+  }
+  if (/^<[^>]+>$/.test(normalized)) return false;
+  if (/^\*+$/.test(normalized)) return false;
+
+  return true;
+}
+
+function isLocalOrPrivateHost(hostname) {
+  const host = String(hostname || "").toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  const parts = host.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  return parts[0] === 10 ||
+    parts[0] === 127 ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168);
 }
 
 function sanitizeForSoulGuru(text) {

@@ -55,6 +55,7 @@ This project is being built toward the stack shown in the product planning image
 - Offline API route auth matrix checker so private Soul Guru, payment, profile, memory, More Guidance, and Shani routes cannot bypass verified identity
 - Optional Pinecone vector memory route with OpenAI embeddings for saved guidance, daily readings, and Astro Solves context
 - Offline Pinecone/OpenAI memory contract checker for hashed namespaces, metadata sanitization, prompt-safe memory context, and degraded behavior
+- Runtime Pinecone memory validation for HTTPS hosts, placeholder rejection, bounded search size, and PII-redacted scalar metadata
 - Server-backed More Guidance dashboard and saved advice persistence
 - Offline More Guidance subscription, daily-cache, and paid-memory contract checker
 - Production-gated local OTP fallback so demo login cannot silently replace backend OTP in release builds
