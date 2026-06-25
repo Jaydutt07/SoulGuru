@@ -106,10 +106,11 @@ Print and verify the provider stack from the planning image against the real pro
 
 ```bash
 npm run production:providers
+npm run production:launch-plan
 npm run providers:check
 ```
 
-The provider matrix covers OpenAI, Supabase, Vercel, Namecheap, Razorpay, GitHub, Resend, Clerk, Cloudflare, PostHog, Sentry, Upstash, and Pinecone without printing secret values.
+The provider matrix covers OpenAI, Supabase, Vercel, Namecheap, Razorpay, GitHub, Resend, Clerk, Cloudflare, PostHog, Sentry, Upstash, and Pinecone without printing secret values. The launch plan groups those providers into setup phases with dashboard notes, env visibility labels, evidence artifacts, and verification commands.
 
 Check the production-domain smoke contract and, after DNS is live, smoke-test the HTTPS custom domain:
 
@@ -354,6 +355,7 @@ The CI template checks:
 - `npm run soul:quality:extended`
 - `npm run env:check`
 - `npm run production:env:checklist`
+- `npm run production:launch-plan`
 - `npm run deployment:check`
 - `npm run astrology:check`
 - `npm run compatibility:check`

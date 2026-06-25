@@ -123,6 +123,7 @@ This project is being built toward the stack shown in the product planning image
 - Live Supabase uniqueness checks for daily Soul Guru cache, More Guidance cache, and payment event idempotency
 - Vercel deployment contract checker for build settings, API route duration, CSP/security/cache headers, SPA rewrites, and upload exclusions
 - Production domain and Cloudflare DNS readiness gate for the Namecheap/Cloudflare launch path
+- Secret-safe production provider launch plan grouped by source/AI, data/auth, deployment/DNS, payments, and reliability phases
 - Production domain smoke test for DNS resolution plus health/readiness checks through the custom HTTPS domain
 
 ## Next Implementation Steps
@@ -140,7 +141,7 @@ This project is being built toward the stack shown in the product planning image
 11. Apply `supabase/migrations/011_schema_contract_constraints.sql`.
 12. Apply `supabase/migrations/012_shani_membership.sql`.
 13. Run `npm run supabase:schema:check` against the Supabase project.
-14. Run `npm run production:env:checklist` and `npm run production:providers` while configuring Vercel, Cloudflare, and provider dashboards.
+14. Run `npm run production:env:checklist`, `npm run production:providers`, and `npm run production:launch-plan` while configuring Vercel, Cloudflare, and provider dashboards.
 15. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
 16. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 17. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
