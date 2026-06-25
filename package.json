@@ -18,6 +18,8 @@
     "auth:check": "node scripts/check-auth-contracts.mjs && node scripts/check-client-auth-flow-contracts.mjs && npm run api:auth:check",
     "api:auth:check": "node scripts/check-api-route-auth-contracts.mjs",
     "profile:check": "node scripts/check-profile-contracts.mjs",
+    "place:geocoder:check": "node scripts/check-place-geocoder-smoke-contracts.mjs",
+    "place:geocoder:smoke": "node scripts/smoke-place-geocoder.mjs",
     "deployment:check": "node scripts/check-deployment-contracts.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",

@@ -25,6 +25,7 @@ await runStep("Numbers tab contract", "npm", ["run", "numbers:check"]);
 await runStep("Client product surface contract", "npm", ["run", "client:surface:check"]);
 await runStep("Auth contract checks", "npm", ["run", "auth:check"]);
 await runStep("User profile contract checks", "npm", ["run", "profile:check"]);
+await runStep("Place geocoder smoke contract checks", "npm", ["run", "place:geocoder:check"]);
 await runStep("Guidance memory contract checks", "npm", ["run", "memory:check"]);
 await runStep("Rate limit contract checks", "npm", ["run", "rate-limit:check"]);
 await runStep("Request handling contract checks", "npm", ["run", "request:check"]);
@@ -73,9 +74,11 @@ await runStep("Dependency audit", "npm", ["audit", "--omit", "dev"]);
 
 if (allowMissingExternal) {
   await runStep("Production readiness report", "npm", ["run", "production:check", "--", "--strict", "--allow-fail"]);
+  await runStep("Place geocoder smoke", "npm", ["run", "place:geocoder:smoke", "--", "--allow-missing-env"]);
   await runStep("Supabase schema check", "npm", ["run", "supabase:schema:check", "--", "--allow-missing-env"]);
 } else {
   await runStep("Production readiness report", "npm", ["run", "production:check", "--", "--strict"]);
+  await runStep("Place geocoder smoke", "npm", ["run", "place:geocoder:smoke"]);
   await runStep("Supabase schema check", "npm", ["run", "supabase:schema:check"]);
 }
 

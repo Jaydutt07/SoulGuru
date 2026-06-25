@@ -52,6 +52,12 @@ PLACE_GEOCODER_URL=
 PLACE_GEOCODER_USER_AGENT=SoulGuru/1.0 birth-place-resolution
 ```
 
+After configuring those values, verify that a real provider resolves coordinates and timezone before production launch:
+
+```bash
+npm run place:geocoder:smoke -- --place="Paris, France"
+```
+
 Required for APK builds that should call the deployed backend:
 
 ```bash
@@ -159,6 +165,12 @@ Check backend user profile persistence, lookup, and OTP-phone-to-auth account me
 
 ```bash
 npm run profile:check
+```
+
+Check the offline place-geocoder smoke contract without calling a live provider:
+
+```bash
+npm run place:geocoder:check
 ```
 
 Check Pinecone/OpenAI memory behavior, hashed namespaces, sanitized metadata, and safe degradation:
@@ -437,6 +449,7 @@ The production client only displays and locally caches Soul Guru readings that c
 `POST /api/user-profile`
 
 Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` so uncatalogued birth places are resolved server-side through a Nominatim-compatible geocoder, enriched with latitude/longitude, an IANA timezone, and the birth-date-specific timezone offset before chart calculations use the profile. Runtime geocoding only calls HTTPS provider URLs with a real user agent, skips impossible coordinates, and stores the first valid resolved place.
+Use `npm run place:geocoder:smoke -- --place="Paris, France"` after provider setup to confirm the configured geocoder returns usable coordinates and timezone without printing provider URL or user-agent values.
 
 In production builds, local account/session storage is disabled for login restore. Users enter through backend OTP/profile lookup, and local account persistence is kept only for development fallback mode.
 
