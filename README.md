@@ -94,6 +94,12 @@ Check `.env.example`, production fallback defaults, and the public env allowlist
 npm run env:check
 ```
 
+Print a secret-safe Vercel/provider env checklist generated from the production readiness contract:
+
+```bash
+npm run production:env:checklist
+```
+
 Check the Vercel deployment config, CSP/security/cache headers, and deploy-ignore safety rules:
 
 ```bash
@@ -287,6 +293,7 @@ The CI template checks:
 - `npm run soul:quality`
 - `npm run soul:quality:extended`
 - `npm run env:check`
+- `npm run production:env:checklist`
 - `npm run deployment:check`
 - `npm run astrology:check`
 - `npm run compatibility:check`
@@ -568,6 +575,7 @@ The release build wrapper loads these values from `.env` or shell env and passes
 
 Before release:
 
+- Run `npm run production:env:checklist` and configure every critical/warning env item in Vercel/provider dashboards.
 - Deploy backend to Vercel and configure env vars there.
 - Configure Supabase project and run migrations.
 - Run `npm run supabase:schema:check` against the Supabase project.

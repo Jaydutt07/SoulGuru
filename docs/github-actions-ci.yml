@@ -44,6 +44,9 @@ jobs:
       - name: Verify env manifest contracts
         run: npm run env:check
 
+      - name: Print production env checklist
+        run: npm run production:env:checklist
+
       - name: Verify deployment config contracts
         run: npm run deployment:check
 
