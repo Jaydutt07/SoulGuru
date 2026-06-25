@@ -352,7 +352,7 @@ The production client only displays and locally caches Soul Guru readings that c
 
 `POST /api/user-profile`
 
-Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage. If `PLACE_GEOCODER_URL` is configured, uncatalogued birth places are resolved server-side through a Nominatim-compatible geocoder, enriched with latitude/longitude, an IANA timezone, and the birth-date-specific timezone offset before chart calculations use the profile.
+Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` so uncatalogued birth places are resolved server-side through a Nominatim-compatible geocoder, enriched with latitude/longitude, an IANA timezone, and the birth-date-specific timezone offset before chart calculations use the profile.
 
 In production builds, local account/session storage is disabled for login restore. Users enter through backend OTP/profile lookup, and local account persistence is kept only for development fallback mode.
 
@@ -405,8 +405,8 @@ Basic API health check for deployment.
 
 `GET /api/readiness`
 
-Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, OTP delivery, Resend transactional email, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
-URL-shaped production env values such as `SUPABASE_URL`, `OTP_SMS_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, Sentry DSNs, PostHog host, and `PINECONE_HOST` are validated for production-safe shape before readiness can pass.
+Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, birth-place geocoding, OTP delivery, Resend transactional email, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
+URL-shaped production env values such as `SUPABASE_URL`, `PLACE_GEOCODER_URL`, `OTP_SMS_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, Sentry DSNs, PostHog host, and `PINECONE_HOST` are validated for production-safe shape before readiness can pass.
 Placeholder-looking values such as `fake-*`, `replace-*`, `dummy`, `placeholder`, `$VAR`, or `<secret>` are treated as missing in readiness output.
 
 ## Payments And Emails

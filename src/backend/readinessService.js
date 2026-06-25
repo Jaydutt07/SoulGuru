@@ -5,6 +5,7 @@ export function buildDeploymentReadiness(env = process.env) {
       "OPENAI_MODEL"
     ], "Set OpenAI server env vars before enabling Soul Guru and Astro Solves AI routes."),
     checkSupabase(env),
+    checkPlaceGeocoding(env),
     checkSoulWisdom(env),
     checkAstroSolves(env),
     checkMoreGuidance(env),
@@ -102,6 +103,30 @@ function checkSupabase(env) {
     requiredEnv: ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
     missingEnv,
     advice: missingEnv.length ? "Configure Supabase and apply all migrations before production launch." : ""
+  };
+}
+
+function checkPlaceGeocoding(env) {
+  const missingEnv = [];
+  if (!hasEnv(env, "PLACE_GEOCODER_URL")) {
+    missingEnv.push("PLACE_GEOCODER_URL");
+  } else if (!isHttpsUrl(env.PLACE_GEOCODER_URL)) {
+    missingEnv.push("PLACE_GEOCODER_URL=https URL");
+  }
+  if (!hasEnv(env, "PLACE_GEOCODER_USER_AGENT")) {
+    missingEnv.push("PLACE_GEOCODER_USER_AGENT");
+  }
+
+  return {
+    id: "birthPlaceAccuracy",
+    label: "Birth place accuracy",
+    severity: "warning",
+    status: missingEnv.length ? "fail" : "pass",
+    requiredEnv: ["PLACE_GEOCODER_URL", "PLACE_GEOCODER_USER_AGENT"],
+    missingEnv,
+    advice: missingEnv.length
+      ? "Configure a Nominatim-compatible geocoder so uncatalogued birth places resolve to accurate coordinates and timezones before chart calculations."
+      : ""
   };
 }
 

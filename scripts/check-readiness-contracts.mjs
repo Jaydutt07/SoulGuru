@@ -58,6 +58,7 @@ function checkPlaceholderValuesAreNotReady() {
     ...fullEnv(),
     OPENAI_API_KEY: "fake-openai-key",
     SUPABASE_SERVICE_ROLE_KEY: "replace-with-service-role",
+    PLACE_GEOCODER_URL: "<geocoder-url>",
     RAZORPAY_KEY_SECRET: "<razorpay-secret>",
     RESEND_API_KEY: "fake-resend-key",
     UPSTASH_REDIS_REST_TOKEN: "$UPSTASH_TOKEN",
@@ -66,6 +67,7 @@ function checkPlaceholderValuesAreNotReady() {
   });
   const openai = report.checks.find((check) => check.id === "openai");
   const supabase = report.checks.find((check) => check.id === "supabase");
+  const birthPlaceAccuracy = report.checks.find((check) => check.id === "birthPlaceAccuracy");
   const razorpay = report.checks.find((check) => check.id === "razorpay");
   const transactionalEmail = report.checks.find((check) => check.id === "transactionalEmail");
   const rateLimit = report.checks.find((check) => check.id === "rateLimit");
@@ -76,6 +78,7 @@ function checkPlaceholderValuesAreNotReady() {
     report.ok === false,
     openai?.missingEnv.includes("OPENAI_API_KEY"),
     supabase?.missingEnv.includes("SUPABASE_SERVICE_ROLE_KEY"),
+    birthPlaceAccuracy?.missingEnv.includes("PLACE_GEOCODER_URL"),
     razorpay?.missingEnv.includes("RAZORPAY_KEY_SECRET"),
     transactionalEmail?.missingEnv.includes("RESEND_API_KEY"),
     rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_TOKEN"),
@@ -205,6 +208,7 @@ function checkInvalidServiceUrlsAreNotReady() {
   });
   const vendorReport = buildDeploymentReadiness({
     ...fullEnv(),
+    PLACE_GEOCODER_URL: "http://geocoder.example.test",
     UPSTASH_REDIS_REST_URL: "http://upstash.example.test",
     PINECONE_HOST: "bad host",
     SENTRY_DSN: "not-a-dsn",
@@ -213,6 +217,7 @@ function checkInvalidServiceUrlsAreNotReady() {
 
   const supabase = supabaseReport.checks.find((check) => check.id === "supabase");
   const otp = otpReport.checks.find((check) => check.id === "otp");
+  const birthPlaceAccuracy = vendorReport.checks.find((check) => check.id === "birthPlaceAccuracy");
   const rateLimit = vendorReport.checks.find((check) => check.id === "rateLimit");
   const pinecone = vendorReport.checks.find((check) => check.id === "pinecone");
   const observability = vendorReport.checks.find((check) => check.id === "observability");
@@ -225,6 +230,8 @@ function checkInvalidServiceUrlsAreNotReady() {
     otp?.status === "fail",
     otp?.missingEnv.includes("OTP_SMS_WEBHOOK_URL=https URL"),
     vendorReport.ok === false,
+    birthPlaceAccuracy?.status === "fail",
+    birthPlaceAccuracy?.missingEnv.includes("PLACE_GEOCODER_URL=https URL"),
     rateLimit?.status === "fail",
     rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_URL=https URL"),
     pinecone?.status === "fail",
@@ -258,6 +265,8 @@ function fullEnv() {
     ...criticalEnv(),
     UPSTASH_REDIS_REST_URL: "https://upstash.soulguru.app",
     UPSTASH_REDIS_REST_TOKEN: "upstash-contract-token-123456",
+    PLACE_GEOCODER_URL: "https://geocoder.soulguru.app/search",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru/1.0 production contact@soulguru.app",
     PINECONE_API_KEY: "pcsk_contract_key_123456",
     PINECONE_HOST: "memory-index.svc.pinecone.io",
     PINECONE_INDEX: "soulguru-memory",
