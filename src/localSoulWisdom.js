@@ -75,6 +75,17 @@ function buildSignatureWisdom(user, context, seed, dateKey) {
     }
   }
 
+  const compactPlan = buildCompactArchitecturePlan({
+    name,
+    context,
+    constraints,
+    seed
+  }).join(" ");
+  const compactWordCount = words(compactPlan).length;
+  if (compactWordCount >= 72 && compactWordCount <= 100 && matchesArchitectureConstraints(compactPlan, name, constraints) && !isLowQualityWisdom(compactPlan)) {
+    return compactPlan;
+  }
+
   return fallback;
 }
 
@@ -115,6 +126,209 @@ function buildArchitecturePlan({
   }
 
   return plan.map((line) => line || closing);
+}
+
+function buildCompactArchitecturePlan({
+  name,
+  context,
+  constraints,
+  seed
+}) {
+  const count = Math.min(6, Math.max(4, constraints.sentenceCount || 5));
+  const plan = Array(count).fill(null);
+  const nameIndex = Math.min(count - 2, Math.max(1, (constraints.nameSentence || 2) - 1));
+  const scene = sceneSeed(context, seed + 101);
+  plan[0] = compactOpeningLine(scene, constraints.openingBucket, seed + 103);
+  plan[count - 1] = compactClosingLine(context, constraints.finalBucket, seed + 109);
+  const usedLines = new Set(plan.filter(Boolean));
+
+  let remainingImperatives = Number.isFinite(constraints.imperativeTarget)
+    ? constraints.imperativeTarget - plan.filter((line) => sentenceOpeningBucket(line) === "imperative").length
+    : 0;
+  const nonNamePositions = [];
+  for (let index = 1; index < count - 1; index += 1) {
+    if (index !== nameIndex) nonNamePositions.push(index);
+  }
+
+  const nameNeedsImperative = remainingImperatives > nonNamePositions.length;
+  plan[nameIndex] = compactNameLine(name, context, seed + 113, nameNeedsImperative, usedLines);
+  usedLines.add(plan[nameIndex]);
+  if (nameNeedsImperative) remainingImperatives -= 1;
+
+  for (const [offset, index] of nonNamePositions.entries()) {
+    const needsImperative = remainingImperatives > 0;
+    plan[index] = compactFillerLine(context, seed + 127 + offset * 17, needsImperative, usedLines);
+    usedLines.add(plan[index]);
+    if (needsImperative) remainingImperatives -= 1;
+  }
+
+  return plan;
+}
+
+function compactOpeningLine(scene, preferredBucket = "", seed = 0) {
+  const lowerScene = lowerFirst(scene);
+  const subject = compactSceneSubject(scene);
+  const lines = {
+    condition: [
+      `When ${lowerScene} pulls attention, keep the day inside one choice you can handle by hand.`,
+      `Before ${lowerScene} becomes a symbol, bring the day back to one ordinary repair.`,
+      `With ${lowerScene} in view, the next honest action matters more than the whole mood.`
+    ],
+    scene: [
+      `The detail of ${lowerScene} points to one repair that belongs to today, not the whole story.`,
+      `That ordinary detail around ${lowerScene} brings the day back to one repair.`,
+      `One small signal in ${lowerScene} belongs to action, not the whole story.`
+    ],
+    statement: [
+      `${subject} points to one repair that belongs to today, not the whole story.`,
+      `Attention returning to ${lowerScene} is asking for handling, not another private trial.`,
+      `Unfinished business around ${lowerScene} is smaller than the meaning forming around it.`
+    ],
+    imperative: [
+      `Notice ${lowerScene} before the mind turns it into evidence against the whole day.`,
+      `Use ${lowerScene} as the first handle, then let the larger mood wait outside.`,
+      `Keep ${lowerScene} ordinary long enough for one practical choice to appear.`
+    ]
+  };
+  return pickDistinctLine(lines[preferredBucket] || lines.statement, seed, new Set(), lowerScene, preferredBucket);
+}
+
+function compactNameLine(name, context, seed, imperative, usedLines = new Set()) {
+  const area = dailyAreaLabel(context.dailyArea);
+  const need = compactNeed(context.coreNeed || context.innerWeather, seed);
+  const lines = imperative ? [
+    `Give ${area} a smaller job, ${name}, before the day starts sounding like a test.`,
+    `Make ${area} practical for ${name} before pressure turns it into a larger story.`,
+    `Keep ${area} inside one honest container, ${name}, while the rest waits its turn.`
+  ] : [
+    `For ${name}, ${need} needs one practical shape before ${area} starts sounding like a test.`,
+    `Under ${area}, ${name} needs ${need} more than another inner debate.`,
+    `Around ${area}, ${name} can protect ${need} through one observable choice.`
+  ];
+  return pickDistinctLine(lines, seed, usedLines, name, area, need);
+}
+
+function compactFillerLine(context, seed, imperative, usedLines = new Set()) {
+  const area = dailyAreaLabel(context.dailyArea);
+  const body = compactBodyAnchor(context.bodySignal);
+  const avoid = compactAvoid(context.avoid || context.emotionalKnot);
+  const imperativeLines = [
+    "Handle one useful task before the larger story asks for another meeting.",
+    "Keep the next reply short enough to remain kind, honest, and complete.",
+    "Protect the body's timing first, then let the decision become smaller.",
+    "Finish one ordinary repair before you measure the whole day again.",
+    "Reduce the work to one move that can be done before the next meal.",
+    "Choose the plain action first, then let the emotional weather report later.",
+    "Name the limit once, then stop decorating it for easier approval."
+  ];
+  const statementLines = [
+    `The body steadies when ${body} gets attention before interpretation.`,
+    "A shorter reply can keep warmth present without making every feeling your assignment.",
+    "One finished task will carry the decision better than another hour of circling.",
+    `The habit of ${avoid} gets quieter when the next choice has a clear edge.`,
+    "With other people, warmth needs timing before access becomes resentment.",
+    `Your energy returns faster when ${area} is handled before the mood is explained.`,
+    `A practical boundary gives ${area} shape before effort starts arguing with mood.`,
+    `${capitalize(area)} needs a clean container, not another argument with the mood.`,
+    compactAreaLine(context),
+    "Plain timing can protect warmth without turning silence into punishment."
+  ];
+  return pickDistinctLine(imperative ? imperativeLines : statementLines, seed, usedLines, area, body, avoid);
+}
+
+function compactClosingLine(context, preferredBucket = "", seed = 0) {
+  const lines = {
+    condition: [
+      "When evening comes, count the handled detail before you believe the unfinished mood.",
+      "If pressure returns, answer it with the task already finished in your hands.",
+      "With less performance, the day can end around one thing honestly completed.",
+      "Before night, let the completed task answer louder than the unsettled mood.",
+      "After the practical repair is done, leave the larger interpretation for tomorrow.",
+      "When the next doubt arrives, point it toward the evidence already handled."
+    ],
+    scene: [
+      "The finished detail can be enough evidence for tonight, even if the mood stays unfinished.",
+      "One ordinary repair can hold the place of certainty until tomorrow.",
+      "This practical finish deserves more respect than another perfect explanation."
+    ],
+    statement: [
+      "Plain evidence will carry more truth tonight than another perfect explanation.",
+      "Finished work and a cleaner reply are enough to carry into evening.",
+      "Ordinary completion deserves more respect than the mood still asking questions."
+    ],
+    imperative: [
+      "Let the finish stay modest, complete, and free from extra explanation.",
+      "Keep the proof ordinary, then stop reopening the larger question tonight.",
+      "Leave the day with one clean ending and one fewer explanation."
+    ]
+  };
+  const bucketLines = lines[preferredBucket] || lines.statement;
+  return pickDistinctLine(bucketLines, seed, new Set(), context.dailyArea, context.closingPermission);
+}
+
+function compactSceneSubject(scene) {
+  const stripped = lowerFirst(scene).replace(/^(the|a|an|one|your|that|this)\s+/i, "");
+  return `Pressure around ${stripped || "one ordinary detail"}`;
+}
+
+function compactNeed(text, seed = 0) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("proof")) return "proof through follow-through";
+  if (normalized.includes("honesty")) return "honesty without performance";
+  if (normalized.includes("rest") || normalized.includes("quiet")) return "quiet that still has structure";
+  if (normalized.includes("boundary") || normalized.includes("limit")) return "a limit that can be kept";
+  if (normalized.includes("belong")) return "belonging without self-abandonment";
+  return pickLine([
+    "room to move slowly",
+    "a cleaner inner rule",
+    "support that does not perform",
+    "one choice with a clear edge"
+  ], seed, normalized);
+}
+
+function compactBodyAnchor(text) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("sleep")) return "sleep";
+  if (normalized.includes("water") || normalized.includes("drink")) return "water";
+  if (normalized.includes("food") || normalized.includes("meal") || normalized.includes("eat")) return "food";
+  if (normalized.includes("walk") || normalized.includes("movement") || normalized.includes("breath")) return "breath and movement";
+  if (normalized.includes("jaw") || normalized.includes("shoulder")) return "the jaw and shoulders";
+  return "the body";
+}
+
+function compactAvoid(text) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("checking") || normalized.includes("signs")) return "checking every small change";
+  if (normalized.includes("worth") || normalized.includes("exhaustion")) return "proving worth through exhaustion";
+  if (normalized.includes("explain")) return "over-explaining";
+  if (normalized.includes("delay")) return "turning delay into a verdict";
+  if (normalized.includes("perfect")) return "chasing the perfect mood";
+  if (normalized.includes("urgency") || normalized.includes("urgent")) return "obeying urgency";
+  if (normalized.includes("defend")) return "defending too early";
+  return "over-reading the moment";
+}
+
+function compactAreaLine(context) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  if (area.includes("learning") || area.includes("scattered")) {
+    return "Scattered attention settles when one object receives one honest job.";
+  }
+  if (area.includes("public") || area.includes("ambition") || area.includes("recognition")) {
+    return "Delayed recognition needs one finished piece, not another argument with effort.";
+  }
+  if (area.includes("money")) {
+    return "A money choice becomes cleaner when value and price stop sharing a chair.";
+  }
+  if (area.includes("relationship")) {
+    return "The relationship tone improves when timing matters as much as tenderness.";
+  }
+  if (area.includes("family")) {
+    return "Family care becomes lighter when duty is shaped before resentment gathers.";
+  }
+  if (area.includes("health") || area.includes("body")) {
+    return "The body gives clearer instructions once pressure stops pretending to be urgency.";
+  }
+  return "The practical part becomes easier when it is named before the mood expands.";
 }
 
 function buildTaskFirstWisdom(user, context) {
@@ -684,6 +898,15 @@ function lowerFirst(text) {
 
 function pickLine(lines, ...parts) {
   return lines[mod(stableHash(parts.filter(Boolean).join("|")), lines.length)];
+}
+
+function pickDistinctLine(lines, seed, usedLines = new Set(), ...parts) {
+  const start = mod(stableHash([seed, ...parts].filter(Boolean).join("|")), lines.length);
+  for (let offset = 0; offset < lines.length; offset += 1) {
+    const candidate = lines[mod(start + offset, lines.length)];
+    if (!usedLines.has(candidate)) return candidate;
+  }
+  return lines[start];
 }
 
 function getTodayKey(date = new Date(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata") {

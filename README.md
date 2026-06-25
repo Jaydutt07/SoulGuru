@@ -143,6 +143,12 @@ Check #Numbers numerology cards, deterministic values, value ranges, and one-lin
 npm run numbers:check
 ```
 
+Check the client product surface contract, including the welcome screen, login fields, exact five-tab order, tab headings, Shani countdown units, More Guidance entry point, and settings profile details:
+
+```bash
+npm run client:surface:check
+```
+
 Check Clerk auth behavior, production client login rules, and the API route auth matrix, including fail-closed required auth, backend identity injection, server-profile-first login, protected-route coverage, and profile persistence before account creation completes:
 
 ```bash

@@ -22,6 +22,7 @@ await runStep("Deployment config contract", "npm", ["run", "deployment:check"]);
 await runStep("Astrology engine contract", "npm", ["run", "astrology:check"]);
 await runStep("Harmony compatibility contract", "npm", ["run", "compatibility:check"]);
 await runStep("Numbers tab contract", "npm", ["run", "numbers:check"]);
+await runStep("Client product surface contract", "npm", ["run", "client:surface:check"]);
 await runStep("Auth contract checks", "npm", ["run", "auth:check"]);
 await runStep("User profile contract checks", "npm", ["run", "profile:check"]);
 await runStep("Guidance memory contract checks", "npm", ["run", "memory:check"]);

@@ -407,6 +407,67 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
   ].every(Boolean));
 }
 
+async function checkAwkwardTemplateJoinRepairsBeforeCaching() {
+  const date = "2026-06-25";
+  const user = {
+    name: "Asha Rao",
+    phone: "+919000000001",
+    email: "asha@example.com",
+    birthDate: "1994-08-17",
+    birthTime: "06:35",
+    birthPlace: "Mumbai"
+  };
+  const repairedWisdom = getDailyWisdom(user, date);
+  const awkwardWisdomJson = JSON.stringify({
+    ...repairedWisdom,
+    wisdom: repairedWisdom.wisdom.replace(
+      "Finish the useful part and let the rest wait;",
+      "Let turn the useful part into one finish;"
+    )
+  });
+  const supabase = createFakeSupabase();
+  const openAiRequests = [];
+
+  const result = await createDailySoulWisdom({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-contract"
+  }, {
+    supabase,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async () => ({ configured: true, upserted: true }),
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return {
+              output_text: openAiRequests.length === 1
+                ? awkwardWisdomJson
+                : JSON.stringify(repairedWisdom)
+            };
+          }
+        }
+      };
+    }
+  });
+
+  const storedReading = [...supabase.state.dailyReadings.values()][0];
+
+  pushCheck("Soul Guru repairs awkward template joins before caching", [
+    openAiRequests.length === 2,
+    /matched low-quality or repeated phrasing rules/.test(openAiRequests[1].input),
+    result.quality?.attempts === 2,
+    result.quality?.repaired === true,
+    result.quality?.passed === true,
+    result.wisdom === repairedWisdom.wisdom,
+    storedReading.reading?.wisdom === repairedWisdom.wisdom,
+    !storedReading.reading?.wisdom.includes("Let turn")
+  ].every(Boolean));
+}
+
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const date = "2026-06-24";
@@ -612,6 +673,7 @@ async function main() {
   await checkCacheMissWritesAndSecondReadUsesCache();
   await checkSeedMismatchRepairsBeforeCaching();
   await checkMechanicalDirectAddressRepairsBeforeCaching();
+  await checkAwkwardTemplateJoinRepairsBeforeCaching();
   await checkCacheWriteFailureDoesNotReturnReading();
 
   const failed = checks.filter((check) => !check.passed);

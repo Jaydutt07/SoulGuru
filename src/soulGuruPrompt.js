@@ -275,6 +275,7 @@ export function isLowQualityWisdom(text) {
     /\balmost boring\b/,
     /\bquiet proof\b/,
     /\bthe best proof will be quiet\b/,
+    /\blet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/,
     /\bverdict on your worth\b/,
     /\btrust the process\b/,
     /\bsmall step\b/,

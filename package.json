@@ -14,6 +14,7 @@
     "astro:quality:ai": "node scripts/check-astro-solve-quality.mjs --include-ai",
     "astrology:check": "node scripts/check-astrology-contracts.mjs",
     "compatibility:check": "node scripts/check-compatibility-contracts.mjs",
+    "client:surface:check": "node scripts/check-client-product-surface-contracts.mjs",
     "auth:check": "node scripts/check-auth-contracts.mjs && node scripts/check-client-auth-flow-contracts.mjs && npm run api:auth:check",
     "api:auth:check": "node scripts/check-api-route-auth-contracts.mjs",
     "profile:check": "node scripts/check-profile-contracts.mjs",
