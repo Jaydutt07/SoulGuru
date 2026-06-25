@@ -36,15 +36,19 @@ await runStep("Soul Guru daily cache contract", "npm", ["run", "soul:cache:check
 await runStep("Soul Guru local reading quality", "npm", ["run", "soul:quality"]);
 await runStep("Soul Guru extended local reading diversity", "npm", ["run", "soul:quality:extended"]);
 await runStep("Astro Solves contract checks", "npm", ["run", "astro:check"]);
+await runStep("Astro Solves answer quality", "npm", ["run", "astro:quality"]);
 await runStep("OTP contract checks", "npm", ["run", "otp:check"]);
 
 if (includeAi) {
   if (hasEnv("OPENAI_API_KEY")) {
     await runStep("Soul Guru live OpenAI reading quality", "npm", ["run", "soul:quality:ai"]);
+    await runStep("Astro Solves live OpenAI answer quality", "npm", ["run", "astro:quality:ai"]);
   } else if (allowMissingExternal) {
     skipStep("Soul Guru live OpenAI reading quality", "OPENAI_API_KEY is not configured.");
+    skipStep("Astro Solves live OpenAI answer quality", "OPENAI_API_KEY is not configured.");
   } else {
     failStep("Soul Guru live OpenAI reading quality", "OPENAI_API_KEY is required for --include-ai.");
+    failStep("Astro Solves live OpenAI answer quality", "OPENAI_API_KEY is required for --include-ai.");
   }
 }
 

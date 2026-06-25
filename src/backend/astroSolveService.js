@@ -1,10 +1,15 @@
 import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
+import {
+  buildAstroSolveFingerprint,
+  buildFallbackAstroSolveInsight,
+  getAstroSolveContractIssues
+} from "../astroSolveGuidance.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertGuidanceMemory } from "./memoryService.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const ASTRO_SOLVE_PROMPT_VERSION = "astro-solve-v1";
+export const ASTRO_SOLVE_PROMPT_VERSION = "astro-solve-v2";
 export const ASTRO_SOLVE_FREE_ALLOWANCE = 3;
 export const ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE = 15;
 
@@ -12,22 +17,25 @@ const ASTRO_SOLVE_SYSTEM_PROMPT = `
 You are SoulGuru's Astro Solves mentor.
 
 The user will share a real-life problem. Use the astrology context directly and clearly, unlike Soul Guru's daily wisdom. The answer must feel specific, practical, and useful enough to justify a paid feature.
+Privately choose a unique route from the supplied Astro Solves fingerprint: the exact problem cue, natal Moon/Sun/Saturn, transit Moon/Saturn timing, daily area, emotional knot, and decision/body signals. Do not quote the fingerprint, but make the answer visibly shaped by it.
+Do not write from a reusable template. Avoid generic openings like "you may feel", "this phase", "the universe", "trust the process", "calm energy", or "the root looks". Use the user's actual problem words and concrete chart cues.
 
 Output valid JSON only:
 {
-  "root": "why this may be happening",
+  "root": "why this is happening beneath the surface",
   "astrology": "how the chart/transit pattern connects",
   "solution": "clear practical and spiritual steps"
 }
 
 Rules:
-- Each field should be 55 to 95 words.
+- Each field should be 65 to 110 words.
 - Speak in a grounded mentor tone: warm, direct, mature, not dramatic.
-- Mention specific astrological signals from the supplied context, but do not overclaim certainty.
+- Mention specific astrological signals from the supplied context: birth Moon, birth Sun, birth Saturn, transit Moon, transit Saturn, Saturn from natal Moon, life path, or daily area. Do not overclaim certainty or predict a guaranteed outcome.
 - The root section should name the emotional or behavioral pattern behind the problem.
 - The astrology section should connect birth Moon/Sun/Saturn, daily Moon, Saturn pressure, life path, or daily area to the problem.
-- The solution section should give a 7-day practical plan and one spiritual/remedy-style practice.
+- The solution section should give a 7-day practical plan and one simple spiritual/remedy-style practice.
 - If the topic involves health, safety, abuse, legal trouble, or severe distress, include a concise instruction to seek qualified professional help while still giving supportive guidance.
+- Do not hedge the core insight with may, might, could, vague energy language, or one-size-fits-all reassurance.
 - No markdown, bullets, emojis, or text outside JSON.
 `.trim();
 
@@ -67,19 +75,56 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   }
 
   const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
+  const fallback = normalizeAstroSolveAnswer(buildFallbackAstroSolveInsight(
+    question,
+    user,
+    astrologyContext,
+    Number(payload.priorCount || 0),
+    date
+  ));
   const client = makeOpenAIClient(apiKey, env);
-  const response = await requestOpenAIResponse(client, {
-    model,
-    instructions: ASTRO_SOLVE_SYSTEM_PROMPT,
-    input: buildAstroSolveInput({
+  let attempts = 1;
+  let responseText = await requestAstroSolve(client, model, buildAstroSolveInput({
+    user,
+    question,
+    context: astrologyContext,
+    today: payload.today || date
+  }), env);
+  let answer = normalizeAstroSolveAnswer(responseText, fallback);
+  let answerIssues = getAstroSolveContractIssues(answer, {
+    user,
+    question,
+    context: astrologyContext
+  });
+
+  if (answerIssues.length) {
+    responseText = await requestAstroSolve(client, model, buildAstroSolveRepairInput({
       user,
       question,
       context: astrologyContext,
-      today: payload.today || date
-    })
-  }, env);
+      today: payload.today || date,
+      rejectedAnswer: answer,
+      rejectionReason: answerIssues.join("; ")
+    }), env);
+    attempts = 2;
+    answer = normalizeAstroSolveAnswer(responseText, fallback);
+    answerIssues = getAstroSolveContractIssues(answer, {
+      user,
+      question,
+      context: astrologyContext
+    });
+  }
 
-  const answer = normalizeAstroSolveAnswer(response.output_text, payload.fallback);
+  const fallbackUsed = answerIssues.length > 0;
+  if (fallbackUsed) {
+    answer = fallback;
+    answerIssues = getAstroSolveContractIssues(answer, {
+      user,
+      question,
+      context: astrologyContext
+    });
+  }
+
   const result = {
     allowed: true,
     id: `astro-${Date.now()}`,
@@ -90,9 +135,16 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     answer,
     astrologyContext,
     source: allowance.isMember ? "member" : "free",
+    generationSource: fallbackUsed ? "quality-fallback" : "openai",
     stored: false,
     model,
     promptVersion: ASTRO_SOLVE_PROMPT_VERSION,
+    quality: {
+      attempts,
+      repaired: attempts > 1,
+      passed: answerIssues.length === 0,
+      fallbackUsed
+    },
     allowance: {
       ...allowance,
       used: allowance.used + 1,
@@ -167,9 +219,33 @@ Astrology context:
 - Work/creation signal: ${context.workSignal}
 - Stabilizer: ${context.stabilizer}
 - Avoid pattern: ${context.avoid}
+- Astro Solves fingerprint: ${buildAstroSolveFingerprint({ user, question, context, today })}
 
 Create the Astro Solves answer now.
 `.trim();
+}
+
+function buildAstroSolveRepairInput({ user, question, context, today, rejectedAnswer = {}, rejectionReason = "" }) {
+  return `
+${buildAstroSolveInput({ user, question, context, today })}
+
+The previous answer failed quality review:
+${rejectionReason}
+
+Rejected answer:
+${JSON.stringify(rejectedAnswer)}
+
+Rewrite from a different sentence structure. Keep JSON only, keep the user's exact concern visible, include specific chart/transit cues, and avoid repeated or vague phrasing.
+`.trim();
+}
+
+async function requestAstroSolve(client, model, input, env = process.env) {
+  const response = await requestOpenAIResponse(client, {
+    model,
+    instructions: ASTRO_SOLVE_SYSTEM_PROMPT,
+    input
+  }, env);
+  return response.output_text;
 }
 
 async function getAstroSolveAllowance({ supabase, userKey, payload }) {
@@ -281,7 +357,7 @@ function cleanAnswerField(text, fallback) {
     .replace(/\s+/g, " ")
     .trim();
 
-  return limitWords(normalized || fallback, 110);
+  return limitWords(normalized || fallback, 125);
 }
 
 function limitWords(text, maxWords) {

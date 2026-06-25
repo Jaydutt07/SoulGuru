@@ -48,11 +48,7 @@ async function checkLocalQuotaModeRequiresExplicitFlag() {
 
 async function checkExplicitLocalQuotaModeReturnsUnstoredAnswer() {
   const user = astroUser("local-quota-enabled");
-  const answerJson = JSON.stringify({
-    root: "The root pattern is that urgency is being used as proof of seriousness, so starting only feels valid when pressure is already high. The delay is less about laziness and more about not trusting ordinary preparation.",
-    astrology: "The supplied context points toward work rhythm, timing pressure, and emotional caution around visible results. Use the pattern as a signal to reduce the task into a cleaner first commitment rather than waiting for confidence.",
-    solution: "For seven days, begin with a ten-minute work block before checking reactions or messages. Keep one written target for the day, close the smallest loop before noon, and use a brief evening lamp practice to reset attention."
-  });
+  const answerJson = passingAstroAnswerJson("blocked work");
   const openAiRequests = [];
 
   const result = await createAstroSolve({
@@ -83,6 +79,8 @@ async function checkExplicitLocalQuotaModeReturnsUnstoredAnswer() {
     result.allowance?.limit === ASTRO_SOLVE_FREE_ALLOWANCE,
     result.allowance?.used === 1,
     result.allowance?.remaining === ASTRO_SOLVE_FREE_ALLOWANCE - 1,
+    result.generationSource === "openai",
+    result.quality?.passed === true,
     openAiRequests.length === 1
   ].every(Boolean));
 }
@@ -315,6 +313,7 @@ async function checkStorageFailureDoesNotReturnAnswer() {
   const openAiRequests = [];
   const memoryUpserts = [];
   const originalWarn = console.warn;
+  const answerJson = passingAstroAnswerJson("job change");
   let error = null;
 
   try {
@@ -335,7 +334,7 @@ async function checkStorageFailureDoesNotReturnAnswer() {
           responses: {
             create: async (request) => {
               openAiRequests.push(request);
-              return { output_text: "{}" };
+              return { output_text: answerJson };
             }
           }
         };
@@ -559,6 +558,14 @@ function makeQuestions(userKey, count) {
     answer: {},
     created_at: "2026-06-01T00:00:00.000Z"
   }));
+}
+
+function passingAstroAnswerJson(cue) {
+  return JSON.stringify({
+    root: `The root is not lack of effort; it is the pressure around ${cue} becoming too tied to self-respect. The mind waits for a perfect feeling before taking a plain step, so delay starts to look like evidence against the person. Bring the issue back to one request, one limit, and one action that can be completed today. The emotional discomfort is a signal to create structure, not proof that the whole path is wrong.`,
+    astrology: `Birth Moon and birth Saturn show how responsibility is carried, while transit Moon and transit Saturn describe why ${cue} feels heavier today. The Moon points to the emotional reflex; Saturn points to discipline, timing, and earned confidence. This chart pattern does not guarantee an outcome. It explains why the problem needs a smaller container, visible effort, and fewer assumptions before the next decision is made.`,
+    solution: `For seven days, make ${cue} measurable. Day 1: write the exact question and remove one assumption. Day 2: choose one visible action before noon. Days 3 to 5: repeat the action at the same time and record what changed. Days 6 and 7: review evidence before asking for reassurance. Keep the remedy simple: light a lamp after sunset, take nine slow breaths, and ask for discipline before comfort.`
+  });
 }
 
 function astroUser(id) {

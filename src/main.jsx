@@ -31,6 +31,7 @@ import {
   signOutClerk
 } from "./authClient.js";
 import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
+import { buildFallbackAstroSolveInsight } from "./astroSolveGuidance.js";
 import { generateCompatibility } from "./compatibility.js";
 import { buildFallbackDeepGuidance } from "./deepGuidance.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
@@ -685,7 +686,7 @@ function AstroSolvesTab({ user, updateUser }) {
 
     try {
       const context = buildAstrologyContext(user);
-      const fallback = generateProblemInsight(question, user, solvedProblems.length);
+      const fallback = generateProblemInsight(question, user, solvedProblems.length, context);
       const response = await authFetch(getApiUrl("/api/astro-solve"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2398,85 +2399,8 @@ function cleanInsightText(text, fallback) {
     .trim();
 }
 
-function generateProblemInsight(problem, user, index) {
-  const text = problem.trim();
-  const type = detectProblemType(text);
-  const sign = getWesternZodiac(user.birthDate);
-  const lifePath = reduceDigits(user.birthDate);
-  const id = `problem-${Date.now()}-${index}`;
-
-  return {
-    id,
-    problem: text,
-    root: `${type.root} Your ${sign.sign} nature wants ${sign.need}, while life path ${lifePath} asks you to build steadier habits before expecting relief.`,
-    astrology: `${type.astro} In your chart reading, this points to pressure around ${type.house}. Treat it as a timing pattern: the lesson is not punishment, it is refinement through better choices.`,
-    solution: `${type.solution} Keep the remedy practical for seven days: one clear intention at sunrise, one disciplined action before noon, and one honest reflection at night. If the situation involves another person, speak after your body has settled.`
-  };
-}
-
-function detectProblemType(problem) {
-  const lower = problem.toLowerCase();
-  if (/love|partner|marriage|relationship|breakup|trust/.test(lower)) {
-    return {
-      root: "The root looks emotional: expectation, fear of rejection, and unclear boundaries are mixing together.",
-      astro: "The relationship houses show a need for balance between attachment and self-respect.",
-      house: "partnership, trust, and emotional security",
-      solution: "Do not force closeness through repeated explanations. Ask for one honest conversation, then watch actions more than promises."
-    };
-  }
-  if (/job|career|work|boss|money|business|study|exam/.test(lower)) {
-    return {
-      root: "The root looks practical: pressure is building because effort, recognition, and timing are not moving together yet.",
-      astro: "The career and discipline zones are asking for structure before reward.",
-      house: "work, responsibility, and public progress",
-      solution: "Choose one measurable target, reduce distractions, and document your effort daily so confidence is based on evidence."
-    };
-  }
-  if (/family|parent|home|mother|father|sibling/.test(lower)) {
-    return {
-      root: "The root looks ancestral and emotional: old roles may be making you responsible for more than your share.",
-      astro: "The home and roots zone is asking you to heal without carrying every burden alone.",
-      house: "family duty, belonging, and emotional memory",
-      solution: "Respect the bond, but separate love from over-functioning. Offer help that has a clear limit."
-    };
-  }
-  if (/health|sleep|anxiety|stress|tired|fear/.test(lower)) {
-    return {
-      root: "The root looks energetic: your body may be reacting to pressure that your mind keeps postponing.",
-      astro: "The wellness zone asks for rhythm, food, rest, and less emotional leakage.",
-      house: "daily routine, nerves, and recovery",
-      solution: "Return to basics first. Eat on time, sleep earlier, walk daily, and get professional care if symptoms feel intense or persistent."
-    };
-  }
-  return {
-    root: "The root looks like a conflict between what your heart knows and what your routine keeps repeating.",
-    astro: "The present pattern highlights decision-making, discipline, and emotional truth.",
-    house: "clarity, courage, and personal direction",
-    solution: "Write the problem in one sentence, name the next right action, and take that action before asking for more signs."
-  };
-}
-
-function getWesternZodiac(dateString) {
-  const date = parseDate(dateString);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const signs = [
-    ["Capricorn", 1, 19, "stability", "earth"],
-    ["Aquarius", 2, 18, "freedom", "air"],
-    ["Pisces", 3, 20, "emotional safety", "water"],
-    ["Aries", 4, 19, "direct movement", "fire"],
-    ["Taurus", 5, 20, "security", "earth"],
-    ["Gemini", 6, 20, "mental variety", "air"],
-    ["Cancer", 7, 22, "care", "water"],
-    ["Leo", 8, 22, "recognition", "fire"],
-    ["Virgo", 9, 22, "order", "earth"],
-    ["Libra", 10, 22, "harmony", "air"],
-    ["Scorpio", 11, 21, "depth", "water"],
-    ["Sagittarius", 12, 21, "meaning", "fire"]
-  ];
-  const found = signs.find(([, endMonth, endDay]) => month < endMonth || (month === endMonth && day <= endDay));
-  const [sign, , , need, element] = found || signs[0];
-  return { sign, need, element };
+function generateProblemInsight(problem, user, index, context = buildAstrologyContext(user)) {
+  return buildFallbackAstroSolveInsight(problem, user, context, index, new Date().toISOString().slice(0, 10));
 }
 
 function getSaadeSatiReport(user, now) {

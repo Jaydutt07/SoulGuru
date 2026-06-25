@@ -241,6 +241,18 @@ Check the Astro Solves allowance/storage contract without contacting OpenAI or S
 npm run astro:check
 ```
 
+Check Astro Solves answer quality, field depth, chart specificity, practical remedies, safety phrasing, and five-case diversity:
+
+```bash
+npm run astro:quality
+```
+
+Run the same quality gate with live OpenAI Astro Solves answers:
+
+```bash
+npm run astro:quality:ai
+```
+
 Check the OTP hashing, delivery, attempts, and expiry contract without sending messages:
 
 ```bash
@@ -416,7 +428,7 @@ Set `RAZORPAY_WEBHOOK_URL` to the exact production HTTPS webhook URL and set `RA
 
 `POST /api/astro-solve`
 
-Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
+Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. The backend uses a v2 quality guard that repairs generic answers once, then falls back to a chart-specific local answer rather than returning vague filler. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
 
 `POST /api/guidance-memory`
 

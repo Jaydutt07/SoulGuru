@@ -48,6 +48,7 @@ This project is being built toward the stack shown in the product planning image
 - Offline Sentry/PostHog observability contract checker for initialization, backend API capture, and analytics privacy
 - Server-side Astro Solves route with OpenAI answer generation, quota checks, and Supabase storage
 - Offline Astro Solves quota, paid-bonus, storage, and memory contract checker
+- Offline Astro Solves answer quality checker for chart specificity, concrete remedies, safety wording, and five-problem diversity
 - Optional Clerk Bearer-token verification for AI/payment routes with production auth enforcement switch
 - Optional ClerkJS frontend bridge so configured production sessions send Bearer tokens to backend routes
 - Settings drawer Clerk secure-session status and account controls for strict backend auth rollout
