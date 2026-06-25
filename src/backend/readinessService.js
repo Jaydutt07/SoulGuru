@@ -1,3 +1,8 @@
+import {
+  buildProviderReadinessMatrix,
+  summarizeProviderReadiness
+} from "./providerStack.js";
+
 export function buildDeploymentReadiness(env = process.env) {
   const checks = [
     checkRequired(env, "openai", "OpenAI AI routes", [
@@ -24,7 +29,7 @@ export function buildDeploymentReadiness(env = process.env) {
   const warnings = checks.filter((check) => check.status === "warn" || (check.severity === "warning" && check.status === "fail"));
   const ready = failedChecks.length === 0;
 
-  return {
+  const report = {
     ok: ready,
     service: "SoulGuru API",
     status: ready ? "ready" : "needs_configuration",
@@ -36,6 +41,13 @@ export function buildDeploymentReadiness(env = process.env) {
       warnings: warnings.length
     },
     checks: checks.map(sanitizeCheck)
+  };
+  const providers = buildProviderReadinessMatrix(report);
+
+  return {
+    ...report,
+    providerSummary: summarizeProviderReadiness(providers),
+    providers
   };
 }
 

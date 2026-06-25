@@ -131,13 +131,16 @@ async function checkHealth() {
 
 async function checkReadiness() {
   const result = await requestJson("GET", "/api/readiness");
-  const passed = [200, 503].includes(result.status) && typeof result.body?.ok === "boolean";
+  const providerSummary = result.body?.providerSummary;
+  const passed = [200, 503].includes(result.status) && typeof result.body?.ok === "boolean" && hasProviderReadiness(result.body);
   pushCheck({
     id: "readiness",
     label: "Readiness endpoint",
     passed,
     status: result.status,
-    detail: passed ? `Readiness status is ${result.body.status}.` : "Expected readiness JSON with ok boolean."
+    detail: passed
+      ? `Readiness status is ${result.body.status}; providers ready ${providerSummary.ready}/${providerSummary.total}.`
+      : "Expected readiness JSON with ok boolean and provider summary."
   });
 }
 
@@ -385,6 +388,10 @@ function getArgValue(name) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function hasProviderReadiness(body) {
+  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
 }
 
 function stopServer(child) {

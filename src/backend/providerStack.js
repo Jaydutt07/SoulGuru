@@ -173,29 +173,30 @@ export function buildProviderReadinessMatrix(readiness) {
   const checksById = new Map((readiness?.checks || []).map((check) => [check.id, check]));
 
   return PROVIDER_STACK.map((provider) => {
+    const hasEnvScope = Boolean(provider.envScope?.length);
     const checks = provider.readinessChecks
       .map((id) => checksById.get(id))
       .filter(Boolean)
-      .map((check) => ({
-        id: check.id,
-        label: check.label,
-        severity: check.severity,
-        status: check.status,
-        missingEnv: [...check.missingEnv]
-      }));
+      .map((check) => {
+        const missingEnv = scopeMissingEnv([...check.missingEnv], provider.envScope);
+        return {
+          id: check.id,
+          label: check.label,
+          severity: check.severity,
+          status: hasEnvScope ? (missingEnv.length ? check.status : "pass") : check.status,
+          missingEnv
+        };
+      });
     const missingCheckIds = provider.readinessChecks.filter((id) => !checksById.has(id));
     const failingChecks = checks.filter((check) => check.status !== "pass");
-    const missingEnv = scopeMissingEnv(
-      unique(failingChecks.flatMap((check) => check.missingEnv)),
-      provider.envScope
-    );
+    const missingEnv = unique(failingChecks.flatMap((check) => check.missingEnv));
 
     return {
       id: provider.id,
       name: provider.name,
       planningImageLabel: provider.planningImageLabel,
       purpose: provider.purpose,
-      status: getProviderStatus({ checks, missingCheckIds, missingEnv, hasEnvScope: Boolean(provider.envScope?.length) }),
+      status: getProviderStatus({ checks, missingCheckIds, missingEnv, hasEnvScope }),
       missingEnv,
       checks,
       missingCheckIds,

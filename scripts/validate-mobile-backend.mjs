@@ -90,10 +90,10 @@ async function checkReadiness(baseUrl, { allowNotReady: shouldAllowNotReady }) {
     fail(`Unable to reach backend readiness check at ${readinessUrl}: ${error.message}`);
   });
   const body = await response.json().catch(() => null);
-  const validPayload = [200, 503].includes(response?.status) && typeof body?.ok === "boolean";
+  const validPayload = [200, 503].includes(response?.status) && typeof body?.ok === "boolean" && hasProviderReadiness(body);
 
   if (!validPayload) {
-    fail(`Backend readiness check at ${readinessUrl} did not return the expected readiness payload.`);
+    fail(`Backend readiness check at ${readinessUrl} did not return the expected provider-aware readiness payload.`);
   }
 
   if (!body.ok && !shouldAllowNotReady) {
@@ -121,4 +121,8 @@ function summarizeMissingReadiness(body) {
     .map((check) => check.id || check.label)
     .filter(Boolean)
     .join(", ");
+}
+
+function hasProviderReadiness(body) {
+  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
 }

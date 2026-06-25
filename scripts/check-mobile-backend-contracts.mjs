@@ -33,7 +33,17 @@ async function checkReadyBackendPasses() {
   const backend = await startBackend({
     ok: true,
     status: "ready",
-    checks: []
+    checks: [],
+    providerSummary: {
+      total: 2,
+      ready: 2,
+      needsConfiguration: 0,
+      unmapped: 0
+    },
+    providers: [
+      { id: "supabase", status: "ready", missingEnv: [] },
+      { id: "razorpay", status: "ready", missingEnv: [] }
+    ]
   });
 
   try {
@@ -93,6 +103,16 @@ function notReadyPayload() {
     checks: [
       { id: "supabase", label: "Supabase persistence", status: "fail" },
       { id: "razorpay", label: "Razorpay checkout", status: "fail" }
+    ],
+    providerSummary: {
+      total: 2,
+      ready: 0,
+      needsConfiguration: 2,
+      unmapped: 0
+    },
+    providers: [
+      { id: "supabase", status: "needs_configuration", missingEnv: ["SUPABASE_URL"] },
+      { id: "razorpay", status: "needs_configuration", missingEnv: ["RAZORPAY_KEY_ID"] }
     ]
   };
 }

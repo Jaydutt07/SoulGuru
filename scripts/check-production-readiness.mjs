@@ -29,6 +29,9 @@ function printReport(readiness, { strict }) {
   console.log(`SoulGuru production readiness: ${readiness.status}`);
   console.log(`Generated: ${readiness.generatedAt}`);
   console.log(`Checks: ${readiness.summary.passing}/${readiness.summary.total} passing, ${readiness.summary.warnings} warnings`);
+  if (readiness.providerSummary) {
+    console.log(`Providers: ${readiness.providerSummary.ready}/${readiness.providerSummary.total} ready, ${readiness.providerSummary.needsConfiguration} need configuration, ${readiness.providerSummary.unmapped} unmapped`);
+  }
   if (strict) {
     console.log("Mode: strict");
   }

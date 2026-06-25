@@ -119,11 +119,33 @@ function writeCoreEndpoint(req, res) {
   }
 
   if (req.url === "/api/readiness") {
-    writeJson(res, 200, { ok: true, status: "ready", checks: [] });
+    writeJson(res, 200, readyPayload());
     return true;
   }
 
   return false;
+}
+
+function readyPayload() {
+  return {
+    ok: true,
+    status: "ready",
+    checks: [],
+    providerSummary: {
+      total: 1,
+      ready: 1,
+      needsConfiguration: 0,
+      unmapped: 0
+    },
+    providers: [
+      {
+        id: "github",
+        name: "GitHub",
+        status: "ready",
+        missingEnv: []
+      }
+    ]
+  };
 }
 
 function startBackend(handler) {

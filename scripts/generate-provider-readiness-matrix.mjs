@@ -14,8 +14,8 @@ const env = {
 };
 
 const readiness = buildDeploymentReadiness(env);
-const matrix = buildProviderReadinessMatrix(readiness);
-const summary = summarizeProviderReadiness(matrix);
+const matrix = readiness.providers || buildProviderReadinessMatrix(readiness);
+const summary = readiness.providerSummary || summarizeProviderReadiness(matrix);
 
 if (outputJson) {
   console.log(JSON.stringify({ summary, providers: matrix }, null, 2));

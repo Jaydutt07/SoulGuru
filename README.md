@@ -477,6 +477,7 @@ Basic API health check for deployment.
 `GET /api/readiness`
 
 Safe deployment readiness report. It returns no secret values, only pass/fail metadata for OpenAI, Supabase, birth-place geocoding, OTP delivery, Resend transactional email, Razorpay, rate limiting, Pinecone, Clerk, and observability configuration. The endpoint reports `ready` only when the full planned production stack is configured.
+The response also includes `providerSummary` and a secret-safe `providers` matrix for the planning-image stack, so deployed smoke tests and backend-connected APK builds can reject stale backends that do not expose provider-aware readiness.
 URL-shaped production env values such as `SUPABASE_URL`, `PLACE_GEOCODER_URL`, `OTP_SMS_WEBHOOK_URL`, `UPSTASH_REDIS_REST_URL`, Sentry DSNs, PostHog host, and `PINECONE_HOST` are validated for production-safe shape before readiness can pass.
 Placeholder-looking values such as `fake-*`, `replace-*`, `dummy`, `placeholder`, `$VAR`, or `<secret>` are treated as missing in readiness output.
 

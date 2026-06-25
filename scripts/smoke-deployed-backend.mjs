@@ -58,18 +58,19 @@ async function checkHealth() {
 async function checkReadiness() {
   const result = await requestJson("/api/readiness");
   const readinessStatus = result.body?.status || "unknown";
-  const validReadiness = [200, 503].includes(result.status) && typeof result.body?.ok === "boolean";
+  const validReadiness = [200, 503].includes(result.status) && typeof result.body?.ok === "boolean" && hasProviderReadiness(result.body);
   const passed = validReadiness && (!expectReady || result.body?.ok === true);
+  const providerSummary = result.body?.providerSummary;
   pushCheck({
     id: "readiness",
     label: "Readiness endpoint",
     passed,
     status: result.status,
     detail: passed
-      ? `Readiness status: ${readinessStatus}.`
+      ? `Readiness status: ${readinessStatus}; providers ready ${providerSummary.ready}/${providerSummary.total}.`
       : expectReady
         ? "Deployment is reachable but not production-ready yet."
-        : "Expected /api/readiness to return a readiness JSON payload."
+        : "Expected /api/readiness to return a readiness JSON payload with provider summary."
   });
 }
 
@@ -261,6 +262,10 @@ function printReport(result) {
 function getArgValue(name) {
   const arg = process.argv.find((value) => value.startsWith(`${name}=`));
   return arg ? arg.slice(name.length + 1) : "";
+}
+
+function hasProviderReadiness(body) {
+  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
 }
 
 function fail(message) {

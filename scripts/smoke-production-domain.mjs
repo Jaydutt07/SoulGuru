@@ -163,18 +163,19 @@ async function checkBackendHealth() {
 
 async function checkBackendReadiness() {
   const result = await requestJson("/api/readiness");
-  const validPayload = [200, 503].includes(result.status) && typeof result.body?.ok === "boolean";
+  const validPayload = [200, 503].includes(result.status) && typeof result.body?.ok === "boolean" && hasProviderReadiness(result.body);
   const passed = validPayload && (!expectReady || result.body?.ok === true);
+  const providerSummary = result.body?.providerSummary;
   pushCheck({
     id: "readiness",
     label: "Domain readiness endpoint",
     passed,
     status: result.status,
     detail: passed
-      ? `Production domain readiness status: ${result.body?.status || "unknown"}.`
+      ? `Production domain readiness status: ${result.body?.status || "unknown"}; providers ready ${providerSummary.ready}/${providerSummary.total}.`
       : expectReady
         ? "Production domain is reachable but /api/readiness is not ready."
-        : "Expected production domain /api/readiness to return a readiness JSON payload."
+        : "Expected production domain /api/readiness to return a readiness JSON payload with provider summary."
   });
 }
 
@@ -208,6 +209,10 @@ function pushCheck(check) {
   if (!check.passed) {
     report.ok = false;
   }
+}
+
+function hasProviderReadiness(body) {
+  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
 }
 
 function printReport(result) {

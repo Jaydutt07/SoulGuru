@@ -1,9 +1,11 @@
 import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
+import { PROVIDER_STACK } from "../src/backend/providerStack.js";
 
 const checks = [];
 
 checkFullProductionStackIsReady();
 checkPartialStackIsNotReady();
+checkReadinessPayloadIncludesProviderMatrix();
 checkUncachedSoulWisdomIsNotReady();
 checkLocalAstroSolvesQuotaIsNotReady();
 checkLocalMoreGuidanceAccessIsNotReady();
@@ -54,6 +56,30 @@ function checkPartialStackIsNotReady() {
     warningFailures.some((check) => check.id === "clerk"),
     warningFailures.some((check) => check.id === "observability"),
     warningFailures.some((check) => check.id === "domainDns")
+  ].every(Boolean));
+}
+
+function checkReadinessPayloadIncludesProviderMatrix() {
+  const readyReport = buildDeploymentReadiness(fullEnv());
+  const missingReport = buildDeploymentReadiness({});
+  const posthog = missingReport.providers.find((provider) => provider.id === "posthog");
+  const sentry = missingReport.providers.find((provider) => provider.id === "sentry");
+  const supabase = missingReport.providers.find((provider) => provider.id === "supabase");
+
+  pushCheck("Readiness payload includes the provider stack matrix", [
+    Array.isArray(readyReport.providers),
+    readyReport.providerSummary?.total === PROVIDER_STACK.length,
+    readyReport.providerSummary?.ready === PROVIDER_STACK.length,
+    readyReport.providerSummary?.needsConfiguration === 0,
+    readyReport.providerSummary?.unmapped === 0,
+    readyReport.providers.every((provider) => provider.status === "ready"),
+    missingReport.providerSummary?.total === PROVIDER_STACK.length,
+    missingReport.providerSummary?.needsConfiguration > 0,
+    supabase?.missingEnv.includes("SUPABASE_URL"),
+    posthog?.missingEnv.includes("VITE_POSTHOG_KEY"),
+    !posthog?.missingEnv.some((name) => String(name).includes("SENTRY")),
+    sentry?.missingEnv.includes("SENTRY_DSN or VITE_SENTRY_DSN"),
+    !sentry?.missingEnv.includes("VITE_POSTHOG_KEY")
   ].every(Boolean));
 }
 
