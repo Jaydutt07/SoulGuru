@@ -78,7 +78,7 @@ if (smokeUrl) {
 } else if (allowMissingExternal) {
   skipStep("Deployed backend smoke", "VITE_API_BASE_URL/API_BASE_URL or --url is not configured.");
 } else {
-  failStep("Deployed backend smoke", "Provide --url=https://your-vercel-app.vercel.app or set VITE_API_BASE_URL.");
+  failStep("Deployed backend smoke", "Provide --url=https://your-production-domain.app or set VITE_API_BASE_URL.");
 }
 
 if (hasEnv("VITE_API_BASE_URL")) {

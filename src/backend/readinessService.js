@@ -16,7 +16,8 @@ export function buildDeploymentReadiness(env = process.env) {
     checkRateLimit(env),
     checkPinecone(env),
     checkClerk(env),
-    checkObservability(env)
+    checkObservability(env),
+    checkDomainDns(env)
   ];
 
   const failedChecks = checks.filter((check) => check.status === "fail");
@@ -377,6 +378,54 @@ function checkClerk(env) {
   };
 }
 
+function checkDomainDns(env) {
+  const missing = [];
+  const productionDomain = String(env.PRODUCTION_DOMAIN || "").trim().toLowerCase();
+  const apiBaseUrl = String(env.VITE_API_BASE_URL || "").trim();
+  const dnsReady = String(env.CLOUDFLARE_DNS_READY || "false").toLowerCase() === "true";
+
+  if (!hasEnv(env, "PRODUCTION_DOMAIN")) {
+    missing.push("PRODUCTION_DOMAIN");
+  } else if (!isValidProductionDomain(productionDomain)) {
+    missing.push("PRODUCTION_DOMAIN=valid domain");
+  }
+
+  if (!hasEnv(env, "CLOUDFLARE_ZONE_ID")) {
+    missing.push("CLOUDFLARE_ZONE_ID");
+  } else if (!isValidCloudflareZoneId(env.CLOUDFLARE_ZONE_ID)) {
+    missing.push("CLOUDFLARE_ZONE_ID=Cloudflare zone id");
+  }
+
+  if (!dnsReady) {
+    missing.push("CLOUDFLARE_DNS_READY=true");
+  }
+
+  if (!hasEnv(env, "VITE_API_BASE_URL")) {
+    missing.push("VITE_API_BASE_URL");
+  } else if (!isProductionHttpsUrl(apiBaseUrl)) {
+    missing.push("VITE_API_BASE_URL=production HTTPS URL");
+  } else if (isValidProductionDomain(productionDomain) && !urlBelongsToDomain(apiBaseUrl, productionDomain)) {
+    missing.push("VITE_API_BASE_URL=production domain or subdomain");
+  }
+
+  return {
+    id: "domainDns",
+    label: "Production domain and DNS",
+    severity: "warning",
+    status: missing.length ? "fail" : "pass",
+    requiredEnv: [
+      "PRODUCTION_DOMAIN=valid domain",
+      "CLOUDFLARE_ZONE_ID=Cloudflare zone id",
+      "CLOUDFLARE_DNS_READY=true",
+      "VITE_API_BASE_URL=production HTTPS URL"
+    ],
+    missingEnv: missing,
+    advice: missing.length
+      ? "Configure the Namecheap domain in Cloudflare DNS and point the production app/API URL at that HTTPS domain before launch."
+      : ""
+  };
+}
+
 function sanitizeCheck(check) {
   return {
     id: check.id,
@@ -404,6 +453,45 @@ function isHttpsUrl(value) {
   try {
     const url = new URL(String(value || "").trim());
     return url.protocol === "https:" && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isProductionHttpsUrl(value) {
+  if (!isHttpsUrl(value)) return false;
+  const hostname = new URL(String(value || "").trim()).hostname.toLowerCase();
+  return isValidProductionDomain(hostname);
+}
+
+function isValidProductionDomain(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "");
+
+  if (!normalized || normalized.length > 253) return false;
+  if (/^https?:\/\//i.test(normalized)) return false;
+  if (/[/?#:\s]/.test(normalized)) return false;
+  if (normalized === "localhost" || normalized.endsWith(".localhost")) return false;
+  if (normalized === "example.com" || normalized.endsWith(".example.com")) return false;
+  if (normalized.endsWith(".example") || normalized.endsWith(".test") || normalized.endsWith(".invalid")) return false;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) return false;
+
+  const labels = normalized.split(".");
+  if (labels.length < 2) return false;
+  return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label));
+}
+
+function isValidCloudflareZoneId(value) {
+  return /^[a-f0-9]{16,64}$/i.test(String(value || "").trim());
+}
+
+function urlBelongsToDomain(value, domain) {
+  try {
+    const hostname = new URL(String(value || "").trim()).hostname.toLowerCase();
+    const normalizedDomain = String(domain || "").trim().toLowerCase().replace(/\.$/, "");
+    return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`);
   } catch {
     return false;
   }

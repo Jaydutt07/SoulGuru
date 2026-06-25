@@ -46,9 +46,10 @@ function buildChecklist(report) {
     "## Final Verification",
     "",
     "- [ ] Apply Supabase migrations before enabling production traffic.",
+    "- [ ] Point the Namecheap domain through Cloudflare DNS and set `CLOUDFLARE_DNS_READY=true` only after the HTTPS app URL resolves correctly.",
     "- [ ] Configure Razorpay webhook URL to `/api/razorpay-webhook` with the same webhook secret set in Vercel.",
     "- [ ] Run `npm run production:check` locally with production env loaded.",
-    "- [ ] Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing` before release.",
+    "- [ ] Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
     "- [ ] Build backend-connected mobile output only with `VITE_API_BASE_URL` pointing at the deployed HTTPS backend.",
     ""
   ];
@@ -117,6 +118,14 @@ function buildHint(requirement, example) {
     hints.push("valid Sentry DSN");
   } else if (requirement.includes("=valid HTTPS URL or host")) {
     hints.push("Pinecone HTTPS URL or host");
+  } else if (requirement.includes("=valid domain")) {
+    hints.push("registered production domain, e.g. `soulguru.app`");
+  } else if (requirement.includes("=Cloudflare zone id")) {
+    hints.push("Cloudflare zone ID");
+  } else if (requirement.includes("=production HTTPS URL")) {
+    hints.push("HTTPS URL on the production domain");
+  } else if (requirement.includes("=production domain or subdomain")) {
+    hints.push("must use `PRODUCTION_DOMAIN` or one of its subdomains");
   }
 
   if (example && !isBlankOrPlaceholder(example)) {

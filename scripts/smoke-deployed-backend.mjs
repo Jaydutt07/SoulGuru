@@ -6,7 +6,7 @@ const authToken = getArgValue("--auth-token") || process.env.DEPLOYMENT_SMOKE_AU
 const baseUrl = rawBaseUrl.trim().replace(/\/$/, "");
 
 if (!baseUrl) {
-  fail("Provide --url=https://your-vercel-app.vercel.app or set VITE_API_BASE_URL.");
+  fail("Provide --url=https://your-production-domain.app or set VITE_API_BASE_URL.");
 }
 
 let parsedUrl;

@@ -11,6 +11,7 @@ checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
 checkInvalidServiceUrlsAreNotReady();
+checkInvalidDomainDnsIsNotReady();
 checkInvalidEmailSenderIsNotReady();
 checkPlaceholderValuesAreNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
@@ -49,7 +50,8 @@ function checkPartialStackIsNotReady() {
     warningFailures.some((check) => check.id === "rateLimit"),
     warningFailures.some((check) => check.id === "pinecone"),
     warningFailures.some((check) => check.id === "clerk"),
-    warningFailures.some((check) => check.id === "observability")
+    warningFailures.some((check) => check.id === "observability"),
+    warningFailures.some((check) => check.id === "domainDns")
   ].every(Boolean));
 }
 
@@ -63,7 +65,9 @@ function checkPlaceholderValuesAreNotReady() {
     RESEND_API_KEY: "fake-resend-key",
     UPSTASH_REDIS_REST_TOKEN: "$UPSTASH_TOKEN",
     PINECONE_API_KEY: "dummy-pinecone-key",
-    VITE_POSTHOG_KEY: "placeholder"
+    VITE_POSTHOG_KEY: "placeholder",
+    PRODUCTION_DOMAIN: "example.com",
+    CLOUDFLARE_ZONE_ID: "replace-with-zone-id"
   });
   const openai = report.checks.find((check) => check.id === "openai");
   const supabase = report.checks.find((check) => check.id === "supabase");
@@ -73,6 +77,7 @@ function checkPlaceholderValuesAreNotReady() {
   const rateLimit = report.checks.find((check) => check.id === "rateLimit");
   const pinecone = report.checks.find((check) => check.id === "pinecone");
   const observability = report.checks.find((check) => check.id === "observability");
+  const domainDns = report.checks.find((check) => check.id === "domainDns");
 
   pushCheck("Readiness treats placeholder env values as missing", [
     report.ok === false,
@@ -83,7 +88,9 @@ function checkPlaceholderValuesAreNotReady() {
     transactionalEmail?.missingEnv.includes("RESEND_API_KEY"),
     rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_TOKEN"),
     pinecone?.missingEnv.includes("PINECONE_API_KEY"),
-    observability?.missingEnv.includes("VITE_POSTHOG_KEY")
+    observability?.missingEnv.includes("VITE_POSTHOG_KEY"),
+    domainDns?.missingEnv.includes("PRODUCTION_DOMAIN=valid domain"),
+    domainDns?.missingEnv.includes("CLOUDFLARE_ZONE_ID")
   ].every(Boolean));
 }
 
@@ -212,7 +219,10 @@ function checkInvalidServiceUrlsAreNotReady() {
     UPSTASH_REDIS_REST_URL: "http://upstash.example.test",
     PINECONE_HOST: "bad host",
     SENTRY_DSN: "not-a-dsn",
-    VITE_POSTHOG_HOST: "not-a-url"
+    VITE_POSTHOG_HOST: "not-a-url",
+    PRODUCTION_DOMAIN: "https://soulguru.app",
+    CLOUDFLARE_ZONE_ID: "not-a-zone",
+    VITE_API_BASE_URL: "https://preview.vercel.app"
   });
 
   const supabase = supabaseReport.checks.find((check) => check.id === "supabase");
@@ -221,6 +231,7 @@ function checkInvalidServiceUrlsAreNotReady() {
   const rateLimit = vendorReport.checks.find((check) => check.id === "rateLimit");
   const pinecone = vendorReport.checks.find((check) => check.id === "pinecone");
   const observability = vendorReport.checks.find((check) => check.id === "observability");
+  const domainDns = vendorReport.checks.find((check) => check.id === "domainDns");
 
   pushCheck("Readiness rejects malformed service URLs and DSNs", [
     supabaseReport.ok === false,
@@ -238,7 +249,33 @@ function checkInvalidServiceUrlsAreNotReady() {
     pinecone?.missingEnv.includes("PINECONE_HOST=valid HTTPS URL or host"),
     observability?.status === "fail",
     observability?.missingEnv.includes("SENTRY_DSN=valid Sentry DSN"),
-    observability?.missingEnv.includes("VITE_POSTHOG_HOST=https URL")
+    observability?.missingEnv.includes("VITE_POSTHOG_HOST=https URL"),
+    domainDns?.status === "fail",
+    domainDns?.missingEnv.includes("PRODUCTION_DOMAIN=valid domain"),
+    domainDns?.missingEnv.includes("CLOUDFLARE_ZONE_ID=Cloudflare zone id")
+  ].every(Boolean));
+}
+
+function checkInvalidDomainDnsIsNotReady() {
+  const localUrlReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    VITE_API_BASE_URL: "http://localhost:5173"
+  });
+  const mismatchReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    PRODUCTION_DOMAIN: "soulguru.app",
+    VITE_API_BASE_URL: "https://other-domain.app"
+  });
+  const localUrl = localUrlReport.checks.find((check) => check.id === "domainDns");
+  const mismatch = mismatchReport.checks.find((check) => check.id === "domainDns");
+
+  pushCheck("Readiness rejects non-production domain and DNS values", [
+    localUrlReport.ok === false,
+    localUrl?.status === "fail",
+    localUrl?.missingEnv.includes("VITE_API_BASE_URL=production HTTPS URL"),
+    mismatchReport.ok === false,
+    mismatch?.status === "fail",
+    mismatch?.missingEnv.includes("VITE_API_BASE_URL=production domain or subdomain")
   ].every(Boolean));
 }
 
@@ -278,7 +315,11 @@ function fullEnv() {
     VITE_POSTHOG_KEY: "phc_contract_123456",
     VITE_POSTHOG_HOST: "https://analytics.soulguru.app",
     RESEND_API_KEY: "re_contract_key_123456",
-    RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>",
+    PRODUCTION_DOMAIN: "soulguru.app",
+    CLOUDFLARE_ZONE_ID: "0123456789abcdef0123456789abcdef",
+    CLOUDFLARE_DNS_READY: "true",
+    VITE_API_BASE_URL: "https://soulguru.app"
   };
 }
 

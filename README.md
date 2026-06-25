@@ -55,7 +55,7 @@ PLACE_GEOCODER_USER_AGENT=SoulGuru/1.0 birth-place-resolution
 Required for APK builds that should call the deployed backend:
 
 ```bash
-VITE_API_BASE_URL=https://your-vercel-app.vercel.app
+VITE_API_BASE_URL=https://your-production-domain.app
 ```
 
 Check a mobile backend URL before building a phone APK:
@@ -76,7 +76,7 @@ Run the combined release readiness bundle:
 
 ```bash
 npm run release:check:local
-npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing
+npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing
 ```
 
 `release:check:local` runs the same local build, safety, smoke, quality, audit, and readiness reports while skipping external services that are not configured yet. `release:check` is strict and expects production env, Supabase schema, deployed backend smoke, mobile backend URL, and optional live AI/signing checks when those flags are supplied.
@@ -99,6 +99,8 @@ Print a secret-safe Vercel/provider env checklist generated from the production 
 ```bash
 npm run production:env:checklist
 ```
+
+The checklist includes the custom domain and Cloudflare DNS launch gate. Set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and `VITE_API_BASE_URL` only after the production HTTPS domain is attached to the Vercel app.
 
 Check the Vercel deployment config, CSP/security/cache headers, and deploy-ignore safety rules:
 
@@ -271,8 +273,8 @@ npm run soul:quality:ai
 Smoke-test a deployed backend URL:
 
 ```bash
-npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app
-npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready
+npm run deployment:smoke -- --url=https://your-production-domain.app
+npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready
 ```
 
 The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, More Guidance dashboard, and Shani dashboard contracts without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. In non-ready smoke runs, protected `401` responses prove route reachability. In `--expect-ready` runs, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN`; protected POST routes must validate with real authentication before the smoke can pass.
@@ -526,7 +528,7 @@ SoulGuru-debug.apk
 The Android scripts auto-detect common Homebrew JDK and Android SDK paths. If your machine uses a custom install, set `JAVA_HOME`, `ANDROID_HOME`, and `ANDROID_SDK_ROOT` before building.
 
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
-Set `VITE_API_BASE_URL` to the deployed Vercel URL before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
+Set `VITE_API_BASE_URL` to the production domain-backed backend before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
 Run `npm run public-env:check:strict` before any web or mobile release so server-only keys cannot be exposed through public `VITE_` variables.
 
 For phone testing before Vercel deployment, run the backend on your Mac's Wi-Fi/LAN address:
@@ -577,6 +579,7 @@ Before release:
 
 - Run `npm run production:env:checklist` and configure every critical/warning env item in Vercel/provider dashboards.
 - Deploy backend to Vercel and configure env vars there.
+- Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
 - Configure Supabase project and run migrations.
 - Run `npm run supabase:schema:check` against the Supabase project.
 - Run `npm run public-env:check:strict`.
@@ -602,9 +605,9 @@ Before release:
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.
 - Run `npm run soul:quality`, `npm run soul:quality:extended`, and `npm run soul:quality:ai` before release after prompt changes.
-- Run `npm run deployment:smoke -- --url=https://your-vercel-app.vercel.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
-- Run `npm run release:check -- --url=https://your-vercel-app.vercel.app --include-ai --include-android-signing`.
-- Set `VITE_API_BASE_URL` to the deployed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
+- Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
+- Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
+- Set `VITE_API_BASE_URL` to the production domain-backed backend and run `npm run android:aab:release` or `npm run android:apk:release`.
 - Configure Clerk production auth and set `CLERK_REQUIRE_AUTH=true`.
 - Configure Razorpay dashboard webhook for `/api/razorpay-webhook`.
 - Configure Pinecone index and `PINECONE_HOST` for long-term guidance memory.
