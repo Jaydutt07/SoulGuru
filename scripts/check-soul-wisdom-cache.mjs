@@ -425,7 +425,7 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const wisdomJson = JSON.stringify({
-    wisdom: "The list that grew because one item stayed unnamed gives the morning a plain beginning. Start with the body before worry turns the whole day into a performance. Tara, proof through follow-through matters more than carrying tension as evidence of care. Finish the useful task and leave one sentence unsent. If someone asks for more, answer with timing instead of a long explanation. Let the quiet after that count as part of the work.",
+    wisdom: "The list that grew because one item stayed unnamed gives the morning a plain beginning. Tara, the pressure is not lack of effort; it is a private worry turning preparation into a test of care. Start with the body before the story gets loud: drink water, eat something plain, and put the visible task where it can be finished. Leave one sentence unsent if someone pulls for more than timing can honestly hold. Let the quiet after that count as part of the work.",
     innerWeather: "Focused under private pressure",
     todayMove: "Finish the visible task",
     release: "Leave one sentence unsent"

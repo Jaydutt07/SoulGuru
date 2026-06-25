@@ -7,6 +7,7 @@ import { buildParagraphArchitecture, firstName, isLowQualityWisdom } from "../sr
 import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
 const includeAi = process.argv.includes("--include-ai");
+const showReadings = process.argv.includes("--show-readings");
 const caseSet = getArgValue("--case-set") || "base";
 const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
 const env = {
@@ -178,6 +179,9 @@ function printGroup(group, similarity) {
   for (const item of group.results) {
     const repair = item.quality?.attempts ? ` attempts=${item.quality.attempts}` : "";
     console.log(`- ${item.name}: ${item.wordCount} words${repair}; scene=${item.openingSceneCategory}; structure=${item.structureSignature}; opening="${item.opening}"`);
+    if (showReadings) {
+      console.log(`  ${item.wisdom}`);
+    }
   }
 }
 

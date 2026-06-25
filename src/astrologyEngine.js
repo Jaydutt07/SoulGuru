@@ -250,7 +250,7 @@ const MENTOR_MOVES = [
 const RELATIONAL_CAUTIONS = [
   "do not make another person's uncertainty your assignment",
   "warmth becomes stronger when access has timing",
-  "the cleanest reply may be shorter than your fear prefers",
+  "the cleanest reply is shorter than your fear prefers",
   "a kind no can save more trust than a resentful yes",
   "wait for behavior to confirm what words are promising",
   "let listening inform you without recruiting you",

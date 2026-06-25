@@ -119,7 +119,7 @@ function buildBodyFirstWisdom(user, context) {
 }
 
 function buildRelationshipFirstWisdom(user, context) {
-  return `${sceneSeed(context)} makes the relationship tone easier to read. ${capitalize(context.relationshipMirror)}, and that detail matters more than another long explanation. ${firstName(user.name)}, ${context.innerWeather} is not a weakness, but it does need direction. Do not spend the best part of the day managing ${context.avoid}; ${context.decisionGate} instead. By tonight, the choice that felt plain may be the one you respect most.`;
+  return `${sceneSeed(context)} makes the relationship tone easier to read. ${capitalize(context.relationshipMirror)}, and that detail matters more than another long explanation. ${firstName(user.name)}, ${context.innerWeather} is not a weakness, but it does need direction. Do not spend the best part of the day managing ${context.avoid}; ${context.decisionGate} instead. By tonight, the plain choice becomes the one you respect most.`;
 }
 
 function buildQuietAuthorityWisdom(user, context) {
@@ -193,7 +193,10 @@ function openingLine(scene, context, seed, salt = "") {
     `${scene} can return the day to something practical and touchable.`,
     `Use ${lowerScene} as the first honest reset before negotiating with the mood.`,
     `Stay with ${lowerScene} until the day narrows to one honest action.`,
-    `Let ${lowerScene} mark the first repair, not the whole meaning of the day.`
+    `Let ${lowerScene} mark the first repair, not the whole meaning of the day.`,
+    `Treat ${lowerScene} as a handle, not a verdict on the whole day.`,
+    `The practical truth starts with ${lowerScene}, not with the story rushing around it.`,
+    `Give ${lowerScene} one plain use before the mood turns it symbolic.`
   ];
   return pickLine(lines, seed, salt, scene, context.dailyArea, context.coreNeed, context.personalEdge);
 }
@@ -207,12 +210,12 @@ function nameLine(name, context, seed) {
     `For ${name}, ${edgeInstruction} before ${area} starts sounding like a test of discipline.`,
     `What ${name} needs is ${need} before the pressure around ${area} gets noisy.`,
     `Around ${area}, ${name} is not being asked for a perfect mood, only one clean shape.`,
-    `Keep ${need} specific, ${name}, or the whole day will start sounding like the same problem.`,
+    `Give today's need a specific shape, ${name}, or the whole day will start sounding like the same problem.`,
     `The useful edge for ${name} is to ${edgeInstruction} without turning the moment into a measure of worth.`,
     `A delay around ${area} does not get to decide the whole tone for ${name}.`,
     `Give ${area} a practical container, ${name}, while you practice this: ${edge}.`,
-    `One observable choice can protect ${need} for ${name} better than another internal argument.`,
-    `For ${name}, ${edgeInstruction} is a signal, not a sentence.`,
+    `For ${name}, one observable choice protects the real need better than another internal argument.`,
+    `For ${name}, the urge to ${edgeInstruction} is a signal, not a sentence.`,
     `Separate ${need} from the noise around ${area}, ${name}, before you answer anything urgent.`,
     `The real need under ${area}, ${name}, is ${need}; protect it with ordinary support.`,
     `Before ${area} becomes heavier than it has to be, ${name} needs to ${edgeInstruction}.`
@@ -261,7 +264,7 @@ function actionLine(context, seed, salt = "") {
 function bodyLine(context, seed, salt = "") {
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const cue = bodyCueClause(body);
-  const weather = fragment(context.innerWeather || "the mood is asking for less noise");
+  const weather = innerWeatherClause(context.innerWeather || "the mood is asking for less noise");
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
     `Let ${cue} set the sequence before ${avoid} begins inventing meanings.`,
@@ -275,7 +278,7 @@ function bodyLine(context, seed, salt = "") {
 }
 
 function relationLine(name, context, seed) {
-  const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising");
+  const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising", seed);
   const avoid = fragment(context.avoid || "over-explaining");
   const lines = [
     `With other people, ${relation}; warmth does not require unlimited availability.`,
@@ -295,14 +298,14 @@ function relationLine(name, context, seed) {
 }
 
 function relationCloseLine(context, seed, salt = "") {
-  const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising");
+  const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising", seed);
   const permission = fragment(context.closingPermission || "one small finish can be enough");
   const lines = [
     `Let the next reply follow this rule: ${lowerFirst(relation)}, then let the rest of the day stay modest and workable.`,
     `With other people, ${relation}; the day can still end with one useful detail finished.`,
     `Keep the relational answer simple enough to keep, and let one ordinary finish count without decoration.`,
     `When the room asks for more explanation, ${relation}, and leave with one less loose end.`,
-    `Let warmth have timing today, because ${permission} without another performance is already progress.`,
+    `${capitalize(permission)}; let warmth have timing without another performance.`,
     `A cleaner reply and one finished task will support you better than solving the whole emotional weather.`
   ];
   return pickLine(lines, seed, salt, relation, permission, context.dailyArea);
@@ -320,10 +323,49 @@ function bodyCueClause(text) {
   return `the body cue to ${lowerFirst(value)}`;
 }
 
-function relationClause(text) {
-  return fragment(text)
+function innerWeatherClause(text) {
+  const value = fragment(text);
+  if (!value) return "the mood asking for less noise";
+  if (/^(restless|sensitive|tired|sharp|protective|drawn|more|quietly)\b/i.test(value)) {
+    return `the fact that you are ${lowerFirst(value)}`;
+  }
+  return lowerFirst(value);
+}
+
+function relationClause(text, seed = 0) {
+  const value = fragment(text)
     .replace(/\bmay be\b/gi, "is")
     .replace(/\bmay\b/gi, "can");
+  const normalized = value.toLowerCase();
+  if (normalized.includes("listening inform")) {
+    return pickLine([
+      "listen without making the whole problem yours",
+      "take in the signal without volunteering for every consequence",
+      "let the words teach you something without handing them the wheel"
+    ], seed, value);
+  }
+  if (normalized.includes("uncertainty")) {
+    return pickLine([
+      "leave another person's uncertainty on their side of the table",
+      "answer the part that belongs to you and stop carrying the rest",
+      "do not turn someone else's uncertainty into your assignment"
+    ], seed, value);
+  }
+  if (normalized.includes("shorter")) {
+    return pickLine([
+      "use the shorter reply before fear starts decorating it",
+      "say the clean version and stop before fear adds ornaments",
+      "let the reply stay brief enough to remain true"
+    ], seed, value);
+  }
+  if (normalized.includes("warmth")) {
+    return pickLine([
+      "give warmth a time and a doorway",
+      "keep access timed without making affection disappear",
+      "let closeness arrive with shape instead of constant availability"
+    ], seed, value);
+  }
+  return value;
 }
 
 function sceneVariants(raw) {
