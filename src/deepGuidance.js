@@ -11,12 +11,13 @@ export function buildFallbackDeepGuidance(user = {}, context = {}) {
   const cost = paidCost(context);
   const structure = monthStructure(context);
   const review = reviewAnchor(context);
+  const seed = paidSeed(user, context);
 
   return {
-    overview: `${capitalize(scene)} is not a symbol; it is where the pressure around ${area} keeps borrowing attention from the rest of the day. ${name}, the pattern is not laziness or lack of care, it is ${cost} until every small duty begins carrying emotional weight. The paid map is to give that pressure a visible container: choose the promise that keeps returning, name the cost of keeping it vague, and finish the part that can close within two hours. Keep ${avoid} away from the next reply. In relationships, ${caution}; in work, ${work}. Progress becomes believable when your body sees a repeated structure instead of another private negotiation.`,
-    thisWeek: `Begin with ${bodyStart}, then protect one practical block before the day has too many opinions in it. Put the returning promise on paper, give it a start time, and make the reply around it shorter than habit wants. If someone reaches for instant access, answer with timing, complete the visible piece, and let the finished detail carry more weight than explanation.`,
-    thisMonth: `${capitalize(structure)}. Track the same pressure as it moves through work, money, family, rest, or communication under different names. Review saved readings every seventh day, circle the repeating cost, and let one habit become the container that holds it. The month improves when the pattern gets a system, not a dramatic speech.`,
-    practice: `For seven days, use ${review} before the first difficult reply. At night, write one line about what became lighter because the limit stayed visible, then let that evidence choose tomorrow's first action.`,
+    overview: pickOverview({ name, scene, area, anchor, move, caution, avoid, work, cost }, seed),
+    thisWeek: pickThisWeek({ bodyStart, move, caution, avoid, work }, seed),
+    thisMonth: pickThisMonth({ structure, area, anchor, avoid }, seed),
+    practice: pickPractice({ review, bodyStart, move }, seed),
     focus: focusCue(context),
     watch: watchCue(context)
   };
@@ -47,6 +48,51 @@ function paidScene(context = {}) {
   if (raw.includes("message") || raw.includes("sentence") || raw.includes("reply") || raw.includes("conversation")) return "the unsent sentence";
   if (raw.includes("tab") || raw.includes("worry") || raw.includes("thought") || raw.includes("mind")) return "the mental tab that keeps reopening";
   return "one ordinary detail near the work";
+}
+
+function pickOverview(parts, seed) {
+  const { name, scene, area, anchor, move, caution, avoid, work, cost } = parts;
+  const templates = [
+    `${capitalize(scene)} is not a symbol; it is where the pressure around ${area} keeps borrowing attention from the rest of the day. ${name}, the cost is ${cost} until every small duty begins carrying emotional weight. The paid map is to give that pressure a visible container: choose the promise that keeps returning, name the cost of keeping it vague, and finish the part that can close within two hours. Keep ${avoid} away from the next reply. In relationships, ${caution}; in work, ${work}. Progress becomes believable when your body sees a repeated structure instead of another private negotiation.`,
+    `${capitalize(scene)} starts this paid map, because the work around ${area} is not only asking for effort, it is asking for cleaner placement. For ${name}, the costly habit is ${cost}, then treating the aftertaste as proof that more explanation is needed. Put ${anchor} into a visible system before the day gets crowded: give it a time, a limit, and one finish that can happen before evening. Use this rule: ${move}. With people, ${caution}; with work, ${work}. The change comes from making care measurable enough for the body to trust it.`,
+    `Start with ${scene}, because that ordinary detail shows where the pressure around ${area} has stopped being practical and started becoming a private negotiation. ${name}, the repeated cost is ${cost}; it drains timing, then makes every request sound heavier than it is. The next three months need a map that protects energy before the conversation begins: one written promise, one reply with a clear time, and one task finished before the mind reopens the case. Keep ${avoid} outside the decision. Use this caution for closeness: ${caution}. Let work follow this signal: ${work}.`,
+    `${capitalize(scene)} is the useful evidence today: the issue around ${area} has a shape, and it gets louder when ${anchor} stays unnamed. ${name}, the old response is ${cost}, then trying to repair the discomfort by becoming more available, more careful, or more persuasive. The paid guidance is to stop paying for that pattern with attention. Place the recurring duty on paper, use this rule: ${move}, and close the part that is already ready. Let relationships follow this caution: ${caution}. Let work stay plain through this signal: ${work}.`,
+    `The paid map begins with ${scene}, not with a dramatic breakthrough. Around ${area}, ${name} needs a structure that stops the habit of ${cost} from turning each small duty into a verdict. Give the returning detail a fixed place: a calendar slot, a written cost, and a finish line that can be seen by tonight. Keep ${avoid} away from the next explanation, especially if the room starts asking for reassurance before anything has actually changed. In relationships, ${caution}. In work, ${work}. This is how guidance becomes trackable: less emotional rent, more visible repair.`
+  ];
+  return templates[mod(seed, templates.length)];
+}
+
+function pickThisWeek(parts, seed) {
+  const { bodyStart, move, caution, avoid, work } = parts;
+  const templates = [
+    `Begin with ${bodyStart}, then protect one practical block before the day has too many opinions in it. Put the returning promise on paper, give it a start time, and make the reply around it shorter than habit wants. If someone reaches for instant access, answer with timing, complete the visible piece, and let the finished detail carry more weight than explanation.`,
+    `Give the week one rule that can be observed from the outside: ${move}. Pair it with ${bodyStart}, then choose a two-hour block where the oldest unfinished detail gets handled before new promises enter. If a message pulls you toward ${avoid}, pause long enough to answer only the part that belongs to today.`,
+    `Let the first repair be practical, not emotional. Start with ${bodyStart}, choose the task that already has enough facts, and let this work signal set the standard: ${work}. With people, practice this in a small way: ${caution}. The week succeeds when one reply, one limit, and one finished duty can be repeated without drama.`,
+    `Treat the next seven days as evidence-gathering. Before the hardest conversation, practice ${bodyStart}; before the hardest task, decide what finished means. Keep ${avoid} out of the room while you work. The aim is not to feel endlessly certain, it is to build one rhythm that keeps care from leaking into every request.`
+  ];
+  return templates[mod(seed + 3, templates.length)];
+}
+
+function pickThisMonth(parts, seed) {
+  const { structure, area, anchor, avoid } = parts;
+  const templates = [
+    `${capitalize(structure)}. Track the same pressure as it moves through work, money, family, rest, or communication under different names. Review saved readings every seventh day, circle the repeating cost, and let one habit become the container that holds it. The month improves when the pattern gets a system, not a dramatic speech.`,
+    `Make the month visible through one weekly review. Put ${anchor} beside the calendar, write where ${area} became heavier than necessary, and mark the moment ${avoid} tried to take over. Then choose one repeatable correction for the next week. The point is to notice the pattern early enough that it no longer needs a crisis to get your attention.`,
+    `${capitalize(structure)}, then measure the change every Sunday through evidence rather than mood. Save the readings that repeat a theme, name the cost in one sentence, and connect it to a practical habit around time, money, sleep, or communication. The month should leave behind a trail you can inspect, not only a feeling you hope will stay.`,
+    `Use the month to separate the real duty from the emotional tax around it. Each week, choose one place where the pressure around ${area} becomes too expensive in attention, then remove one layer of ${avoid}. The structure is simple: one visible promise, one protected body cue, one review. By the end, the pattern should have fewer hiding places.`
+  ];
+  return templates[mod(seed + 7, templates.length)];
+}
+
+function pickPractice(parts, seed) {
+  const { review, bodyStart, move } = parts;
+  const templates = [
+    `For seven days, use ${review} before the first difficult reply. At night, write one line about what became lighter because the limit stayed visible, then let that evidence choose tomorrow's first action.`,
+    `For seven evenings, write three plain facts: what repeated, what it cost, and what stayed handled because this rule remained visible: ${move}. Keep the record short enough to continue even on a tired day.`,
+    `Before the first demanding message, practice ${bodyStart} and write the clean version of your answer. After the day closes, note one place where less explanation protected more care.`,
+    `Choose one small promise each morning and give it a visible finish line. Before sleep, record whether the promise stayed clear, where it blurred, and what tomorrow needs to make it easier to keep.`
+  ];
+  return templates[mod(seed + 11, templates.length)];
 }
 
 function readableArea(area) {
@@ -158,6 +204,33 @@ function trimCue(text) {
   if (words.length < 4) return `${text} under pressure today`.trim();
   if (words.length <= 12) return text;
   return words.slice(0, 12).join(" ");
+}
+
+function paidSeed(user = {}, context = {}) {
+  return stableHash([
+    user.id,
+    user.name,
+    user.birthDate,
+    user.birthTime,
+    user.birthPlace,
+    context.dailyArea,
+    context.attentionAnchor,
+    context.emotionalKnot,
+    context.decisionGate,
+    context.relationalCaution,
+    context.workSignal,
+    context.bodySignal
+  ].filter(Boolean).join("|"));
+}
+
+function stableHash(value) {
+  return String(value || "").split("").reduce((hash, char) => {
+    return (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }, 7);
+}
+
+function mod(value, length) {
+  return ((value % length) + length) % length;
 }
 
 function safePhrase(text) {

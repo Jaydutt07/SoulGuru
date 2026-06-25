@@ -277,6 +277,18 @@ Run the same quality gate with live OpenAI Soul Guru readings:
 npm run soul:quality:ai
 ```
 
+Check paid More Guidance word counts, concrete cues, banned generic phrasing, and five-profile overview diversity:
+
+```bash
+npm run more-guidance:quality
+```
+
+Run the same quality gate with live OpenAI paid More Guidance readings:
+
+```bash
+npm run more-guidance:quality:ai
+```
+
 Smoke-test a deployed backend URL:
 
 ```bash
@@ -324,6 +336,7 @@ The CI template checks:
 - `npm run security:check`
 - `npm run payments:check`
 - `npm run more-guidance:check`
+- `npm run more-guidance:quality`
 - `npm run mobile:backend:check`
 - `npm run local:smoke`
 - `npm run deployment:smoke:check`
@@ -332,7 +345,7 @@ The CI template checks:
 - `npm run production:check -- --allow-fail`
 - Android debug APK build plus `npm run security:check`
 
-If the repository secret `OPENAI_API_KEY` is configured, the workflow also runs `npm run soul:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
+If the repository secret `OPENAI_API_KEY` is configured, the workflow can also run `npm run soul:quality:ai` and `npm run more-guidance:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
 If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app table, column, index, and uniqueness-constraint contract.
 

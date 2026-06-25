@@ -98,6 +98,7 @@ This project is being built toward the stack shown in the product planning image
 - Runtime transactional email validation for safe recipients, subjects, and normalized Resend tags
 - Soul Guru v12 daily wisdom prompt with private reading fingerprints, stricter live repair checks, whole-sentence cache refreshes, and structure-similarity gates
 - More Guidance v3 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
+- Five-profile More Guidance paid-reading quality gate for word counts, concrete cues, generic-phrase bans, and overview diversity
 - Sidereal chart-based Harmony compatibility with offline contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice

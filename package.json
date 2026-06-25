@@ -35,6 +35,8 @@
     "openai:check": "node scripts/check-openai-contracts.mjs",
     "backend-fetch:check": "node scripts/check-backend-fetch-contracts.mjs",
     "payments:check": "node scripts/check-payment-contracts.mjs && node scripts/check-client-payment-flow-contracts.mjs",
+    "more-guidance:quality": "node scripts/check-more-guidance-quality.mjs",
+    "more-guidance:quality:ai": "node scripts/check-more-guidance-quality.mjs --include-ai",
     "otp:check": "node scripts/check-otp-contracts.mjs",
     "public-env:check": "node scripts/check-public-env.mjs",
     "public-env:check:strict": "node scripts/check-public-env.mjs --strict",
