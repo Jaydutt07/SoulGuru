@@ -215,6 +215,12 @@ Check Supabase migration SQL for required tables, columns, RLS, indexes, and ide
 npm run supabase:migrations:check
 ```
 
+Print a single ordered, secret-free Supabase SQL bundle for a new production project:
+
+```bash
+npm run supabase:bundle
+```
+
 After applying Supabase migrations, verify the live database schema:
 
 ```bash
@@ -399,7 +405,7 @@ If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm
 
 ## Supabase Setup
 
-Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. The core migrations create:
+Run the migrations in `supabase/migrations/` inside your Supabase project SQL editor or migration pipeline. For a new Supabase project, you can print one ordered, secret-free SQL bundle with `npm run supabase:bundle`, or write it to a local operator file with `npm run supabase:bundle -- --out=tmp/soulguru-supabase.sql`. The core migrations create:
 
 - `user_profiles`
 - `daily_soul_readings`

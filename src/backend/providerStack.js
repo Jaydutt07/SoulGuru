@@ -30,9 +30,14 @@ export const PROVIDER_STACK = Object.freeze([
       "otp"
     ],
     envScope: ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
-    artifacts: ["supabase/migrations/001_initial_schema.sql", "scripts/check-supabase-schema.mjs"],
-    commands: ["npm run supabase:migrations:check", "npm run supabase:schema:check"],
-    notes: "Apply every migration before enabling production traffic."
+    artifacts: [
+      "supabase/migrations/001_initial_schema.sql",
+      "scripts/generate-supabase-schema-bundle.mjs",
+      "scripts/check-supabase-schema-bundle.mjs",
+      "scripts/check-supabase-schema.mjs"
+    ],
+    commands: ["npm run supabase:migrations:check", "npm run supabase:bundle", "npm run supabase:schema:check"],
+    notes: "Apply every migration before enabling production traffic; for a new project, print the ordered secret-free SQL bundle with npm run supabase:bundle."
   },
   {
     id: "vercel",

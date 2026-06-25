@@ -68,7 +68,9 @@
     "production:launch-plan": "node scripts/generate-provider-launch-plan.mjs",
     "release:check": "node scripts/check-release-readiness.mjs",
     "release:check:local": "node scripts/check-release-readiness.mjs --allow-missing-external",
-    "supabase:migrations:check": "node scripts/check-supabase-migrations.mjs",
+    "supabase:bundle": "node scripts/generate-supabase-schema-bundle.mjs",
+    "supabase:bundle:check": "node scripts/check-supabase-schema-bundle.mjs",
+    "supabase:migrations:check": "node scripts/check-supabase-migrations.mjs && npm run supabase:bundle:check",
     "supabase:schema:check": "node scripts/check-supabase-schema.mjs",
     "deployment:smoke": "node scripts/smoke-deployed-backend.mjs"
   },

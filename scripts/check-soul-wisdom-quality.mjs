@@ -245,10 +245,10 @@ function classifyScene(text) {
     ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
     ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
-    ["room", /\b(chair|room|desk|drawer|laundry|bed)\b/],
+    ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|held-back|send)\b/],
+    ["room", /\b(chair|room|desk|drawer|laundry|bed|domestic)\b/],
     ["door", /\b(shoes|door|keys|bag|charger|errand)\b/],
     ["body", /\b(mirror|shoulder|shoulders|jaw|body|breath)\b/],
-    ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply)\b/],
     ["task", /\b(list|task|item|draft|work|promise)\b/],
     ["worry", /\b(tab|worry|thought|mind)\b/]
   ];
@@ -333,7 +333,13 @@ function hasMechanicalDirectAddressCasing(text, name) {
 }
 
 function hasAwkwardTemplateJoin(text) {
-  return /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i.test(String(text || ""));
+  return [
+    /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i,
+    /\blet\s+let\b/i,
+    /\bwhen\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b/i,
+    /\bwhen\s+do not\b/i,
+    /\blet\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b[^.!?]+\bdecide\b/i
+  ].some((pattern) => pattern.test(String(text || "")));
 }
 
 function getParagraphArchitectureFailures({ sentences, user, context, today }) {

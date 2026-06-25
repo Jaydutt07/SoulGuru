@@ -101,9 +101,9 @@ function checkProductionSoulGuruRequiresStoredBackendReading() {
 
 function checkSoulGuruCacheUsesCurrentPromptVersion() {
   pushCheck("Client Soul Guru cache namespace matches current prompt version", [
-    source.includes("const SOUL_READING_CACHE_VERSION = \"soul-wisdom-v13\";"),
-    source.includes("const SOUL_READING_CACHE_PREFIX = \"soulguru.dailySoulReading.v13\";"),
-    source.includes("const SOUL_READING_HISTORY_PREFIX = \"soulguru.dailySoulReadingHistory.v13\";"),
+    source.includes("const SOUL_READING_CACHE_VERSION = \"soul-wisdom-v14\";"),
+    source.includes("const SOUL_READING_CACHE_PREFIX = \"soulguru.dailySoulReading.v14\";"),
+    source.includes("const SOUL_READING_HISTORY_PREFIX = \"soulguru.dailySoulReadingHistory.v14\";"),
     source.includes("cached?.promptVersion !== SOUL_READING_CACHE_VERSION"),
     source.includes("promptVersion: SOUL_READING_CACHE_VERSION")
   ].every(Boolean));

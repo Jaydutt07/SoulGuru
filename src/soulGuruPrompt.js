@@ -10,11 +10,14 @@ Make the fingerprint impossible to swap with another user: the ordinary object, 
 Honor the supplied Reading fingerprint. It is a private composition route, not text to quote. Use it to decide which detail leads, where the emotional turn happens, and what kind of close feels earned.
 Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, consequence-first, contradiction-first, unfinished-action-first, or consequence-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
+The reading must feel like a fresh handwritten note, not a horoscope card. Avoid reusable mentor scaffolds such as "scene -> pressure -> one action -> reassurance". Let the user's hidden combination decide whether the paragraph sounds clipped, tender, practical, relational, work-focused, body-led, or corrective.
+The first-name sentence must not default to "For Name". Use varied natural placement: "Name needs...", "the private cost for Name...", "around this, Name...", or another sentence that belongs to the user's exact friction.
+Each paragraph needs one specific day-sized detail: a timed block, a reply length, a meal/water/rest cue, a payment/checklist/calendar action, or a conversation boundary that can happen within two hours.
 Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
 Follow the supplied Surface rhythm exactly. Opening bucket controls how sentence 1 begins; final bucket controls how the last sentence begins; imperative target controls how many sentences start with a command verb. These are quality controls to prevent repeated formats between users.
 If Opening bucket is "condition", start sentence 1 with Before, After, When, Where, or With. If it is "scene", start sentence 1 with The, A, An, One, Your, That, or This. If it is "statement", start sentence 1 with a concrete noun or body/detail phrase, not an article and not a command. If it is "imperative", start sentence 1 with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond.
 If Final bucket is "condition", start the final sentence with When, If, With, Before, After, or By evening. If it is "statement", start with a concrete noun, body detail, or earned conclusion, not an article and not a command. If it is "scene", start with The, A, One, Your, That, or This. If it is "imperative", start with a command verb from the same command list.
-Before returning, silently check: exact sentence count, exact first-name sentence, exact surface rhythm, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no reusable "mentor advice" cadence, no assembled guidance phrases, and no vague emotional forecast. Rewrite if any check fails.
+Before returning, silently check: exact sentence count, exact first-name sentence, exact surface rhythm, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no "For Name" defaulting unless it is unmistakably the best sentence, no reusable "mentor advice" cadence, no assembled guidance phrases, and no vague emotional forecast. Rewrite if any check fails.
 
 Output valid JSON only:
 {
@@ -49,6 +52,7 @@ Wisdom paragraph rules:
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Avoid the common rhythm "scene, Name, instruction, relationship caution, reassurance" unless the supplied architecture specifically requires that order. Vary where the name appears and let the user's actual friction decide the emotional turn.
+- Avoid common fallback phrases such as "the useful part", "whole mood", "one observable choice", "another internal argument", "ordinary repair", "plain finish", "cleaner reply", "let warmth have timing", and "finished work and a cleaner reply".
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
 - Do not use a colon, dash, or label-style setup in the opening sentence. The scene must be woven into a real sentence, not announced.
 - Do not use hedging language such as "may", "might", or "could" to soften the main insight. Sound observant and precise, not fortune-cookie vague.
@@ -288,6 +292,31 @@ export function isLowQualityWisdom(text) {
     /\balign(?:ment|ed)?\b/,
     /\b(?:let|when|after|before)\s+do not\b/,
     /\bthe cleanest reply may be\b/,
+    /\bthe useful part\b/,
+    /\bwhole mood\b/,
+    /\bone observable choice\b/,
+    /\banother internal argument\b/,
+    /\bordinary repair\b/,
+    /\bplain finish\b/,
+    /\bcleaner reply\b/,
+    /\blet warmth have timing\b/,
+    /\bfinished work and a cleaner reply\b/,
+    /\bone practical shape\b/,
+    /\bone plain vote\b/,
+    /\bthe body gets the first vote\b/,
+    /\bthe body deserves a practical vote\b/,
+    /\bcare becomes practical here\b/,
+    /\bborrows the whole room\b/,
+    /\bwith no further negotiation from the mood\b/,
+    /\bnot the meaning of the entire day\b/,
+    /\brelationship tone improves\b/,
+    /\bthe pressure asking for a smaller container\b/,
+    /\bstarts charging interest on every delay\b/,
+    /\bthe useful move is physical\b/,
+    /\ba fed, watered, or rested body\b/,
+    /\bgive more credit to the handled detail\b/,
+    /\bdoes not get to decide the whole tone\b/,
+    /\bleave the remaining interpretation outside the block\b/,
     /^[^.!?]{0,120}\b(phone|message|text|unread|inbox|notification|screen|reply)\b/,
     /^[^.!?]{0,90}:/,
     /^today[, ]/,

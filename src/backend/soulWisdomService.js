@@ -14,7 +14,7 @@ import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v13";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v14";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
@@ -391,10 +391,10 @@ function classifyScene(text) {
     ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
     ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
-    ["room", /\b(chair|room|desk|drawer|laundry|bed)\b/],
-    ["door", /\b(shoes|door|keys|bag|charger|errand)\b/],
+    ["room", /\b(chair|room|desk|drawer|laundry|bed|domestic)\b/],
+    ["door", /\b(shoes|door|doorway|keys|bag|charger|errand)\b/],
     ["body", /\b(mirror|shoulder|shoulders|jaw|body|breath)\b/],
-    ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply)\b/],
+    ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|held-back|send)\b/],
     ["task", /\b(list|task|item|draft|work|promise)\b/],
     ["worry", /\b(tab|worry|thought|mind)\b/]
   ];

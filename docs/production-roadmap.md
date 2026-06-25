@@ -21,6 +21,7 @@ This project is being built toward the stack shown in the product planning image
 - Vercel-compatible API route for Soul Guru readings
 - Supabase schema for users, cached readings, subscriptions, saved advice, and Astro Solves
 - Offline Supabase migration contract checker for required tables, columns, RLS, indexes, and idempotency
+- Secret-free Supabase schema bundle generator for applying ordered migrations to a new production project
 - Server-backed profile sync route for account birth details
 - Production-gated client login flow requiring server profile persistence before account creation enters the app
 - Backend profile merge contracts for OTP phone profiles and authenticated identities
@@ -140,21 +141,22 @@ This project is being built toward the stack shown in the product planning image
 10. Apply `supabase/migrations/010_schema_contract_rpc.sql`.
 11. Apply `supabase/migrations/011_schema_contract_constraints.sql`.
 12. Apply `supabase/migrations/012_shani_membership.sql`.
-13. Run `npm run supabase:schema:check` against the Supabase project.
-14. Run `npm run production:env:checklist`, `npm run production:providers`, and `npm run production:launch-plan` while configuring Vercel, Cloudflare, and provider dashboards.
-15. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
-16. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-17. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
-18. Configure token-authenticated phone OTP delivery through `OTP_SMS_WEBHOOK_URL` and `OTP_SMS_WEBHOOK_TOKEN`, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
-19. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
-20. Run `npm run public-env:check:strict`.
-21. Run `npm run payments:check`.
-22. Run `npm run shani:check`.
-23. Run `npm run production:domain:smoke -- --expect-ready` after the Cloudflare DNS and Vercel custom-domain setup are live.
-24. Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
-25. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
-26. Set `VITE_API_BASE_URL` to the production domain and run `npm run android:apk:backend` for a backend-connected phone test.
-27. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
-28. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-29. Configure Razorpay dashboard webhook for `/api/razorpay-webhook`, set `RAZORPAY_WEBHOOK_URL` and `RAZORPAY_WEBHOOK_READY=true`, and test payment event replay.
-30. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables. Use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.
+13. Generate the ordered Supabase SQL bundle with `npm run supabase:bundle` or `npm run supabase:bundle -- --out=tmp/soulguru-supabase.sql` when applying migrations through the SQL editor.
+14. Run `npm run supabase:schema:check` against the Supabase project.
+15. Run `npm run production:env:checklist`, `npm run production:providers`, and `npm run production:launch-plan` while configuring Vercel, Cloudflare, and provider dashboards.
+16. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
+17. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+18. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
+19. Configure token-authenticated phone OTP delivery through `OTP_SMS_WEBHOOK_URL` and `OTP_SMS_WEBHOOK_TOKEN`, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
+20. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
+21. Run `npm run public-env:check:strict`.
+22. Run `npm run payments:check`.
+23. Run `npm run shani:check`.
+24. Run `npm run production:domain:smoke -- --expect-ready` after the Cloudflare DNS and Vercel custom-domain setup are live.
+25. Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
+26. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
+27. Set `VITE_API_BASE_URL` to the production domain and run `npm run android:apk:backend` for a backend-connected phone test.
+28. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
+29. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+30. Configure Razorpay dashboard webhook for `/api/razorpay-webhook`, set `RAZORPAY_WEBHOOK_URL` and `RAZORPAY_WEBHOOK_READY=true`, and test payment event replay.
+31. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables. Use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.

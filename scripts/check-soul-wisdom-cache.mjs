@@ -420,10 +420,7 @@ async function checkAwkwardTemplateJoinRepairsBeforeCaching() {
   const repairedWisdom = getDailyWisdom(user, date);
   const awkwardWisdomJson = JSON.stringify({
     ...repairedWisdom,
-    wisdom: repairedWisdom.wisdom.replace(
-      "Finish the useful part and let the rest wait;",
-      "Let turn the useful part into one finish;"
-    )
+    wisdom: `Let turn the useful part into one finish. ${repairedWisdom.wisdom}`
   });
   const supabase = createFakeSupabase();
   const openAiRequests = [];
