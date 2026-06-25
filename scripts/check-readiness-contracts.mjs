@@ -11,6 +11,7 @@ checkLocalShaniAccessIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
 checkInvalidServiceUrlsAreNotReady();
+checkPlaceholderValuesAreNotReady();
 checkReadinessPayloadDoesNotLeakSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -35,20 +36,7 @@ function checkFullProductionStackIsReady() {
 
 function checkPartialStackIsNotReady() {
   const report = buildDeploymentReadiness({
-    OPENAI_API_KEY: "fake-openai-key",
-    OPENAI_MODEL: "gpt-5.5",
-    SUPABASE_URL: "https://example.supabase.co",
-    SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-value",
-    OTP_HASH_SECRET: "fake-otp-hash-secret-with-at-least-32-chars",
-    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
-    RAZORPAY_KEY_ID: "rzp_test_contract",
-    RAZORPAY_KEY_SECRET: "fake-razorpay-secret",
-    RAZORPAY_WEBHOOK_SECRET: "fake-webhook-secret",
-    MORE_GUIDANCE_PRICE_PAISE: "49900",
-    SHANI_PLAN_3M_PRICE_PAISE: "29900",
-    SHANI_PLAN_6M_PRICE_PAISE: "54900",
-    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
-    SHANI_PLAN_FULL_PRICE_PAISE: "149900"
+    ...criticalEnv()
   });
   const warningFailures = report.checks.filter((check) => check.severity === "warning" && check.status === "fail");
 
@@ -61,6 +49,34 @@ function checkPartialStackIsNotReady() {
     warningFailures.some((check) => check.id === "pinecone"),
     warningFailures.some((check) => check.id === "clerk"),
     warningFailures.some((check) => check.id === "observability")
+  ].every(Boolean));
+}
+
+function checkPlaceholderValuesAreNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    OPENAI_API_KEY: "fake-openai-key",
+    SUPABASE_SERVICE_ROLE_KEY: "replace-with-service-role",
+    RAZORPAY_KEY_SECRET: "<razorpay-secret>",
+    UPSTASH_REDIS_REST_TOKEN: "$UPSTASH_TOKEN",
+    PINECONE_API_KEY: "dummy-pinecone-key",
+    VITE_POSTHOG_KEY: "placeholder"
+  });
+  const openai = report.checks.find((check) => check.id === "openai");
+  const supabase = report.checks.find((check) => check.id === "supabase");
+  const razorpay = report.checks.find((check) => check.id === "razorpay");
+  const rateLimit = report.checks.find((check) => check.id === "rateLimit");
+  const pinecone = report.checks.find((check) => check.id === "pinecone");
+  const observability = report.checks.find((check) => check.id === "observability");
+
+  pushCheck("Readiness treats placeholder env values as missing", [
+    report.ok === false,
+    openai?.missingEnv.includes("OPENAI_API_KEY"),
+    supabase?.missingEnv.includes("SUPABASE_SERVICE_ROLE_KEY"),
+    razorpay?.missingEnv.includes("RAZORPAY_KEY_SECRET"),
+    rateLimit?.missingEnv.includes("UPSTASH_REDIS_REST_TOKEN"),
+    pinecone?.missingEnv.includes("PINECONE_API_KEY"),
+    observability?.missingEnv.includes("VITE_POSTHOG_KEY")
   ].every(Boolean));
 }
 
@@ -220,33 +236,39 @@ function checkReadinessPayloadDoesNotLeakSecretValues() {
 
 function fullEnv() {
   return {
-    OPENAI_API_KEY: "fake-openai-key",
+    ...criticalEnv(),
+    UPSTASH_REDIS_REST_URL: "https://upstash.soulguru.app",
+    UPSTASH_REDIS_REST_TOKEN: "upstash-contract-token-123456",
+    PINECONE_API_KEY: "pcsk_contract_key_123456",
+    PINECONE_HOST: "memory-index.svc.pinecone.io",
+    PINECONE_INDEX: "soulguru-memory",
+    OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+    CLERK_SECRET_KEY: "sk_test_contract_secret_123456",
+    VITE_CLERK_PUBLISHABLE_KEY: "pk_test_contract_publishable_123456",
+    CLERK_REQUIRE_AUTH: "true",
+    VITE_SENTRY_DSN: "https://public@sentry.soulguru.app/1",
+    VITE_POSTHOG_KEY: "phc_contract_123456",
+    VITE_POSTHOG_HOST: "https://analytics.soulguru.app"
+  };
+}
+
+function criticalEnv() {
+  return {
+    OPENAI_API_KEY: "openai-contract-key-123456",
     OPENAI_MODEL: "gpt-5.5",
     ASTRO_SOLVE_MODEL: "gpt-5.5",
-    SUPABASE_URL: "https://example.supabase.co",
-    SUPABASE_SERVICE_ROLE_KEY: "fake-service-role-value",
-    OTP_HASH_SECRET: "fake-otp-hash-secret-with-at-least-32-chars",
-    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
-    RAZORPAY_KEY_ID: "rzp_test_contract",
-    RAZORPAY_KEY_SECRET: "fake-razorpay-secret",
-    RAZORPAY_WEBHOOK_SECRET: "fake-webhook-secret",
+    SUPABASE_URL: "https://soulguru-prod.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-contract-secret-123456",
+    OTP_HASH_SECRET: "soulguru-otp-hash-secret-with-at-least-32-chars",
+    OTP_SMS_WEBHOOK_URL: "https://sms.soulguru.app/send",
+    RAZORPAY_KEY_ID: "rzp_test_contract123456",
+    RAZORPAY_KEY_SECRET: "razorpay-contract-secret-123456",
+    RAZORPAY_WEBHOOK_SECRET: "razorpay-webhook-secret-123456",
     MORE_GUIDANCE_PRICE_PAISE: "49900",
     SHANI_PLAN_3M_PRICE_PAISE: "29900",
     SHANI_PLAN_6M_PRICE_PAISE: "54900",
     SHANI_PLAN_1Y_PRICE_PAISE: "99900",
-    SHANI_PLAN_FULL_PRICE_PAISE: "149900",
-    UPSTASH_REDIS_REST_URL: "https://upstash.example.test",
-    UPSTASH_REDIS_REST_TOKEN: "fake-upstash-token",
-    PINECONE_API_KEY: "fake-pinecone-key",
-    PINECONE_HOST: "memory-index.svc.pinecone.io",
-    PINECONE_INDEX: "soulguru-memory",
-    OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
-    CLERK_SECRET_KEY: "fake-clerk-key",
-    VITE_CLERK_PUBLISHABLE_KEY: "pk_test_contract",
-    CLERK_REQUIRE_AUTH: "true",
-    VITE_SENTRY_DSN: "https://public@sentry.example/1",
-    VITE_POSTHOG_KEY: "phc_contract",
-    VITE_POSTHOG_HOST: "https://analytics.soulguru.example"
+    SHANI_PLAN_FULL_PRICE_PAISE: "149900"
   };
 }
 

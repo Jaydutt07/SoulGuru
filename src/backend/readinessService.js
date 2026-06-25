@@ -340,7 +340,8 @@ function sanitizeCheck(check) {
 }
 
 function hasEnv(env, name) {
-  return Boolean(String(env[name] || "").trim());
+  const value = String(env[name] || "").trim();
+  return Boolean(value && !isPlaceholderValue(value));
 }
 
 function isPositiveIntegerEnv(env, name) {
@@ -383,4 +384,21 @@ function isValidSentryDsn(value) {
   } catch {
     return false;
   }
+}
+
+function isPlaceholderValue(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!normalized) return true;
+  if (normalized.startsWith("${{") || normalized.startsWith("$")) return true;
+  if (/^(true|false|null|undefined)$/i.test(normalized)) return true;
+  if (/^(your|replace|change|changeme|placeholder|example|dummy|fake|todo|xxx|xxxx|redacted)(?:[-_\s].*)?$/i.test(normalized)) {
+    return true;
+  }
+  if (/^<[^>]+>$/.test(normalized)) return true;
+  if (/^\*+$/.test(normalized)) return true;
+
+  return false;
 }
