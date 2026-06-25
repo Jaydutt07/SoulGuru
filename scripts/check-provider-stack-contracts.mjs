@@ -3,7 +3,8 @@ import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
 import {
   PROVIDER_STACK,
   buildProviderReadinessMatrix,
-  summarizeProviderReadiness
+  summarizeProviderReadiness,
+  validateProviderReadinessPayload
 } from "../src/backend/providerStack.js";
 
 const checks = [];
@@ -12,6 +13,7 @@ checkProviderStackCoversPlannedProviders();
 checkProviderMappingsTargetRealReadinessChecks();
 checkProviderArtifactsExist();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
+checkProviderPayloadValidatorRequiresExactStack();
 checkProviderMatrixPassesWithFullProductionEnv();
 
 const failed = checks.filter((check) => !check.passed);
@@ -96,6 +98,29 @@ function checkProviderMatrixReportsMissingEnvWithoutSecrets() {
     supabase?.missingEnv.includes("SUPABASE_URL"),
     razorpay?.missingEnv.includes("RAZORPAY_KEY_ID"),
     forbidden.every((value) => !serialized.includes(value))
+  ].every(Boolean));
+}
+
+function checkProviderPayloadValidatorRequiresExactStack() {
+  const report = buildDeploymentReadiness(fullEnv());
+  const missingProviderReport = {
+    ...report,
+    providers: report.providers.filter((provider) => provider.id !== "pinecone")
+  };
+  const unknownProviderReport = {
+    ...report,
+    providers: [...report.providers, { id: "unknown-provider", status: "ready", missingEnv: [] }]
+  };
+  const duplicateProviderReport = {
+    ...report,
+    providers: [...report.providers, report.providers[0]]
+  };
+
+  pushCheck("Provider payload validator requires the exact planned provider IDs", [
+    validateProviderReadinessPayload(report).ok,
+    !validateProviderReadinessPayload(missingProviderReport).ok,
+    !validateProviderReadinessPayload(unknownProviderReport).ok,
+    !validateProviderReadinessPayload(duplicateProviderReport).ok
   ].every(Boolean));
 }
 

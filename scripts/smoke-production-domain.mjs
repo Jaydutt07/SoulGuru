@@ -1,5 +1,6 @@
 import dns from "node:dns/promises";
 import { loadEnv } from "vite";
+import { validateProviderReadinessPayload } from "../src/backend/providerStack.js";
 
 const args = new Set(process.argv.slice(2));
 const allowMissingEnv = args.has("--allow-missing-env");
@@ -212,7 +213,7 @@ function pushCheck(check) {
 }
 
 function hasProviderReadiness(body) {
-  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
+  return validateProviderReadinessPayload(body).ok;
 }
 
 function printReport(result) {

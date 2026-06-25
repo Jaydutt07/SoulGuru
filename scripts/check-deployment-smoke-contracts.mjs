@@ -1,6 +1,7 @@
 import http from "node:http";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { PROVIDER_STACK } from "../src/backend/providerStack.js";
 
 const checks = [];
 
@@ -127,24 +128,24 @@ function writeCoreEndpoint(req, res) {
 }
 
 function readyPayload() {
+  const providers = PROVIDER_STACK.map((provider) => ({
+    id: provider.id,
+    name: provider.name,
+    status: "ready",
+    missingEnv: []
+  }));
+
   return {
     ok: true,
     status: "ready",
     checks: [],
     providerSummary: {
-      total: 1,
-      ready: 1,
+      total: providers.length,
+      ready: providers.length,
       needsConfiguration: 0,
       unmapped: 0
     },
-    providers: [
-      {
-        id: "github",
-        name: "GitHub",
-        status: "ready",
-        missingEnv: []
-      }
-    ]
+    providers
   };
 }
 

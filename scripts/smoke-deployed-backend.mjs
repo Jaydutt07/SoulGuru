@@ -1,3 +1,5 @@
+import { validateProviderReadinessPayload } from "../src/backend/providerStack.js";
+
 const args = new Set(process.argv.slice(2));
 const rawBaseUrl = getArgValue("--url") || process.env.VITE_API_BASE_URL || process.env.API_BASE_URL || "";
 const expectReady = args.has("--expect-ready");
@@ -265,7 +267,7 @@ function getArgValue(name) {
 }
 
 function hasProviderReadiness(body) {
-  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
+  return validateProviderReadinessPayload(body).ok;
 }
 
 function fail(message) {

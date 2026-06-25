@@ -169,6 +169,8 @@ export const PROVIDER_STACK = Object.freeze([
   }
 ]);
 
+export const REQUIRED_PROVIDER_IDS = Object.freeze(PROVIDER_STACK.map((provider) => provider.id));
+
 export function buildProviderReadinessMatrix(readiness) {
   const checksById = new Map((readiness?.checks || []).map((check) => [check.id, check]));
 
@@ -214,6 +216,48 @@ export function summarizeProviderReadiness(matrix) {
     ready: providers.filter((provider) => provider.status === "ready").length,
     needsConfiguration: providers.filter((provider) => provider.status === "needs_configuration").length,
     unmapped: providers.filter((provider) => provider.status === "unmapped").length
+  };
+}
+
+export function validateProviderReadinessPayload(body) {
+  const errors = [];
+  const providers = Array.isArray(body?.providers) ? body.providers : [];
+  const providerIds = providers
+    .map((provider) => String(provider?.id || "").trim())
+    .filter(Boolean);
+  const uniqueProviderIds = new Set(providerIds);
+  const requiredProviderIds = new Set(REQUIRED_PROVIDER_IDS);
+  const missingProviderIds = REQUIRED_PROVIDER_IDS.filter((id) => !uniqueProviderIds.has(id));
+  const unknownProviderIds = providerIds.filter((id) => !requiredProviderIds.has(id));
+  const duplicateProviderIds = providerIds.filter((id, index, ids) => ids.indexOf(id) !== index);
+  const readyCount = providers.filter((provider) => provider?.status === "ready").length;
+  const needsConfigurationCount = providers.filter((provider) => provider?.status === "needs_configuration").length;
+  const unmappedCount = providers.filter((provider) => provider?.status === "unmapped").length;
+  const unknownStatusCount = providers.filter((provider) =>
+    provider && !["ready", "needs_configuration", "unmapped"].includes(provider.status)
+  ).length;
+
+  if (typeof body?.ok !== "boolean") errors.push("ok boolean");
+  if (!body?.providerSummary || typeof body.providerSummary !== "object") errors.push("providerSummary object");
+  if (!Array.isArray(body?.providers)) errors.push("providers array");
+  if (!Number.isInteger(body?.providerSummary?.total)) errors.push("providerSummary.total integer");
+  if (!Number.isInteger(body?.providerSummary?.ready)) errors.push("providerSummary.ready integer");
+  if (!Number.isInteger(body?.providerSummary?.needsConfiguration)) errors.push("providerSummary.needsConfiguration integer");
+  if (!Number.isInteger(body?.providerSummary?.unmapped)) errors.push("providerSummary.unmapped integer");
+  if (body?.providerSummary?.total !== REQUIRED_PROVIDER_IDS.length) errors.push("providerSummary.total matches provider stack");
+  if (body?.providerSummary?.ready !== readyCount) errors.push("providerSummary.ready matches providers");
+  if (body?.providerSummary?.needsConfiguration !== needsConfigurationCount) errors.push("providerSummary.needsConfiguration matches providers");
+  if (body?.providerSummary?.unmapped !== unmappedCount) errors.push("providerSummary.unmapped matches providers");
+  if (providers.length !== REQUIRED_PROVIDER_IDS.length) errors.push("providers length matches provider stack");
+  if (providerIds.length !== providers.length) errors.push("every provider has an id");
+  if (unknownStatusCount) errors.push("provider statuses are recognized");
+  if (missingProviderIds.length) errors.push(`missing providers: ${missingProviderIds.join(", ")}`);
+  if (unknownProviderIds.length) errors.push(`unknown providers: ${unknownProviderIds.join(", ")}`);
+  if (duplicateProviderIds.length) errors.push(`duplicate providers: ${[...new Set(duplicateProviderIds)].join(", ")}`);
+
+  return {
+    ok: errors.length === 0,
+    errors
   };
 }
 

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { validateProviderReadinessPayload } from "../src/backend/providerStack.js";
 
 const args = process.argv.slice(2);
 const includeAi = args.includes("--include-ai");
@@ -391,7 +392,7 @@ function sleep(ms) {
 }
 
 function hasProviderReadiness(body) {
-  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
+  return validateProviderReadinessPayload(body).ok;
 }
 
 function stopServer(child) {

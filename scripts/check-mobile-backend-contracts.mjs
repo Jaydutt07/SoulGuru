@@ -2,6 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { PROVIDER_STACK } from "../src/backend/providerStack.js";
 
 const checks = [];
 
@@ -35,15 +36,12 @@ async function checkReadyBackendPasses() {
     status: "ready",
     checks: [],
     providerSummary: {
-      total: 2,
-      ready: 2,
+      total: PROVIDER_STACK.length,
+      ready: PROVIDER_STACK.length,
       needsConfiguration: 0,
       unmapped: 0
     },
-    providers: [
-      { id: "supabase", status: "ready", missingEnv: [] },
-      { id: "razorpay", status: "ready", missingEnv: [] }
-    ]
+    providers: providerRows()
   });
 
   try {
@@ -97,6 +95,11 @@ async function checkLocalhostRequiresExplicitAllowance() {
 }
 
 function notReadyPayload() {
+  const providers = providerRows({
+    supabase: { status: "needs_configuration", missingEnv: ["SUPABASE_URL"] },
+    razorpay: { status: "needs_configuration", missingEnv: ["RAZORPAY_KEY_ID"] }
+  });
+
   return {
     ok: false,
     status: "needs_configuration",
@@ -105,16 +108,22 @@ function notReadyPayload() {
       { id: "razorpay", label: "Razorpay checkout", status: "fail" }
     ],
     providerSummary: {
-      total: 2,
-      ready: 0,
+      total: providers.length,
+      ready: providers.filter((provider) => provider.status === "ready").length,
       needsConfiguration: 2,
       unmapped: 0
     },
-    providers: [
-      { id: "supabase", status: "needs_configuration", missingEnv: ["SUPABASE_URL"] },
-      { id: "razorpay", status: "needs_configuration", missingEnv: ["RAZORPAY_KEY_ID"] }
-    ]
+    providers
   };
+}
+
+function providerRows(overrides = {}) {
+  return PROVIDER_STACK.map((provider) => ({
+    id: provider.id,
+    name: provider.name,
+    status: overrides[provider.id]?.status || "ready",
+    missingEnv: overrides[provider.id]?.missingEnv || []
+  }));
 }
 
 function startBackend(readinessPayload) {

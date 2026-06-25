@@ -70,7 +70,7 @@ This project is being built toward the stack shown in the product planning image
 - Production readiness endpoint and CLI checks for backend env configuration
 - Production readiness contract checker requiring the full planned stack before `/api/readiness` returns ready
 - Provider stack readiness matrix covering the planning-image providers with secret-safe missing-env output
-- Provider-aware `/api/readiness` payload required by deployed smoke and backend-connected mobile validation
+- Exact provider-aware `/api/readiness` payload required by deployed smoke and backend-connected mobile validation
 - Production Soul Guru cache guard so daily AI readings require Supabase persistence
 - Production client guard so Soul Guru does not display or cache unstored local fallback readings
 - Extended Soul Guru local reading diversity gate across a broader profile fixture set

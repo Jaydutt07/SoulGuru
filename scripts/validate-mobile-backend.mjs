@@ -1,4 +1,5 @@
 import { loadEnv } from "vite";
+import { validateProviderReadinessPayload } from "../src/backend/providerStack.js";
 
 const mode = process.env.NODE_ENV || "production";
 const env = {
@@ -124,5 +125,5 @@ function summarizeMissingReadiness(body) {
 }
 
 function hasProviderReadiness(body) {
-  return Number.isInteger(body?.providerSummary?.total) && Number.isInteger(body?.providerSummary?.ready) && Array.isArray(body?.providers);
+  return validateProviderReadinessPayload(body).ok;
 }
