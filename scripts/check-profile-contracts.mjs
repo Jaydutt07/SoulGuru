@@ -6,6 +6,7 @@ await checkLocalFallbackContract();
 await checkLookupContract();
 await checkPhoneProfileCreationContract();
 await checkGeocodedBirthPlaceProfileContract();
+await checkGeocoderValidationContract();
 await checkAuthenticatedPhoneMergeContract();
 await checkSharedProfileIdMergeContract();
 await checkPhoneMergeRaceContract();
@@ -149,6 +150,100 @@ async function checkGeocodedBirthPlaceProfileContract() {
     result.profile?.birthPlaceResolutionSource === "geocoder",
     row.birth_timezone === "Europe/Paris",
     row.birth_place_resolution_source === "geocoder"
+  ].every(Boolean));
+}
+
+async function checkGeocoderValidationContract() {
+  const supabase = createFakeProfileSupabase();
+  const geocoderRequests = [];
+  const result = await upsertUserProfile({
+    user: profileUser({
+      authUserId: "",
+      phone: "+91 99990 07890",
+      email: "validated-place@soulguru.local",
+      birthPlace: "Paris, France",
+      birthLatitude: null,
+      birthLongitude: null,
+      birthTimezone: "",
+      birthTimezoneOffsetMinutes: null,
+      birthPlaceResolvedLabel: "",
+      birthPlaceResolutionSource: ""
+    })
+  }, {
+    PLACE_GEOCODER_URL: "https://geocoder.example/search",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Test"
+  }, {
+    supabase,
+    fetch: async (url, options) => {
+      geocoderRequests.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return [
+            {
+              display_name: "Impossible place",
+              lat: "999",
+              lon: "999"
+            },
+            {
+              display_name: "Paris, Ile-de-France, France",
+              lat: "48.8566",
+              lon: "2.3522"
+            }
+          ];
+        }
+      };
+    }
+  });
+
+  const insecureSupabase = createFakeProfileSupabase();
+  const insecureRequests = [];
+  const insecureResult = await upsertUserProfile({
+    user: profileUser({
+      authUserId: "",
+      phone: "+91 99990 07891",
+      email: "insecure-place@soulguru.local",
+      birthPlace: "Paris, France",
+      birthLatitude: null,
+      birthLongitude: null,
+      birthTimezone: "",
+      birthTimezoneOffsetMinutes: null,
+      birthPlaceResolvedLabel: "",
+      birthPlaceResolutionSource: ""
+    })
+  }, {
+    PLACE_GEOCODER_URL: "http://geocoder.example/search",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Test"
+  }, {
+    supabase: insecureSupabase,
+    fetch: async (url, options) => {
+      insecureRequests.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return [{
+            display_name: "Paris, Ile-de-France, France",
+            lat: "48.8566",
+            lon: "2.3522"
+          }];
+        }
+      };
+    }
+  });
+
+  pushCheck("Profile geocoder skips impossible coordinates and stores the first valid place", [
+    geocoderRequests.length === 1,
+    result.profile?.birthPlaceResolutionSource === "geocoder",
+    result.profile?.birthPlaceResolvedLabel === "Paris, Ile-de-France, France",
+    approx(result.profile?.birthLatitude, 48.8566, 0.001),
+    approx(result.profile?.birthLongitude, 2.3522, 0.001),
+    result.profile?.birthTimezone === "Europe/Paris"
+  ].every(Boolean));
+  pushCheck("Profile geocoder ignores insecure geocoder config", [
+    insecureRequests.length === 0,
+    insecureResult.profile?.birthPlaceResolutionSource === "default",
+    insecureResult.profile?.birthPlace === "Paris, France",
+    insecureResult.profile?.birthTimezone === "Asia/Kolkata"
   ].every(Boolean));
 }
 

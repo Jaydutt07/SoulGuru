@@ -2,6 +2,10 @@ import tzLookup from "tz-lookup";
 import { enrichUserWithPlace, resolveBirthPlace } from "../placeResolver.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
 
+const MAX_GEOCODER_QUERY_LENGTH = 160;
+const MIN_GEOCODER_LABEL_LENGTH = 3;
+const MIN_GEOCODER_USER_AGENT_LENGTH = 8;
+
 export async function enrichUserWithServerPlace(user = {}, env = process.env, deps = {}) {
   const profilePlace = resolveProfileCoordinates(user);
   if (profilePlace) {
@@ -22,9 +26,10 @@ export async function enrichUserWithServerPlace(user = {}, env = process.env, de
 }
 
 export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
-  const query = String(input || "").trim();
-  const geocoderUrl = String(env.PLACE_GEOCODER_URL || "").trim();
-  if (!query || !geocoderUrl) return null;
+  const query = normalizeGeocoderQuery(input);
+  const geocoderUrl = getConfiguredGeocoderUrl(env);
+  const userAgent = getConfiguredGeocoderUserAgent(env);
+  if (!query || !geocoderUrl || !userAgent) return null;
 
   const fetchImpl = deps.fetch || globalThis.fetch;
   if (typeof fetchImpl !== "function") return null;
@@ -35,7 +40,7 @@ export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
       method: "GET",
       headers: {
         Accept: "application/json",
-        "User-Agent": env.PLACE_GEOCODER_USER_AGENT || "SoulGuru/1.0 birth-place-resolution"
+        "User-Agent": userAgent
       }
     }, {
       env,
@@ -67,7 +72,7 @@ export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
 function resolveProfileCoordinates(user = {}) {
   const latitude = nullableNumber(user.birthLatitude);
   const longitude = nullableNumber(user.birthLongitude);
-  if (latitude === null || longitude === null) return null;
+  if (!isValidCoordinatePair(latitude, longitude)) return null;
 
   const timezone = user.birthTimezone || lookupTimezone(latitude, longitude);
   return {
@@ -109,33 +114,97 @@ function buildGeocoderUrl(baseUrl, query) {
 }
 
 function normalizeGeocoderResult(body) {
-  const first = Array.isArray(body)
-    ? body[0]
-    : body?.results?.[0] || body?.features?.[0] || body;
-  if (!first || typeof first !== "object") return null;
+  const candidates = Array.isArray(body)
+    ? body
+    : Array.isArray(body?.results)
+      ? body.results
+      : Array.isArray(body?.features)
+        ? body.features
+        : body
+          ? [body]
+          : [];
 
-  const coordinates = Array.isArray(first.geometry?.coordinates)
-    ? first.geometry.coordinates
+  for (const item of candidates) {
+    const normalized = normalizeGeocoderItem(item);
+    if (normalized) return normalized;
+  }
+
+  return null;
+}
+
+function normalizeGeocoderItem(first) {
+  const item = first;
+  if (!item || typeof item !== "object") return null;
+
+  const coordinates = Array.isArray(item.geometry?.coordinates)
+    ? item.geometry.coordinates
     : null;
-  const latitude = nullableNumber(first.lat ?? first.latitude ?? first.geometry?.lat ?? coordinates?.[1]);
-  const longitude = nullableNumber(first.lon ?? first.lng ?? first.longitude ?? first.geometry?.lng ?? coordinates?.[0]);
-  if (latitude === null || longitude === null) return null;
+  const latitude = nullableNumber(item.lat ?? item.latitude ?? item.geometry?.lat ?? item.properties?.lat ?? coordinates?.[1]);
+  const longitude = nullableNumber(item.lon ?? item.lng ?? item.longitude ?? item.geometry?.lng ?? item.properties?.lon ?? item.properties?.lng ?? coordinates?.[0]);
+  if (!isValidCoordinatePair(latitude, longitude)) return null;
 
-  const label = String(
-    first.display_name ||
-    first.formatted ||
-    first.label ||
-    first.name ||
-    first.properties?.display_name ||
-    first.properties?.label ||
-    "Resolved birth place"
-  ).trim();
+  const label = sanitizeGeocoderLabel(
+    item.display_name ||
+    item.formatted ||
+    item.label ||
+    item.name ||
+    item.properties?.display_name ||
+    item.properties?.formatted ||
+    item.properties?.label ||
+    item.properties?.name
+  );
+  if (!label) return null;
 
   return {
     label,
     latitude,
     longitude
   };
+}
+
+function getConfiguredGeocoderUrl(env) {
+  const value = String(env.PLACE_GEOCODER_URL || "").trim();
+  if (isPlaceholderValue(value)) return "";
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || !url.hostname) return "";
+    if (url.hostname === "localhost" || url.hostname.endsWith(".localhost")) return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function getConfiguredGeocoderUserAgent(env) {
+  const value = String(env.PLACE_GEOCODER_USER_AGENT || "").trim();
+  if (isPlaceholderValue(value) || value.length < MIN_GEOCODER_USER_AGENT_LENGTH) return "";
+  return value;
+}
+
+function normalizeGeocoderQuery(input) {
+  return String(input || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_GEOCODER_QUERY_LENGTH);
+}
+
+function sanitizeGeocoderLabel(value) {
+  const label = String(value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (isPlaceholderValue(label) || label.length < MIN_GEOCODER_LABEL_LENGTH) return "";
+  return label;
+}
+
+function isValidCoordinatePair(latitude, longitude) {
+  return latitude !== null &&
+    longitude !== null &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
 }
 
 function lookupTimezone(latitude, longitude) {
@@ -193,4 +262,21 @@ function nullableNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function isPlaceholderValue(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+  if (!normalized) return true;
+  if (normalized.startsWith("${{") || normalized.startsWith("$")) return true;
+  if (/^(true|false|null|undefined)$/i.test(normalized)) return true;
+  if (/^(your|replace|change|changeme|placeholder|example|dummy|fake|todo|xxx|xxxx|redacted)(?:[-_\s].*)?$/i.test(normalized)) {
+    return true;
+  }
+  if (/^<[^>]+>$/.test(normalized)) return true;
+  if (/^\*+$/.test(normalized)) return true;
+
+  return false;
 }
