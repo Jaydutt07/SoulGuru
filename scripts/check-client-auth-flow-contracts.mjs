@@ -12,6 +12,7 @@ checkProductionCreateRequiresProfilePersistence();
 checkProductionDoesNotPersistLocalSessions();
 checkLoginAnalyticsDistinguishesOtpSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
+checkSoulGuruCacheUsesCurrentPromptVersion();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
 checkProductionSaveAdviceRequiresStoredBackendAnswer();
@@ -95,6 +96,16 @@ function checkProductionSoulGuruRequiresStoredBackendReading() {
     source.includes("if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {"),
     source.includes("cached.stored === false || cached.source === \"local-fallback\""),
     source.includes("disabled={isSavingAdvice || !reading}")
+  ].every(Boolean));
+}
+
+function checkSoulGuruCacheUsesCurrentPromptVersion() {
+  pushCheck("Client Soul Guru cache namespace matches current prompt version", [
+    source.includes("const SOUL_READING_CACHE_VERSION = \"soul-wisdom-v9\";"),
+    source.includes("const SOUL_READING_CACHE_PREFIX = \"soulguru.dailySoulReading.v9\";"),
+    source.includes("const SOUL_READING_HISTORY_PREFIX = \"soulguru.dailySoulReadingHistory.v9\";"),
+    source.includes("cached?.promptVersion !== SOUL_READING_CACHE_VERSION"),
+    source.includes("promptVersion: SOUL_READING_CACHE_VERSION")
   ].every(Boolean));
 }
 

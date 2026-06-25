@@ -12,7 +12,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v8";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v9";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
@@ -254,11 +254,48 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}) {
   if (nameCount !== 1) {
     issues.push(`expected first name exactly once, got ${nameCount}`);
   }
+  if (hasMechanicalDirectAddressCasing(text, firstName(user.name))) {
+    issues.push("direct address used mechanical capitalized imperative casing");
+  }
   const openingSeed = context.openingScene || context.dailyScene || "";
   if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
     issues.push(`opening did not use seeded scene "${openingSeed}"`);
   }
   return issues;
+}
+
+function hasMechanicalDirectAddressCasing(text, name) {
+  const verbs = [
+    "Answer",
+    "Begin",
+    "Check",
+    "Choose",
+    "Close",
+    "Decline",
+    "Do",
+    "Finish",
+    "Give",
+    "Handle",
+    "Keep",
+    "Let",
+    "Make",
+    "Name",
+    "Notice",
+    "Protect",
+    "Reduce",
+    "Respond",
+    "Separate",
+    "Shrink",
+    "Stop",
+    "Take",
+    "Treat",
+    "Use",
+    "Wait",
+    "Walk",
+    "Write"
+  ];
+  const pattern = new RegExp(`\\b${escapeRegex(name)},\\s+(?:${verbs.join("|")})\\b`);
+  return pattern.test(String(text || ""));
 }
 
 function openingUsesSeed(opening, seed) {

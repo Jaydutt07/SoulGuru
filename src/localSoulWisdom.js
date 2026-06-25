@@ -46,9 +46,9 @@ export function getDailyFocus(user, dateKey = getTodayKey(new Date(), user.birth
 function buildSignatureWisdom(user, context, seed) {
   const name = firstName(user.name);
   const scene = sceneSeed(context, seed);
-  const opening = openingLine(scene, context, seed);
+  const opening = openingLine(scene, context, seed, name);
   const nameInsight = nameLine(name, context, seed + 3);
-  const action = actionLine(context, seed + 7);
+  const action = actionLine(context, seed + 7, name);
   const relation = relationLine(name, context, seed + 13);
   const closing = closingLine(context, seed + 19, name);
   const plans = [
@@ -137,7 +137,7 @@ function sceneSeed(context, seed = stableHash(`${context.openingScene}-${context
   return capitalize(variants[mod(seed, variants.length)]);
 }
 
-function openingLine(scene, context, seed) {
+function openingLine(scene, context, seed, salt = "") {
   const lowerScene = lowerFirst(scene);
   const lines = [
     `Before you pass ${lowerScene} again, let the pressure become smaller and named.`,
@@ -146,20 +146,20 @@ function openingLine(scene, context, seed) {
     `Notice ${lowerScene} before the mind turns it into a private test.`,
     `${scene} can return the day to something practical and touchable.`,
     `Use ${lowerScene} as the first honest reset before negotiating with the mood.`,
-    `A small reset around ${lowerScene} can keep the moment from becoming a verdict.`,
+    `Stay with ${lowerScene} until the day narrows to one honest action.`,
     `Let ${lowerScene} mark the first repair, not the whole meaning of the day.`
   ];
-  return pickLine(lines, seed, scene, context.dailyArea, context.coreNeed, context.personalEdge);
+  return pickLine(lines, seed, salt, scene, context.dailyArea, context.coreNeed, context.personalEdge);
 }
 
 function nameLine(name, context, seed) {
   const edge = fragment(context.personalEdge || context.emotionalKnot || "turning a workable moment into a verdict");
   const need = fragment(context.coreNeed || context.innerWeather || "room to move slowly");
-  const area = context.dailyArea || "the part of life asking for attention";
-  const edgeInstruction = capitalize(edge);
+  const area = dailyAreaLabel(context.dailyArea);
+  const edgeInstruction = lowerFirst(edge);
   const lines = [
     `${name}, ${edgeInstruction} before ${area} starts sounding like a test of discipline.`,
-    `${name}, ${need} deserves practical protection before ${area} gets noisy.`,
+    `${name}, you need ${need} before the pressure around ${area} gets noisy.`,
     `${name}, the pressure around ${area} is not asking for a perfect mood; it is asking for one clean shape.`,
     `${name}, keep ${need} specific, or the whole day will start sounding like the same problem.`,
     `${name}, ${edgeInstruction}; the goal is movement without turning the moment into a measure of worth.`,
@@ -168,13 +168,29 @@ function nameLine(name, context, seed) {
     `${name}, protect ${need} with one observable choice instead of another internal argument.`,
     `${name}, ${edgeInstruction}. Treat that as a signal, not a sentence.`,
     `${name}, separate ${need} from the noise around ${area} before you answer anything urgent.`,
-    `${name}, there is a real need underneath this: ${need}, and it deserves ordinary support.`,
+    `${name}, the real need under ${area} is ${need}; protect it with ordinary support instead of another internal argument.`,
     `${name}, ${edgeInstruction} before ${area} becomes heavier than it has to be.`
   ];
   return pickLine(lines, seed, name, need, edge, area);
 }
 
-function actionLine(context, seed) {
+function dailyAreaLabel(area) {
+  const lower = String(area || "").toLowerCase();
+  if (lower.includes("money")) return "a money choice";
+  if (lower.includes("relationship")) return "the relationship tone";
+  if (lower.includes("family")) return "family responsibility";
+  if (lower.includes("health")) return "your body rhythm";
+  if (lower.includes("public") || lower.includes("ambition")) return "the visible work";
+  if (lower.includes("creative") || lower.includes("visibility")) return "your creative voice";
+  if (lower.includes("friendship") || lower.includes("belonging")) return "belonging pressure";
+  if (lower.includes("sleep") || lower.includes("closure")) return "private closure";
+  if (lower.includes("learning") || lower.includes("discipline")) return "scattered attention";
+  if (lower.includes("home")) return "home rhythm";
+  if (lower.includes("conversation")) return "the repeated inner conversation";
+  return "this part of life";
+}
+
+function actionLine(context, seed, salt = "") {
   const action = fragment(context.decisionGate || context.mentorMove || context.stabilizer || "complete the nearest useful task");
   const work = fragment(context.workSignal || "finish one practical detail");
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
@@ -184,16 +200,16 @@ function actionLine(context, seed) {
     `Make the next useful task visible. ${capitalize(work)}. Pair it with one plain instruction. ${capitalize(action)}.`,
     `Check the body first. ${capitalize(body)}. Keep the habit of ${avoid} out of the room.`,
     `Give the next hour one visible edge: ${action}, no extra proving required.`,
-    `Let ${work} become the anchor, then refuse the habit of reopening every possibility.`,
+    `Give the work a plain place. ${capitalize(work)}. Leave the extra possibilities unopened for now.`,
     `Before the day scatters, ${action}; the mood can catch up after the action has form.`,
     `Shrink the decision until it can be done today. ${capitalize(action)}.`,
     `Treat the body cue as useful data. ${capitalize(body)}. Then complete the nearest piece of work without dramatizing it.`,
-    `${capitalize(work)} can become the first proof of care; stop negotiating with the mood after that.`,
+    `The first proof of care can be practical: ${work}. Stop negotiating with the mood after that.`,
     `Give the action a time and a place. ${capitalize(action)}.`,
     `Let the body lead the timing. ${capitalize(body)}. Handle the practical part after that.`,
     `Reduce the work to one visible movement. ${capitalize(work)}. The rest can wait its turn.`
   ];
-  return pickLine(lines, seed, action, work, body, avoid, context.dailyArea, context.openingScene, context.coreNeed);
+  return pickLine(lines, seed, salt, action, work, body, avoid, context.dailyArea, context.openingScene, context.coreNeed);
 }
 
 function relationLine(name, context, seed) {
@@ -348,9 +364,9 @@ function closingLine(context, seed, salt = "") {
   const lines = [
     "A completed detail will change the room before it changes the whole mood.",
     "One clean finish can stand in for the certainty the mind keeps requesting.",
-    "By evening, measure the day by what you handled plainly, not by how perfectly you felt.",
+    "By evening, give more credit to the handled detail than to the mood you kept trying to perfect.",
     "The useful proof today is a kept limit, a finished task, or one reply with no extra weight.",
-    `Let ${fragment(context.closingPermission || "one small finish be enough")} before you reopen the larger question.`,
+    closingPermissionLine(context.closingPermission),
     "A plain finish will do more for your confidence than another hour of private negotiation.",
     "Your nervous system needs evidence, so give it one action that stays done.",
     "Leave the day with one less loose end and one fewer explanation than usual.",
@@ -359,10 +375,19 @@ function closingLine(context, seed, salt = "") {
     "You will trust yourself more after a kept promise than after a perfect explanation.",
     "One ordinary repair is enough to remind the day that you are participating.",
     "Let the finish be modest; the nervous system believes repetition more than intensity.",
-    "The best proof will be quiet: a limit kept, a task closed, a body less braced.",
+    "Let the evidence stay ordinary: a limit kept, a task closed, a body less braced.",
     "End the loop before it asks for another version of the same answer."
   ];
   return pickLine(lines, seed, salt, context.dailyArea, context.closingPermission, context.innerWeather, context.personalEdge);
+}
+
+function closingPermissionLine(permission) {
+  const phrase = fragment(permission || "one small finish can be enough");
+  if (!phrase) return "Let the larger question wait until one small finish has had time to count.";
+  if (/^(one|a)\b/i.test(phrase)) {
+    return `${capitalize(phrase)}; let that stand before you reopen the larger question.`;
+  }
+  return `${capitalize(phrase)}.`;
 }
 
 function normalizeLocalWisdom(text) {

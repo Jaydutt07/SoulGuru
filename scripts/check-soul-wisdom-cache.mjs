@@ -357,6 +357,71 @@ async function checkSeedMismatchRepairsBeforeCaching() {
   ].every(Boolean));
 }
 
+async function checkMechanicalDirectAddressRepairsBeforeCaching() {
+  const date = "2026-06-25";
+  const user = {
+    name: "Asha Rao",
+    phone: "+919000000001",
+    email: "asha@example.com",
+    birthDate: "1994-08-17",
+    birthTime: "06:35",
+    birthPlace: "Mumbai"
+  };
+  const mechanicalWisdomJson = JSON.stringify({
+    wisdom: "The old mental tab in your mind keeps reopening because one task has not been given a place. Asha, Notice where loyalty has become self-abandonment before the day turns home rhythm into a test. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    innerWeather: "Pressure becoming practical",
+    todayMove: "Give one promise an edge",
+    release: "Stop feeding the debate"
+  });
+  const repairedWisdom = {
+    wisdom: "The old mental tab in your mind keeps reopening because one task has not been given a place. Asha, notice where loyalty has become self-abandonment before the day turns home rhythm into a test. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    innerWeather: "Pressure becoming practical",
+    todayMove: "Give one promise an edge",
+    release: "Stop feeding the debate"
+  };
+  const supabase = createFakeSupabase();
+  const openAiRequests = [];
+
+  const result = await createDailySoulWisdom({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-contract"
+  }, {
+    supabase,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async () => ({ configured: true, upserted: true }),
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return {
+              output_text: openAiRequests.length === 1
+                ? mechanicalWisdomJson
+                : JSON.stringify(repairedWisdom)
+            };
+          }
+        }
+      };
+    }
+  });
+
+  const storedReading = [...supabase.state.dailyReadings.values()][0];
+
+  pushCheck("Soul Guru repairs mechanical direct-address casing before caching", [
+    openAiRequests.length === 2,
+    /direct address used mechanical capitalized imperative casing/.test(openAiRequests[1].input),
+    result.quality?.attempts === 2,
+    result.quality?.repaired === true,
+    result.quality?.passed === true,
+    result.wisdom === repairedWisdom.wisdom,
+    storedReading.reading?.wisdom === repairedWisdom.wisdom,
+    !storedReading.reading?.wisdom.includes("Asha, Notice")
+  ].every(Boolean));
+}
+
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const wisdomJson = JSON.stringify({
@@ -565,6 +630,7 @@ async function main() {
   await checkCachedReadingBypassesOpenAI();
   await checkCacheMissWritesAndSecondReadUsesCache();
   await checkSeedMismatchRepairsBeforeCaching();
+  await checkMechanicalDirectAddressRepairsBeforeCaching();
   await checkCacheWriteFailureDoesNotReturnReading();
 
   const failed = checks.filter((check) => !check.passed);

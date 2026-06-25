@@ -125,6 +125,12 @@ function evaluateReading({ user, source, result }) {
   if (nameCount !== 1) {
     failures.push(`expected first name exactly once, got ${nameCount}.`);
   }
+  if (hasMechanicalDirectAddressCasing(wisdom, firstName(user.name))) {
+    failures.push("used mechanical capitalized direct-address phrasing.");
+  }
+  if (hasAwkwardTemplateJoin(wisdom)) {
+    failures.push("used an awkward template join such as 'Let turn' or 'Let letting'.");
+  }
   if (mentionsAstrology(wisdom)) {
     failures.push("mentioned astrology/planet terminology in Soul Guru wisdom.");
   }
@@ -277,6 +283,44 @@ function sentenceOpeningBucket(sentence) {
 function countWord(text, word) {
   const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
   return (String(text || "").match(pattern) || []).length;
+}
+
+function hasMechanicalDirectAddressCasing(text, name) {
+  const verbs = [
+    "Answer",
+    "Begin",
+    "Check",
+    "Choose",
+    "Close",
+    "Decline",
+    "Do",
+    "Finish",
+    "Give",
+    "Handle",
+    "Keep",
+    "Let",
+    "Make",
+    "Name",
+    "Notice",
+    "Protect",
+    "Reduce",
+    "Respond",
+    "Separate",
+    "Shrink",
+    "Stop",
+    "Take",
+    "Treat",
+    "Use",
+    "Wait",
+    "Walk",
+    "Write"
+  ];
+  const pattern = new RegExp(`\\b${escapeRegex(name)},\\s+(?:${verbs.join("|")})\\b`);
+  return pattern.test(String(text || ""));
+}
+
+function hasAwkwardTemplateJoin(text) {
+  return /\bLet\s+(?:answer|choose|clean|close|complete|document|finish|letting|make|protect|separate|turn)\b/i.test(String(text || ""));
 }
 
 function words(text) {

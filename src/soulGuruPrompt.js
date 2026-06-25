@@ -33,6 +33,7 @@ Wisdom paragraph rules:
 - The first 12 words must contain a concrete object, action, body cue, or daily situation from that opening seed.
 - Keep the first sentence in the same ordinary scene family as the Opening scene seed. Do not mix the seed with an unrelated kitchen, cup, phone, body, room, money, or conversation object in the opening sentence.
 - Do not open with the user's name unless the blueprint absolutely requires it.
+- If you address the user mid-paragraph, continue naturally after the comma; do not write mechanical direct-address phrasing like "Name, Notice", "Name, Keep", or "Name, Use".
 - The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
 - Do not open with phone, message, text, unread, inbox, notification, call, reply, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead. A charger/key/bag seed is a doorway/errand scene, not a phone scene.
 - Avoid symmetrical pairings like "between X and Y" unless they are genuinely necessary.
@@ -61,6 +62,7 @@ Avoid these phrases and close variants:
 - "not asking for more analysis"
 - "almost boring"
 - "quiet proof"
+- "the best proof will be quiet"
 - "verdict on your worth"
 
 Do not overuse the words calm, steady, clarity, boundary, energy, reassurance, truth, or honest. Use them only when they are the best word.
@@ -192,6 +194,7 @@ export function isLowQualityWisdom(text) {
     /\bnot asking for (another|more) analysis\b/,
     /\balmost boring\b/,
     /\bquiet proof\b/,
+    /\bthe best proof will be quiet\b/,
     /\bverdict on your worth\b/,
     /^[^.!?]{0,120}\b(phone|message|text|unread|inbox|notification|screen|reply)\b/,
     /^[^.!?]{0,90}:/,
@@ -264,6 +267,19 @@ function formatBirthLocation(location, user) {
 function limitWords(text, maxWords) {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return text;
+  const completeSentences = text.match(/[^.!?]+[.!?]+/g)
+    ?.map((sentence) => sentence.trim())
+    .filter(Boolean) || [];
+  const kept = [];
+  for (const sentence of completeSentences) {
+    const candidate = [...kept, sentence].join(" ");
+    if (candidate.split(/\s+/).filter(Boolean).length > maxWords) break;
+    kept.push(sentence);
+  }
+  const sentenceLimited = kept.join(" ").trim();
+  if (sentenceLimited && sentenceLimited.split(/\s+/).filter(Boolean).length >= Math.min(55, maxWords)) {
+    return sentenceLimited;
+  }
   return `${words.slice(0, maxWords).join(" ").replace(/[,:;]+$/, "")}.`;
 }
 
