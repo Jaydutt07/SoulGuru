@@ -102,6 +102,13 @@ npm run production:env:checklist
 
 The checklist includes the custom domain and Cloudflare DNS launch gate. Set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and `VITE_API_BASE_URL` only after the production HTTPS domain is attached to the Vercel app.
 
+Check the production-domain smoke contract and, after DNS is live, smoke-test the HTTPS custom domain:
+
+```bash
+npm run production:domain:check
+npm run production:domain:smoke -- --expect-ready
+```
+
 Check the Vercel deployment config, CSP/security/cache headers, and deploy-ignore safety rules:
 
 ```bash
@@ -320,6 +327,7 @@ The CI template checks:
 - `npm run mobile:backend:check`
 - `npm run local:smoke`
 - `npm run deployment:smoke:check`
+- `npm run production:domain:check`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
 - Android debug APK build plus `npm run security:check`
@@ -601,10 +609,12 @@ Before release:
 - Run `npm run more-guidance:check`.
 - Run `npm run mobile:backend:check`.
 - Run `npm run deployment:smoke:check`.
+- Run `npm run production:domain:check`.
 - Run `npm run soul:cache:check`.
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.
 - Run `npm run soul:quality`, `npm run soul:quality:extended`, and `npm run soul:quality:ai` before release after prompt changes.
+- Run `npm run production:domain:smoke -- --expect-ready` after the production domain resolves.
 - Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
 - Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
 - Set `VITE_API_BASE_URL` to the production domain-backed backend and run `npm run android:aab:release` or `npm run android:apk:release`.

@@ -50,6 +50,8 @@
     "local:smoke": "node scripts/smoke-local-api.mjs",
     "local:smoke:ai": "node scripts/smoke-local-api.mjs --include-ai",
     "deployment:smoke:check": "node scripts/check-deployment-smoke-contracts.mjs",
+    "production:domain:check": "node scripts/check-production-domain-smoke-contracts.mjs",
+    "production:domain:smoke": "node scripts/smoke-production-domain.mjs",
     "production:check": "node scripts/check-production-readiness.mjs",
     "production:env:checklist": "node scripts/generate-production-env-checklist.mjs",
     "release:check": "node scripts/check-release-readiness.mjs",

@@ -122,6 +122,9 @@ jobs:
       - name: Verify deployment smoke contracts
         run: npm run deployment:smoke:check
 
+      - name: Verify production domain smoke contracts
+        run: npm run production:domain:check
+
       - name: Audit production dependencies
         run: npm audit --omit dev
 

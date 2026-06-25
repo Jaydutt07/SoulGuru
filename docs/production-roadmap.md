@@ -112,6 +112,7 @@ This project is being built toward the stack shown in the product planning image
 - Live Supabase uniqueness checks for daily Soul Guru cache, More Guidance cache, and payment event idempotency
 - Vercel deployment contract checker for build settings, API route duration, CSP/security/cache headers, SPA rewrites, and upload exclusions
 - Production domain and Cloudflare DNS readiness gate for the Namecheap/Cloudflare launch path
+- Production domain smoke test for DNS resolution plus health/readiness checks through the custom HTTPS domain
 
 ## Next Implementation Steps
 
@@ -137,10 +138,11 @@ This project is being built toward the stack shown in the product planning image
 20. Run `npm run public-env:check:strict`.
 21. Run `npm run payments:check`.
 22. Run `npm run shani:check`.
-23. Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
-24. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
-25. Set `VITE_API_BASE_URL` to the production domain and run `npm run android:apk:backend` for a backend-connected phone test.
-26. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
-27. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
-28. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
-29. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables. Use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.
+23. Run `npm run production:domain:smoke -- --expect-ready` after the Cloudflare DNS and Vercel custom-domain setup are live.
+24. Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
+25. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
+26. Set `VITE_API_BASE_URL` to the production domain and run `npm run android:apk:backend` for a backend-connected phone test.
+27. Create a local Android release keystore, set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then run `npm run android:aab:release`.
+28. Configure Clerk production auth, set `CLERK_SECRET_KEY`, and enable `CLERK_REQUIRE_AUTH=true`.
+29. Configure Razorpay dashboard webhook for `/api/razorpay-webhook` and test payment event replay.
+30. Configure Sentry, PostHog, Upstash, and Pinecone production environment variables. Use `SENTRY_DSN` for backend API error tracking and `VITE_SENTRY_DSN` for frontend error tracking.

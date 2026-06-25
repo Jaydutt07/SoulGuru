@@ -56,6 +56,7 @@ await runStep("Shani contract checks", "npm", ["run", "shani:check"]);
 await runStep("Mobile backend validation contract checks", "npm", ["run", "mobile:backend:check"]);
 await runStep("Local API smoke", "npm", ["run", "local:smoke"]);
 await runStep("Deployment smoke contract checks", "npm", ["run", "deployment:smoke:check"]);
+await runStep("Production domain smoke contract checks", "npm", ["run", "production:domain:check"]);
 await runStep("Dependency audit", "npm", ["audit", "--omit", "dev"]);
 
 if (allowMissingExternal) {
@@ -67,6 +68,12 @@ if (allowMissingExternal) {
 }
 
 const smokeUrl = deploymentUrl || String(env.VITE_API_BASE_URL || env.API_BASE_URL || "").trim();
+if (allowMissingExternal) {
+  await runStep("Production domain smoke", "npm", ["run", "production:domain:smoke", "--", "--allow-missing-env"]);
+} else {
+  await runStep("Production domain smoke", "npm", ["run", "production:domain:smoke", "--", "--expect-ready"]);
+}
+
 if (smokeUrl) {
   await runStep("Deployed backend smoke", "npm", [
     "run",

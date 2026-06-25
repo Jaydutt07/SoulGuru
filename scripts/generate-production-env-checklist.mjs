@@ -49,6 +49,7 @@ function buildChecklist(report) {
     "- [ ] Point the Namecheap domain through Cloudflare DNS and set `CLOUDFLARE_DNS_READY=true` only after the HTTPS app URL resolves correctly.",
     "- [ ] Configure Razorpay webhook URL to `/api/razorpay-webhook` with the same webhook secret set in Vercel.",
     "- [ ] Run `npm run production:check` locally with production env loaded.",
+    "- [ ] Run `npm run production:domain:smoke -- --expect-ready` after DNS and Vercel custom-domain setup are live.",
     "- [ ] Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
     "- [ ] Build backend-connected mobile output only with `VITE_API_BASE_URL` pointing at the deployed HTTPS backend.",
     ""
