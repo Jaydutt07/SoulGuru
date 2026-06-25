@@ -35,6 +35,7 @@ import { buildFallbackAstroSolveInsight } from "./astroSolveGuidance.js";
 import { generateCompatibility } from "./compatibility.js";
 import { buildFallbackDeepGuidance } from "./deepGuidance.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
+import { getNumbers } from "./numerology.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
 import { enrichUserWithPlace } from "./placeResolver.js";
 import { buildFallbackPanditAnswer } from "./shaniGuidance.js";
@@ -2509,36 +2510,6 @@ function formatPanditAnswer(answer) {
     answer?.practice ? `Practice: ${answer.practice}` : "",
     answer?.caution ? `Caution: ${answer.caution}` : ""
   ].filter(Boolean).join(" ");
-}
-
-function getNumbers(user) {
-  const birthNumber = reduceDigits(user.birthDate.split("-")[2] || "");
-  const lifePath = reduceDigits(user.birthDate);
-  const nameNumber = reduceName(user.name);
-  const lucky = reduceDigits(`${birthNumber}${lifePath}${nameNumber}`);
-  const avoid = ((lucky + 4) % 9) || 9;
-  return [
-    { label: "Birth number", value: birthNumber, note: "Your instinctive style when life asks for a quick choice." },
-    { label: "Life path", value: lifePath, note: "The rhythm that keeps repeating until it becomes your strength." },
-    { label: "Name number", value: nameNumber, note: "The way your presence tends to land on people." },
-    { label: "Lucky number", value: lucky, note: "Use it for gentle alignment in dates, goals, and small starts." },
-    { label: "Avoid", value: avoid, note: "Do not overuse this number when a choice already feels tense." }
-  ];
-}
-
-function reduceDigits(value) {
-  let sum = String(value || "").replace(/\D/g, "").split("").reduce((total, digit) => total + Number(digit), 0);
-  while (sum > 9) {
-    sum = String(sum).split("").reduce((total, digit) => total + Number(digit), 0);
-  }
-  return sum || 1;
-}
-
-function reduceName(name) {
-  const total = String(name || "").toUpperCase().replace(/[^A-Z]/g, "").split("").reduce((sum, letter) => {
-    return sum + ((letter.charCodeAt(0) - 64 - 1) % 9) + 1;
-  }, 0);
-  return reduceDigits(total);
 }
 
 function parseDate(value) {

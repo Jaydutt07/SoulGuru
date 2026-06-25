@@ -102,6 +102,7 @@ This project is being built toward the stack shown in the product planning image
 - More Guidance v3 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
 - Five-profile More Guidance paid-reading quality gate for word counts, concrete cues, generic-phrase bans, and overview diversity
 - Sidereal chart-based Harmony compatibility with offline contract coverage
+- Shared #Numbers numerology engine with deterministic card/value contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates
 - More Guidance page with 3-month tracking, reading history, and saved advice
 - Server-backed More Guidance tracking contract with days left, month status, progress, and milestones

@@ -127,6 +127,12 @@ Check Harmony compatibility against sidereal birth-chart placements:
 npm run compatibility:check
 ```
 
+Check #Numbers numerology cards, deterministic values, value ranges, and one-line explanations:
+
+```bash
+npm run numbers:check
+```
+
 Check Clerk auth behavior, production client login rules, and the API route auth matrix, including fail-closed required auth, backend identity injection, server-profile-first login, protected-route coverage, and profile persistence before account creation completes:
 
 ```bash
