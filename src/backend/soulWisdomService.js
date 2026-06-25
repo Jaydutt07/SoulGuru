@@ -63,7 +63,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
 
   const fallback = payload.fallback || createFallbackReading(buildServerFallbackWisdom(user, astrologyContext));
   const firstCandidate = normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom;
-  const firstCandidateIssues = getSoulWisdomContractIssues(firstCandidate, user);
+  const firstCandidateIssues = getSoulWisdomContractIssues(firstCandidate, user, astrologyContext);
   if (firstCandidateIssues.length) {
     outputText = await requestSoulWisdom(
       client,
@@ -81,7 +81,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   }
 
   let reading = normalizeWisdomPayload(outputText, fallback);
-  if (getSoulWisdomContractIssues(reading.wisdom, user).length) {
+  if (getSoulWisdomContractIssues(reading.wisdom, user, astrologyContext).length) {
     reading = fallback;
   }
   const result = {
@@ -96,7 +96,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     quality: {
       attempts: qualityAttempts,
       repaired: qualityAttempts > 1,
-      passed: !getSoulWisdomContractIssues(reading.wisdom, user).length
+      passed: !getSoulWisdomContractIssues(reading.wisdom, user, astrologyContext).length
     },
     memory: {
       configured: Boolean(memory.configured),
@@ -220,7 +220,7 @@ function throwHttpError(message, statusCode) {
 
 function buildServerFallbackWisdom(user, context) {
   const name = firstName(user.name);
-  const scene = context.attentionAnchor || context.dailyScene || "one practical detail";
+  const scene = context.openingScene || context.attentionAnchor || context.dailyScene || "one practical detail";
   const move = context.mentorMove || context.stabilizer || "make one promise smaller and keep it completely";
   const caution = context.relationalCaution || context.relationshipMirror || "do not make another person's uncertainty your assignment";
   const avoid = context.avoid || "over-explaining";
@@ -240,7 +240,7 @@ function buildMemoryQuery({ user, astrologyContext, date }) {
   ].filter(Boolean).join(" | ");
 }
 
-function getSoulWisdomContractIssues(wisdom, user) {
+function getSoulWisdomContractIssues(wisdom, user, context = {}) {
   const text = String(wisdom || "");
   const issues = [];
   const wordCount = words(text).length;
@@ -254,7 +254,57 @@ function getSoulWisdomContractIssues(wisdom, user) {
   if (nameCount !== 1) {
     issues.push(`expected first name exactly once, got ${nameCount}`);
   }
+  const openingSeed = context.openingScene || context.dailyScene || "";
+  if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
+    issues.push(`opening did not use seeded scene "${openingSeed}"`);
+  }
   return issues;
+}
+
+function openingUsesSeed(opening, seed) {
+  const openingTokens = new Set(significantTokens(opening));
+  if (significantTokens(seed).some((token) => openingTokens.has(token))) {
+    return true;
+  }
+
+  const openingCategory = classifyScene(opening);
+  const seedCategory = classifyScene(seed);
+  return seedCategory !== "general" && openingCategory === seedCategory;
+}
+
+function classifyScene(text) {
+  const normalized = String(text || "").toLowerCase();
+  const categories = [
+    ["device", /\b(phone|message|text|unread|inbox|notification|screen|reply)\b/],
+    ["water", /\b(water|glass|drink)\b/],
+    ["calendar", /\b(calendar|appointment|deadline|time)\b/],
+    ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
+    ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
+    ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
+    ["room", /\b(chair|room|desk|drawer|laundry|bed)\b/],
+    ["door", /\b(shoes|door|keys|bag|charger|errand)\b/],
+    ["body", /\b(mirror|shoulder|shoulders|jaw|body|breath)\b/],
+    ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply)\b/],
+    ["task", /\b(list|task|item|draft|work|promise)\b/],
+    ["worry", /\b(tab|worry|thought|mind)\b/]
+  ];
+  return categories.find(([, pattern]) => pattern.test(normalized))?.[0] || "general";
+}
+
+function firstSentence(text) {
+  const match = String(text || "").trim().match(/^(.+?[.!?])(\s|$)/);
+  return match?.[1] || words(text).slice(0, 18).join(" ");
+}
+
+function significantTokens(text) {
+  const stop = new Set(["the", "and", "that", "this", "with", "your", "before", "after", "where", "keeps", "need", "needs", "beside", "because", "while"]);
+  return words(text.toLowerCase())
+    .map(cleanToken)
+    .filter((word) => word.length >= 4 && !stop.has(word));
+}
+
+function cleanToken(text) {
+  return String(text || "").replace(/[^a-z]/g, "");
 }
 
 function countWord(text, word) {

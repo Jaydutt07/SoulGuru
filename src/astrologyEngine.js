@@ -337,7 +337,15 @@ export function buildAstrologyContext(user, date = new Date()) {
     relationalCaution: RELATIONAL_CAUTIONS[mod(seed + birthMoon.signIndex + transitSaturn.signIndex, RELATIONAL_CAUTIONS.length)],
     closingPermission: CLOSING_PERMISSIONS[mod(seed + lifePath + transitSun.signIndex, CLOSING_PERMISSIONS.length)],
     dailyScene: DAILY_SCENES[mod(seed + transitMoon.signIndex + solarDistance, DAILY_SCENES.length)],
-    openingScene: OPENING_SCENES[mod(seed + transitMoon.signIndex + transitSun.signIndex + lifePath, OPENING_SCENES.length)],
+    openingScene: OPENING_SCENES[mod(
+      seed
+      + lifePath * 11
+      + birthMoon.signIndex * 7
+      + birthSun.signIndex * 5
+      + moonDistance * 3
+      + saturnDistance * 13,
+      OPENING_SCENES.length
+    )],
     coreNeed: CORE_NEEDS[mod(seed + saturnDistance + lifePath, CORE_NEEDS.length)],
     personalEdge: PERSONAL_EDGES[mod(seed + moonDistance + transitSaturn.signIndex, PERSONAL_EDGES.length)],
     stabilizer: pickStabilizer(moonDistance, saturnDistance, seed),

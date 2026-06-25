@@ -262,7 +262,7 @@ function sceneVariants(raw) {
   if (raw.includes("chair")) {
     return [
       "the chair where the same worry returns",
-      "the usual seat for overthinking",
+      "the chair where overthinking usually sits",
       "that repeated worry in its familiar chair"
     ];
   }
@@ -311,7 +311,7 @@ function sceneVariants(raw) {
   if (raw.includes("mirror")) {
     return [
       "the mirror moment before agreement",
-      "your face before the quick yes",
+      "the mirror before the quick yes",
       "the pause at the mirror"
     ];
   }

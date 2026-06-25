@@ -85,7 +85,7 @@ function App() {
     }
   }, [activeTab, splashDone, user]);
 
-  function handleLogin(account) {
+  function handleLogin(account, loginMeta = {}) {
     const enrichedAccount = saveAccount(account);
     if (LOCAL_AUTH_FALLBACK_ENABLED) {
       window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);
@@ -98,7 +98,11 @@ function App() {
       saveAccount(syncedAccount);
       setUser((current) => current?.phone === syncedAccount.phone ? mergeAccountProfile(current, profile) : current);
     });
-    trackEvent("login_completed", { mode: "otp_demo" });
+    trackEvent("login_completed", {
+      method: loginMeta.method || (LOCAL_AUTH_FALLBACK_ENABLED ? "local_demo_otp" : "backend_otp"),
+      flow: loginMeta.flow || "unknown",
+      server_backed: Boolean(loginMeta.serverBacked)
+    });
   }
 
   function updateUser(updater) {
@@ -273,7 +277,7 @@ function AuthScreen({ onLogin }) {
           setError("No account found for this number.");
           return;
         }
-        onLogin(account);
+        onLogin(account, buildLoginMeta(pendingOtp, "existing"));
         return;
       }
 
@@ -298,11 +302,11 @@ function AuthScreen({ onLogin }) {
           setError("Unable to save your account profile. Please try again shortly.");
           return;
         }
-        onLogin(mergeAccountProfile(account, profile));
+        onLogin(mergeAccountProfile(account, profile), buildLoginMeta(pendingOtp, "create"));
         return;
       }
 
-      onLogin(account);
+      onLogin(account, buildLoginMeta(pendingOtp, "create"));
     } catch (error) {
       setError(error.message || "Unable to verify OTP.");
     } finally {
@@ -1891,6 +1895,15 @@ async function verifyOtpWithServer(pendingOtp, code) {
     throw new Error(data.error || "OTP did not match.");
   }
   return Boolean(data.verified);
+}
+
+function buildLoginMeta(pendingOtp, flow) {
+  const serverBacked = Boolean(pendingOtp?.serverBacked);
+  return {
+    flow,
+    serverBacked,
+    method: serverBacked ? "backend_otp" : "local_demo_otp"
+  };
 }
 
 async function syncUserProfileToServer(account) {

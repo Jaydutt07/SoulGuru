@@ -31,6 +31,7 @@ Wisdom paragraph rules:
 - Write with warmth, precision, and quiet authority.
 - The first sentence must be anchored in the Opening scene seed. Translate it naturally; do not ignore it and invent a different object.
 - The first 12 words must contain a concrete object, action, body cue, or daily situation from that opening seed.
+- Keep the first sentence in the same ordinary scene family as the Opening scene seed. Do not mix the seed with an unrelated kitchen, cup, phone, body, room, money, or conversation object in the opening sentence.
 - Do not open with the user's name unless the blueprint absolutely requires it.
 - The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
 - Do not open with phone, message, text, unread, inbox, notification, call, reply, or screen imagery unless the Opening scene seed explicitly uses that object. If other silent signals mention devices or messages, translate them into timing, body, room, desk, meal, calendar, keys, water, or conversation behavior instead. A charger/key/bag seed is a doorway/errand scene, not a phone scene.

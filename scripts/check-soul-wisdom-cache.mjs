@@ -46,7 +46,7 @@ async function checkUncachedModeRequiresExplicitFlag() {
 async function checkExplicitUncachedModeReturnsUnstoredReading() {
   const user = soulUser("uncached-enabled");
   const wisdomJson = JSON.stringify({
-    wisdom: "The notebook beside your cup gives the day one practical place to begin. Tara, the pressure is not lack of effort; it is the way a private worry keeps dressing itself as preparation. Write the sentence that names the real task, then give the next hour to the smallest visible finish. Keep the answer warm but brief if someone pulls for more. By evening, trust the completed detail more than the argument still asking for attention.",
+    wisdom: "The keys gathered too late give the day one practical place to begin. Tara, the pressure is not lack of effort; it is the way a private worry keeps dressing itself as preparation. Write the sentence that names the real task, then give the next hour to the smallest visible finish. Keep the answer warm but brief if someone pulls for more. By evening, trust the completed detail more than the argument still asking for attention.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Name the real task",
     release: "Stop rehearsing the larger worry"
@@ -191,7 +191,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     birthPlace: "Kochi"
   };
   const wisdomJson = JSON.stringify({
-    wisdom: "The notebook near the kitchen counter gives the unfinished decision a place to land. Leela, care needs a shape before the next request turns into performance. Put the deadline on paper before lunch, then close the extra notes that keep making the task feel ceremonial. If someone wants certainty from you, answer with timing instead of defense. A finished practical detail will settle more of the room than another perfect explanation. Keep the promise small enough to keep completely.",
+    wisdom: "The quiet room after the unsent sentence gives the unfinished decision a place to land. Leela, care needs a shape before the next request turns into performance. Put the deadline on paper before lunch, then close the extra notes that keep making the task feel ceremonial. If someone wants certainty from you, answer with timing instead of defense. A finished practical detail will settle more of the room than another perfect explanation. Keep the promise small enough to keep completely.",
     innerWeather: "Sensitive but ready to act",
     todayMove: "Write the decision before lunch",
     release: "Close every extra tab"
@@ -287,10 +287,80 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   ].every(Boolean));
 }
 
+async function checkSeedMismatchRepairsBeforeCaching() {
+  const date = "2026-06-25";
+  const user = {
+    name: "Asha Rao",
+    phone: "+919000000001",
+    email: "asha@example.com",
+    birthDate: "1994-08-17",
+    birthTime: "06:35",
+    birthPlace: "Mumbai"
+  };
+  const mismatchedWisdomJson = JSON.stringify({
+    wisdom: "The cup near the sink keeps asking for a decision before the morning gets noisy. Asha, the useful pressure is not about doing everything; it is about giving one promise a visible edge before the day scatters. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    innerWeather: "Pressure becoming practical",
+    todayMove: "Give one promise an edge",
+    release: "Stop feeding the debate"
+  });
+  const repairedWisdom = {
+    wisdom: "The old mental tab in your mind keeps reopening because one task has not been given a place. Asha, the useful pressure is not about doing everything; it is about giving one promise a visible edge before the day scatters. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    innerWeather: "Pressure becoming practical",
+    todayMove: "Give one promise an edge",
+    release: "Stop feeding the debate"
+  };
+  const supabase = createFakeSupabase();
+  const openAiRequests = [];
+  const memoryUpserts = [];
+
+  const result = await createDailySoulWisdom({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-contract"
+  }, {
+    supabase,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async (payload) => {
+      memoryUpserts.push(payload);
+      return { configured: true, upserted: true };
+    },
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return {
+              output_text: openAiRequests.length === 1
+                ? mismatchedWisdomJson
+                : JSON.stringify(repairedWisdom)
+            };
+          }
+        }
+      };
+    }
+  });
+
+  const storedReading = [...supabase.state.dailyReadings.values()][0];
+
+  pushCheck("Soul Guru repairs seeded-scene mismatch before caching", [
+    openAiRequests.length === 2,
+    /opening did not use seeded scene/.test(openAiRequests[1].input),
+    result.quality?.attempts === 2,
+    result.quality?.repaired === true,
+    result.quality?.passed === true,
+    result.wisdom === repairedWisdom.wisdom,
+    storedReading.reading?.wisdom === repairedWisdom.wisdom,
+    !storedReading.reading?.wisdom.includes("cup near the sink"),
+    memoryUpserts.length === 1
+  ].every(Boolean));
+}
+
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const wisdomJson = JSON.stringify({
-    wisdom: "The glass of water near the paper gives the morning a plain beginning. Tara, make the first action visible before worry turns the whole day into a performance. The pressure underneath this is not weakness; it is the habit of measuring care by how much tension you can carry. Finish the useful task, leave one sentence unsent, and give your body proof that progress does not need drama. Let the quiet after that count as part of the work.",
+    wisdom: "The list that grew because one item stayed unnamed gives the morning a plain beginning. Tara, make the first action visible before worry turns the whole day into a performance. The pressure underneath this is not weakness; it is the habit of measuring care by how much tension you can carry. Finish the useful task, leave one sentence unsent, and give your body proof that progress does not need drama. Let the quiet after that count as part of the work.",
     innerWeather: "Focused under private pressure",
     todayMove: "Finish the visible task",
     release: "Leave one sentence unsent"
@@ -494,6 +564,7 @@ async function main() {
   await checkCacheReadFailureDoesNotCallOpenAI();
   await checkCachedReadingBypassesOpenAI();
   await checkCacheMissWritesAndSecondReadUsesCache();
+  await checkSeedMismatchRepairsBeforeCaching();
   await checkCacheWriteFailureDoesNotReturnReading();
 
   const failed = checks.filter((check) => !check.passed);

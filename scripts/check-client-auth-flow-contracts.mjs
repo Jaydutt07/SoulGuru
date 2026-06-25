@@ -10,6 +10,7 @@ checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
 checkProductionDoesNotPersistLocalSessions();
+checkLoginAnalyticsDistinguishesOtpSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
@@ -60,7 +61,7 @@ function checkProductionCreateRequiresProfilePersistence() {
     source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {"),
     source.includes("const profile = await syncUserProfileToServer(account);"),
     source.includes("setError(\"Unable to save your account profile. Please try again shortly.\");"),
-    source.includes("onLogin(mergeAccountProfile(account, profile));")
+    source.includes("onLogin(mergeAccountProfile(account, profile), buildLoginMeta(pendingOtp, \"create\"));")
   ].every(Boolean));
 }
 
@@ -70,6 +71,20 @@ function checkProductionDoesNotPersistLocalSessions() {
     source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n        window.localStorage.setItem(SESSION_KEY, next.phone);"),
     source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n    return enrichedAccount;\n  }"),
     source.includes("function getSessionUser() {\n  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;")
+  ].every(Boolean));
+}
+
+function checkLoginAnalyticsDistinguishesOtpSource() {
+  pushCheck("Client login analytics distinguishes backend OTP from local demo fallback", [
+    source.includes("function handleLogin(account, loginMeta = {}) {"),
+    source.includes("method: loginMeta.method || (LOCAL_AUTH_FALLBACK_ENABLED ? \"local_demo_otp\" : \"backend_otp\")"),
+    source.includes("server_backed: Boolean(loginMeta.serverBacked)"),
+    source.includes("function buildLoginMeta(pendingOtp, flow) {"),
+    source.includes("method: serverBacked ? \"backend_otp\" : \"local_demo_otp\""),
+    source.includes("onLogin(account, buildLoginMeta(pendingOtp, \"existing\"));"),
+    source.includes("onLogin(mergeAccountProfile(account, profile), buildLoginMeta(pendingOtp, \"create\"));"),
+    source.includes("onLogin(account, buildLoginMeta(pendingOtp, \"create\"));"),
+    !source.includes("trackEvent(\"login_completed\", { mode: \"otp_demo\" });")
   ].every(Boolean));
 }
 

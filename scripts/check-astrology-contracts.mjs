@@ -98,7 +98,7 @@ function checkSiderealChartAndTransitContract() {
     context.transits.moonFromNatalMoon === 11,
     context.transits.saturnFromNatalMoon === 4,
     context.transits.sunFromNatalSun === 11,
-    context.openingScene === "the bag, keys, or charger gathered too late"
+    context.openingScene === "the quiet room after a sentence you did not send"
   ].every(Boolean));
 }
 
