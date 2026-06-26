@@ -274,7 +274,11 @@ function assertOtpDeliveryConfigured({ email }, env) {
 
 function getSmsWebhookUrl(env) {
   const url = String(env.OTP_SMS_WEBHOOK_URL || "").trim();
-  return isPlaceholderSecret(url) ? "" : url;
+  if (isPlaceholderSecret(url)) return "";
+  if (!isSafeHttpsUrl(url)) {
+    throw createHttpError("OTP_SMS_WEBHOOK_URL must be a real HTTPS provider URL", 500);
+  }
+  return url;
 }
 
 function getSmsWebhookToken(env) {
@@ -303,6 +307,17 @@ function isPlaceholderSecret(value) {
   if (/^\*+$/.test(normalized)) return true;
 
   return false;
+}
+
+function isSafeHttpsUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    if (url.protocol !== "https:" || !url.hostname) return false;
+    if (url.hostname === "localhost" || url.hostname.endsWith(".localhost")) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function createOtpCode() {

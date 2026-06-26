@@ -195,6 +195,31 @@ async function checkSmsWebhookTokenIsRequiredBeforeStorage() {
   ].every(Boolean));
 }
 
+async function checkSmsWebhookUrlIsValidatedBeforeStorage() {
+  const supabase = createFakeSupabase();
+
+  await expectRejects(
+    "SMS OTP webhook rejects insecure URL before storage",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      OTP_SMS_WEBHOOK_URL: "http://sms.example.test/send",
+      OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-token-123"
+    }, {
+      supabase,
+      createOtpCode: () => "123456"
+    }),
+    /OTP_SMS_WEBHOOK_URL.*HTTPS/i,
+    500
+  );
+
+  pushCheck("Insecure SMS webhook URL leaves no stored challenge", supabase.state.challenges.size === 0);
+}
+
 async function checkSmsWebhookSendsBearerToken() {
   const supabase = createFakeSupabase();
   const fetchCalls = [];
@@ -573,6 +598,7 @@ async function main() {
   await checkOtpHashSecretIsRequiredBeforeDelivery();
   await checkOtpDeliveryConfigIsRequiredBeforeStorage();
   await checkSmsWebhookTokenIsRequiredBeforeStorage();
+  await checkSmsWebhookUrlIsValidatedBeforeStorage();
   await checkSmsWebhookSendsBearerToken();
   await checkVerifyOtpAttemptsAndSuccess();
   await checkMaxAttemptsAndExpiryBlockVerification();

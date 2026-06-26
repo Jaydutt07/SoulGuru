@@ -338,6 +338,21 @@ function compactAreaLine(context) {
 }
 
 function sceneStatementSubject(scene, seed = 0) {
+  const normalized = String(scene || "").toLowerCase();
+  if (normalized.includes("half-closed") && normalized.includes("conversation")) {
+    return pickLine([
+      "The half-closed door before the conversation",
+      "Doorway conversation pressure",
+      "The door left half-closed before words"
+    ], seed, scene);
+  }
+  if (/\b(bag|keys|charger)\b/.test(normalized)) {
+    return pickLine([
+      "Keys gathered late",
+      "The bag and charger delay",
+      "The late key-and-charger detail"
+    ], seed, scene);
+  }
   const category = sceneCopyCategory(scene);
   const subjects = {
     water: ["Water before judgment", "The bedside glass", "First-sip discipline"],
@@ -744,6 +759,13 @@ function relationClause(text, seed = 0) {
 }
 
 function sceneVariants(raw) {
+  if (raw.includes("half-closed") && raw.includes("conversation")) {
+    return [
+      "a door half-closed before the conversation",
+      "the half-closed door before words",
+      "the door left half-closed while the conversation waits"
+    ];
+  }
   if (raw.includes("water glass")) {
     return [
       "the water by the bed",
@@ -830,9 +852,9 @@ function sceneVariants(raw) {
   }
   if (raw.includes("bag") || raw.includes("keys") || raw.includes("charger")) {
     return [
-      "keys gathered late",
-      "the bag by the door",
-      "a missing charger or key"
+      "the bag gathered too late",
+      "keys and charger gathered late",
+      "the bag, keys, or charger by the door"
     ];
   }
   if (raw.includes("mirror")) {

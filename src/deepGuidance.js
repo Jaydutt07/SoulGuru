@@ -46,6 +46,7 @@ function paidScene(context = {}) {
   if (raw.includes("chair") || raw.includes("room") || raw.includes("desk") || raw.includes("drawer") || raw.includes("laundry")) return "the room detail you keep passing";
   if (raw.includes("door") || raw.includes("shoes") || raw.includes("keys") || raw.includes("bag") || raw.includes("charger")) return "the doorway detail";
   if (raw.includes("message") || raw.includes("sentence") || raw.includes("reply") || raw.includes("conversation")) return "the unsent sentence";
+  if (raw.includes("list") || raw.includes("task") || raw.includes("draft") || raw.includes("work") || raw.includes("promise")) return "the task list with one unnamed item";
   if (raw.includes("tab") || raw.includes("worry") || raw.includes("thought") || raw.includes("mind")) return "the mental tab that keeps reopening";
   return "one ordinary detail near the work";
 }
@@ -57,9 +58,21 @@ function pickOverview(parts, seed) {
     `${capitalize(scene)} starts this paid map, because the work around ${area} is not only asking for effort, it is asking for cleaner placement. For ${name}, the costly habit is ${cost}, then treating the aftertaste as proof that more explanation is needed. Put ${anchor} into a visible system before the day gets crowded: give it a time, a limit, and one finish that can happen before evening. Use this rule: ${move}. With people, ${caution}; with work, ${work}. The change comes from making care measurable enough for the body to trust it.`,
     `Start with ${scene}, because that ordinary detail shows where the pressure around ${area} has stopped being practical and started becoming a private negotiation. ${name}, the repeated cost is ${cost}; it drains timing, then makes every request sound heavier than it is. The next three months need a map that protects energy before the conversation begins: one written promise, one reply with a clear time, and one task finished before the mind reopens the case. Keep ${avoid} outside the decision. Use this caution for closeness: ${caution}. Let work follow this signal: ${work}.`,
     `${capitalize(scene)} is the useful evidence today: the issue around ${area} has a shape, and it gets louder when ${anchor} stays unnamed. ${name}, the old response is ${cost}, then trying to repair the discomfort by becoming more available, more careful, or more persuasive. The paid guidance is to stop paying for that pattern with attention. Place the recurring duty on paper, use this rule: ${move}, and close the part that is already ready. Let relationships follow this caution: ${caution}. Let work stay plain through this signal: ${work}.`,
-    `The paid map begins with ${scene}, not with a dramatic breakthrough. Around ${area}, ${name} needs a structure that stops the habit of ${cost} from turning each small duty into a verdict. Give the returning detail a fixed place: a calendar slot, a written cost, and a finish line that can be seen by tonight. Keep ${avoid} away from the next explanation, especially if the room starts asking for reassurance before anything has actually changed. In relationships, ${caution}. In work, ${work}. This is how guidance becomes trackable: less emotional rent, more visible repair.`
+    `The paid map begins with ${scene}, not with a dramatic breakthrough. Around ${area}, ${name} needs a structure that stops the habit of ${cost} from turning each small duty into a verdict. Give the returning detail a fixed place: a calendar slot, a written cost, and a finish line that can be seen by tonight. Keep ${avoid} away from the next explanation, especially if the room starts asking for reassurance before anything has actually changed. In relationships, ${caution}. In work, ${work}. This is how guidance becomes trackable: less emotional rent, more visible repair.`,
+    `The pressure around ${area} needs a three-month map that starts in the ordinary scene of ${scene}. ${name}, the pattern is not lack of effort; it is ${cost} until the day becomes crowded with invisible accounting. Use the next paid cycle to make the pressure inspectable: write the duty, mark the cost, choose the part that closes before evening, and leave the rest outside the next conversation. Keep ${avoid} from becoming the manager. Let closeness follow this rule: ${caution}. Let the work stay practical through this signal: ${work}. The win is a trackable rhythm, not a perfect mood.`,
+    `Use ${scene} as the entry point, because the issue around ${area} is asking for a repeatable method, not a more emotional reading. For ${name}, the drain is ${cost}; it makes the smallest duty feel like evidence about love, value, or timing. The deeper guidance is to build a visible sequence: body first, then the written promise, then the task that can close within two hours. Keep ${avoid} out of the review. With people, ${caution}. With work, ${work}. Three months of this turns scattered insight into a record the body can trust.`
   ];
-  return templates[mod(seed, templates.length)];
+  const fingerprint = stableHash(`${scene}|${area}|${anchor}|${work}|${cost}|${name}`);
+  return templates[mod(seed + fingerprint + overviewSceneOffset(scene), templates.length)];
+}
+
+function overviewSceneOffset(scene) {
+  const value = String(scene || "").toLowerCase();
+  if (value.includes("task list") || value.includes("draft")) return 1;
+  if (value.includes("calendar")) return 4;
+  if (value.includes("receipt") || value.includes("payment")) return 2;
+  if (value.includes("notebook")) return 3;
+  return 0;
 }
 
 function pickThisWeek(parts, seed) {
