@@ -279,12 +279,19 @@ export async function verifyRazorpayCheckoutPayment({ user = {}, orderId, paymen
     startsAt,
     endsAt
   });
+  const emailResult = activation.created
+    ? await sendMembershipConfirmation(user.email, {
+      name: user.name,
+      endsAt: activation.subscription.endsAt
+    }, env)
+    : { sent: false, skipped: true, reason: "Membership already active" };
 
   return {
     verified: true,
     stored: true,
     activated: activation.created,
-    subscription: activation.subscription
+    subscription: activation.subscription,
+    email: emailResult
   };
 }
 

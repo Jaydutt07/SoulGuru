@@ -18,6 +18,7 @@ await checkShaniOrderCreationContract();
 await checkCheckoutSignatureContract();
 await checkCheckoutVerificationContract();
 await checkShaniCheckoutVerificationContract();
+await checkCheckoutConfirmationEmailContract();
 await checkCheckoutSubscriptionRaceContract();
 await checkShaniCheckoutMembershipRaceContract();
 await checkWebhookSignatureContract();
@@ -590,6 +591,72 @@ async function checkShaniCheckoutVerificationContract() {
     /amount does not match/i,
     400
   );
+}
+
+async function checkCheckoutConfirmationEmailContract() {
+  const secret = "checkout-secret";
+  const orderId = "order_contract_email";
+  const paymentId = "pay_contract_email";
+  const amount = 49900;
+  const currency = "INR";
+  const signature = hmac(`${orderId}|${paymentId}`, secret);
+  const user = {
+    id: "email-checkout-user",
+    name: "Asha Rao",
+    phone: "+15550000008",
+    email: "Asha <asha@soulguru.local>"
+  };
+  const orderToken = hmac(`${orderId}|${buildBackendUserKey(user)}|${amount}|${currency}`, secret);
+  const supabase = createFakePaymentSupabase();
+  const fetchCalls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { id: "email_checkout_contract_1" };
+      }
+    };
+  };
+
+  try {
+    const result = await verifyRazorpayCheckoutPayment({
+      user,
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      MORE_GUIDANCE_PRICE_PAISE: "49900",
+      RESEND_API_KEY: "re_checkout_contract",
+      RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    }, { supabase });
+    const emailBody = JSON.parse(fetchCalls[0]?.options?.body || "{}");
+
+    pushCheck("Checkout activation sends More Guidance confirmation email", [
+      result.verified === true,
+      result.stored === true,
+      result.activated === true,
+      result.email?.sent === true,
+      result.email?.id === "email_checkout_contract_1",
+      fetchCalls.length === 1,
+      fetchCalls[0].url === "https://api.resend.com/emails",
+      fetchCalls[0].options.headers.Authorization === "Bearer re_checkout_contract",
+      emailBody.from === "SoulGuru <hello@soulguru.app>",
+      emailBody.to?.[0] === "asha@soulguru.local",
+      emailBody.subject === "Your Soul Guru + Astro Solve guidance is active",
+      emailBody.text.includes("15 additional Astro Solves questions"),
+      emailBody.tags?.[0]?.name === "event",
+      emailBody.tags?.[0]?.value === "more_guidance_activated"
+    ].every(Boolean));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 async function checkCheckoutSubscriptionRaceContract() {
