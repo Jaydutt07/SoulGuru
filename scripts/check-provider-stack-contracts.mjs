@@ -160,6 +160,7 @@ function fullEnv() {
     PAYMENTS_ALLOW_LOCAL_ACTIVATION: "false",
     UPSTASH_REDIS_REST_URL: "https://upstash.soulguru.app",
     UPSTASH_REDIS_REST_TOKEN: "upstash-contract-token-123456",
+    RATE_LIMIT_REQUIRE_UPSTASH: "true",
     PLACE_GEOCODER_URL: "https://geocoder.soulguru.app/search",
     PLACE_GEOCODER_USER_AGENT: "SoulGuru/1.0 production contact@soulguru.app",
     PLACE_GEOCODER_REQUIRE_RESOLUTION: "true",

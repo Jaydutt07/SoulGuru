@@ -96,6 +96,7 @@ function checkProductionSafeDefaults() {
   const mismatchedLaunchGates = [
     parsed.get("CLERK_REQUIRE_AUTH") === "true" ? "" : "CLERK_REQUIRE_AUTH=true",
     parsed.get("PLACE_GEOCODER_REQUIRE_RESOLUTION") === "true" ? "" : "PLACE_GEOCODER_REQUIRE_RESOLUTION=true",
+    parsed.get("RATE_LIMIT_REQUIRE_UPSTASH") === "true" ? "" : "RATE_LIMIT_REQUIRE_UPSTASH=true",
     parsed.get("RAZORPAY_WEBHOOK_READY") === "false" ? "" : "RAZORPAY_WEBHOOK_READY=false",
     parsed.get("CLOUDFLARE_DNS_READY") === "false" ? "" : "CLOUDFLARE_DNS_READY=false"
   ].filter(Boolean);

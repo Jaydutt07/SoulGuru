@@ -21,6 +21,12 @@ export async function checkRateLimit({
   const token = env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!restUrl || !token) {
+    if (isUpstashRateLimitRequired(env)) {
+      throwHttpError(
+        "Rate limiting is not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN before serving protected routes.",
+        503
+      );
+    }
     return { allowed: true, remaining: limit, skipped: true };
   }
 
@@ -69,6 +75,10 @@ export async function checkRateLimit({
       fallback: "memory"
     };
   }
+}
+
+export function isUpstashRateLimitRequired(env = process.env) {
+  return String(env.RATE_LIMIT_REQUIRE_UPSTASH || "false").toLowerCase() === "true";
 }
 
 export function buildRateLimitKey(req, user = {}) {
@@ -151,4 +161,10 @@ function sanitizeRoute(route) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return value || "default";
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }

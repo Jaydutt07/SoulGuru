@@ -9,6 +9,7 @@ import {
 const checks = [];
 
 await checkUnconfiguredRateLimitSkipsNetwork();
+await checkStrictUnconfiguredRateLimitFailsClosed();
 await checkRateLimitKeyPrivacy();
 await checkUpstashPipelineContract();
 await checkBlockedAndDegradedBehavior();
@@ -40,6 +41,29 @@ async function checkUnconfiguredRateLimitSkipsNetwork() {
     result.skipped === true,
     fetchCalls === 0
   ].every(Boolean));
+}
+
+async function checkStrictUnconfiguredRateLimitFailsClosed() {
+  let fetchCalls = 0;
+  await expectRejects(
+    "Rate limit fails closed when Upstash is required but unconfigured",
+    () => checkRateLimit({
+      env: {
+        RATE_LIMIT_REQUIRE_UPSTASH: "true"
+      },
+      key: "raw-user",
+      route: "soul-wisdom",
+      limit: 20,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        return okJson([]);
+      }
+    }),
+    /Rate limiting is not configured/i,
+    503
+  );
+
+  pushCheck("Strict missing-Upstash rate limit does not call network", fetchCalls === 0);
 }
 
 async function checkRateLimitKeyPrivacy() {
@@ -259,6 +283,18 @@ function parseRequest(url, options = {}) {
 
 function pushCheck(label, passed) {
   checks.push({ label, passed });
+}
+
+async function expectRejects(label, action, pattern, statusCode) {
+  try {
+    await action();
+    pushCheck(label, false);
+  } catch (error) {
+    pushCheck(label, [
+      pattern.test(String(error.message || "")),
+      statusCode ? error.statusCode === statusCode : true
+    ].every(Boolean));
+  }
 }
 
 function printReport() {

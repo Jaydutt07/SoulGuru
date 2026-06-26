@@ -380,15 +380,18 @@ function checkRateLimit(env) {
   if (!hasEnv(env, "UPSTASH_REDIS_REST_TOKEN")) {
     missingEnv.push("UPSTASH_REDIS_REST_TOKEN");
   }
+  if (String(env.RATE_LIMIT_REQUIRE_UPSTASH || "false").toLowerCase() !== "true") {
+    missingEnv.push("RATE_LIMIT_REQUIRE_UPSTASH=true");
+  }
 
   return {
     id: "rateLimit",
     label: "Upstash rate limiting",
     severity: "warning",
     status: missingEnv.length ? "fail" : "pass",
-    requiredEnv: ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+    requiredEnv: ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "RATE_LIMIT_REQUIRE_UPSTASH=true"],
     missingEnv,
-    advice: missingEnv.length ? "Configure Upstash so AI, OTP, and payment routes are protected from abuse." : ""
+    advice: missingEnv.length ? "Configure Upstash and require it for protected routes so AI, OTP, and payment routes cannot launch unmetered." : ""
   };
 }
 
