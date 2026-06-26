@@ -167,6 +167,7 @@ Treat the report as the first triage pass. If miss rate rises or the top missed 
 ```bash
 npm run soul:daily:check
 npm run soul:quality
+npm run soul:daily:ai
 npm run soul:quality:ai
 ```
 

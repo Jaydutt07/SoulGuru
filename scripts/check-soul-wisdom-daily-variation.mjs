@@ -1,9 +1,19 @@
+import { performance } from "node:perf_hooks";
+import { loadEnv } from "vite";
 import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
+import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
 import { firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
 import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "../src/soulWisdomVersion.js";
 import { SOUL_WISDOM_BASE_CASES } from "./soul-wisdom-quality-cases.mjs";
 
+const includeAi = process.argv.includes("--include-ai");
+const showReadings = process.argv.includes("--show-readings");
+const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
+const env = {
+  ...loadEnv(mode, process.cwd(), ""),
+  ...process.env
+};
 const defaultDates = [
   "2026-06-24",
   "2026-06-25",
@@ -17,9 +27,37 @@ const maxSimilarity = Number(getArgValue("--max-similarity") || 0.28);
 const maxOpeningRepeats = Number(getArgValue("--max-opening-repeats") || 2);
 const users = SOUL_WISDOM_BASE_CASES.slice(0, Number(getArgValue("--profiles") || 3));
 const failures = [];
+const started = performance.now();
 
-for (const user of users) {
-  const readings = dates.map((date) => evaluateDailyReading(user, date));
+await runGroup("local", buildLocalReadings);
+if (includeAi) {
+  if (!env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required for --include-ai.");
+  }
+  await runGroup("openai", buildAiReadings);
+}
+
+const elapsedMs = Math.round(performance.now() - started);
+
+if (failures.length) {
+  console.error("\nDaily variation failures:");
+  for (const failure of failures) {
+    console.error(`- ${failure}`);
+  }
+  process.exit(1);
+}
+
+console.log(`Soul Guru daily variation check: pass (${elapsedMs}ms)`);
+
+async function runGroup(source, buildReadings) {
+  console.log(`\n${source.toUpperCase()} daily variation`);
+  for (const user of users) {
+    const readings = await buildReadings(user);
+    evaluateDailyVariationGroup({ source, user, readings });
+  }
+}
+
+function evaluateDailyVariationGroup({ source, user, readings }) {
   const similarity = buildSimilarity(readings);
   const maxPair = similarity.reduce((best, item) => item.score > best.score ? item : best, { pair: "none", score: 0 });
   const highSimilarity = similarity.filter((item) => item.score > maxSimilarity);
@@ -30,47 +68,73 @@ for (const user of users) {
   const lunarDays = new Set(readings.map((item) => item.lunarDay));
 
   if (transitKeys.size !== readings.length) {
-    failures.push(`${user.name}: expected a unique transit fingerprint for each date, got ${transitKeys.size}/${readings.length}.`);
+    failures.push(`${source} / ${user.name}: expected a unique transit fingerprint for each date, got ${transitKeys.size}/${readings.length}.`);
   }
   if (dailyAreas.size < Math.max(3, Math.ceil(readings.length * 0.75))) {
-    failures.push(`${user.name}: daily areas repeated too much (${dailyAreas.size}/${readings.length}).`);
+    failures.push(`${source} / ${user.name}: daily areas repeated too much (${dailyAreas.size}/${readings.length}).`);
   }
   if (lunarMansions.size < readings.length - 1) {
-    failures.push(`${user.name}: lunar mansion timing repeated too much (${lunarMansions.size}/${readings.length}).`);
+    failures.push(`${source} / ${user.name}: lunar mansion timing repeated too much (${lunarMansions.size}/${readings.length}).`);
   }
   if (lunarDays.size < readings.length - 1) {
-    failures.push(`${user.name}: lunar day timing repeated too much (${lunarDays.size}/${readings.length}).`);
+    failures.push(`${source} / ${user.name}: lunar day timing repeated too much (${lunarDays.size}/${readings.length}).`);
   }
   if (highSimilarity.length) {
-    failures.push(`${user.name}: ${highSimilarity.length} date pair(s) exceeded max same-user similarity ${maxSimilarity}.`);
+    failures.push(`${source} / ${user.name}: ${highSimilarity.length} date pair(s) exceeded max same-user similarity ${maxSimilarity}.`);
   }
   if (openingRepeats.length) {
-    failures.push(`${user.name}: opening bucket repeated too often (${openingRepeats.map((item) => `${item.value}=${item.count}`).join(", ")}).`);
+    failures.push(`${source} / ${user.name}: opening bucket repeated too often (${openingRepeats.map((item) => `${item.value}=${item.count}`).join(", ")}).`);
   }
 
   for (const reading of readings) {
-    failures.push(...reading.failures.map((failure) => `${user.name} / ${reading.date}: ${failure}`));
+    failures.push(...reading.failures.map((failure) => `${source} / ${user.name} / ${reading.date}: ${failure}`));
   }
 
   console.log(`${user.name}: ${readings.length} dates; max similarity ${maxPair.score} (${maxPair.pair}); areas=${dailyAreas.size}; lunar=${lunarMansions.size}; tithi=${lunarDays.size}`);
   for (const reading of readings) {
-    console.log(`- ${reading.date}: ${reading.wordCount} words; area="${reading.dailyArea}"; moon=${reading.moonSign}; lunar=${reading.lunarMansion}; tithi=${reading.lunarDay}; opening=${reading.openingBucket}`);
+    const repair = reading.quality?.attempts ? ` attempts=${reading.quality.attempts}` : "";
+    console.log(`- ${reading.date}: ${reading.wordCount} words${repair}; area="${reading.dailyArea}"; moon=${reading.moonSign}; lunar=${reading.lunarMansion}; tithi=${reading.lunarDay}; opening=${reading.openingBucket}`);
+    if (showReadings) {
+      console.log(`  ${reading.wisdom}`);
+    }
   }
 }
 
-if (failures.length) {
-  console.error("\nDaily variation failures:");
-  for (const failure of failures) {
-    console.error(`- ${failure}`);
-  }
-  process.exit(1);
+function buildLocalReadings(user) {
+  return dates.map((date) => evaluateDailyReading({
+    user,
+    date,
+    result: {
+      reading: getDailyWisdom(user, date),
+      quality: { attempts: 0, repaired: false, passed: true }
+    }
+  }));
 }
 
-console.log("Soul Guru daily variation check: pass");
+async function buildAiReadings(user) {
+  const aiEnv = {
+    ...env,
+    SOUL_WISDOM_ALLOW_UNCACHED: "true",
+    SUPABASE_URL: "",
+    SUPABASE_SERVICE_ROLE_KEY: "",
+    PINECONE_API_KEY: "",
+    PINECONE_HOST: "",
+    PINECONE_INDEX: ""
+  };
+  const readings = [];
+  for (const date of dates) {
+    const result = await createDailySoulWisdom({
+      user,
+      date,
+      today: formatDateForPrompt(date)
+    }, aiEnv);
+    readings.push(evaluateDailyReading({ user, date, result }));
+  }
+  return readings;
+}
 
-function evaluateDailyReading(user, date) {
-  const result = getDailyWisdom(user, date);
-  const wisdom = result.wisdom || "";
+function evaluateDailyReading({ user, date, result }) {
+  const wisdom = result.reading?.wisdom || result.wisdom || "";
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, date));
   const sentences = splitSentences(wisdom);
   const wordCount = words(wisdom).length;
@@ -92,7 +156,7 @@ function evaluateDailyReading(user, date) {
   if (mentionsAstrology(wisdom)) {
     failures.push("mentioned astrology/planet terminology in Soul Guru wisdom.");
   }
-  if (!result.innerWeather || !result.todayMove || !result.release) {
+  if (!result.reading?.innerWeather || !result.reading?.todayMove || !result.reading?.release) {
     failures.push("missing one or more cue fields.");
   }
 
@@ -105,6 +169,7 @@ function evaluateDailyReading(user, date) {
     moonSign: context.transits?.moon?.sign || "unknown",
     lunarMansion: context.dailyLunarMansion?.name || context.transits?.moon?.lunarMansion?.name || "unknown",
     lunarDay: context.dailyLunarDay?.name || "unknown",
+    quality: result.quality || null,
     transitKey: [
       context.dailyArea,
       context.timingTone,
@@ -203,6 +268,16 @@ function parseDates(value) {
     throw new Error("--dates must be a comma-separated list of YYYY-MM-DD values.");
   }
   return parsed;
+}
+
+function formatDateForPrompt(dateKey) {
+  return new Date(`${dateKey}T12:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  });
 }
 
 function escapeRegex(value) {

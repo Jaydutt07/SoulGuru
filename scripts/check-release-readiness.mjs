@@ -48,16 +48,19 @@ await runStep("OTP contract checks", "npm", ["run", "otp:check"]);
 if (includeAi) {
   if (hasEnv("OPENAI_API_KEY")) {
     await runStep("Soul Guru live OpenAI reading quality", "npm", ["run", "soul:quality:ai"]);
+    await runStep("Soul Guru live OpenAI daily variation", "npm", ["run", "soul:daily:ai"]);
     await runStep("Astro Solves live OpenAI answer quality", "npm", ["run", "astro:quality:ai"]);
     await runStep("More Guidance live OpenAI paid reading quality", "npm", ["run", "more-guidance:quality:ai"]);
     await runStep("Shani Pandit live OpenAI answer quality", "npm", ["run", "shani:quality:ai"]);
   } else if (allowMissingExternal) {
     skipStep("Soul Guru live OpenAI reading quality", "OPENAI_API_KEY is not configured.");
+    skipStep("Soul Guru live OpenAI daily variation", "OPENAI_API_KEY is not configured.");
     skipStep("Astro Solves live OpenAI answer quality", "OPENAI_API_KEY is not configured.");
     skipStep("More Guidance live OpenAI paid reading quality", "OPENAI_API_KEY is not configured.");
     skipStep("Shani Pandit live OpenAI answer quality", "OPENAI_API_KEY is not configured.");
   } else {
     failStep("Soul Guru live OpenAI reading quality", "OPENAI_API_KEY is required for --include-ai.");
+    failStep("Soul Guru live OpenAI daily variation", "OPENAI_API_KEY is required for --include-ai.");
     failStep("Astro Solves live OpenAI answer quality", "OPENAI_API_KEY is required for --include-ai.");
     failStep("More Guidance live OpenAI paid reading quality", "OPENAI_API_KEY is required for --include-ai.");
     failStep("Shani Pandit live OpenAI answer quality", "OPENAI_API_KEY is required for --include-ai.");

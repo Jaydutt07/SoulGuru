@@ -315,6 +315,12 @@ Check that the same user receives distinct date-specific Words of Wisdom as dail
 npm run soul:daily:check
 ```
 
+Run the same daily-variation gate through live OpenAI for a focused same-user date sweep:
+
+```bash
+npm run soul:daily:ai
+```
+
 Check the Astro Solves allowance/storage contract without contacting OpenAI or Supabase:
 
 ```bash
@@ -467,7 +473,7 @@ The CI template checks:
 - `npm run production:check -- --allow-fail`
 - Android debug APK build plus `npm run android:artifact:check` and `npm run security:check`
 
-If the repository secret `OPENAI_API_KEY` is configured, the workflow can also run `npm run soul:quality:ai`, `npm run astro:quality:ai`, `npm run more-guidance:quality:ai`, and `npm run shani:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
+If the repository secret `OPENAI_API_KEY` is configured, the workflow can also run `npm run soul:quality:ai`, `npm run soul:daily:ai`, `npm run astro:quality:ai`, `npm run more-guidance:quality:ai`, and `npm run shani:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
 If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app table, column, index, and uniqueness-constraint contract.
 
@@ -766,7 +772,7 @@ Before release:
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.
 - Run `npm run soul:daily:check`, `npm run soul:quality`, `npm run soul:quality:extended`, `npm run astro:quality`, `npm run more-guidance:quality`, `npm run more-guidance:quality:extended`, and `npm run shani:quality` before release after prompt changes.
-- Run `npm run soul:quality:ai`, `npm run astro:quality:ai`, `npm run more-guidance:quality:ai`, and `npm run shani:quality:ai` with `OPENAI_API_KEY` configured before release after prompt changes.
+- Run `npm run soul:quality:ai`, `npm run soul:daily:ai`, `npm run astro:quality:ai`, `npm run more-guidance:quality:ai`, and `npm run shani:quality:ai` with `OPENAI_API_KEY` configured before release after prompt changes.
 - Run `npm run production:domain:smoke -- --expect-ready` after the production domain resolves.
 - Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.
 - Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing`.
