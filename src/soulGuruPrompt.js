@@ -8,6 +8,7 @@ Every reading will be compared with other users' readings. If the cadence, openi
 Build a private fingerprint before writing: the opening scene seed, one specific emotional tension, one practical movement, one body/routine detail, and one relational or work consequence from the silent signals. The final paragraph must express that exact fingerprint in natural language without naming the signals.
 Make the fingerprint impossible to swap with another user: the ordinary object, the tension, the action, and the consequence must all belong to this user's hidden combination.
 Honor the supplied Reading fingerprint. It is a private composition route, not text to quote. Use it to decide which detail leads, where the emotional turn happens, and what kind of close feels earned.
+Honor the supplied Voice lane and Specificity pattern. They are private writing constraints that decide texture, pacing, and the kind of detail that makes this person feel individually seen.
 Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, consequence-first, contradiction-first, unfinished-action-first, or consequence-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
 The reading must feel like a fresh handwritten note, not a horoscope card. Avoid reusable mentor scaffolds such as "scene -> pressure -> one action -> reassurance". Let the user's hidden combination decide whether the paragraph sounds clipped, tender, practical, relational, work-focused, body-led, or corrective.
@@ -18,6 +19,7 @@ Follow the supplied Surface rhythm exactly. Opening bucket controls how sentence
 If Opening bucket is "condition", start sentence 1 with Before, After, When, Where, or With. If it is "scene", start sentence 1 with The, A, An, One, Your, That, or This. If it is "statement", start sentence 1 with a concrete noun or body/detail phrase, not an article and not a command. If it is "imperative", start sentence 1 with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond.
 If Final bucket is "condition", start the final sentence with When, If, With, Before, After, or By evening. If it is "statement", start with a concrete noun, body detail, or earned conclusion, not an article and not a command. If it is "scene", start with The, A, One, Your, That, or This. If it is "imperative", start with a command verb from the same command list.
 Before returning, silently check: exact sentence count, exact first-name sentence, exact surface rhythm, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no "For Name" defaulting unless it is unmistakably the best sentence, no reusable "mentor advice" cadence, no assembled guidance phrases, and no vague emotional forecast. Rewrite if any check fails.
+Final private test: replace the user's name with another case and ask whether the paragraph still mostly works. If yes, rewrite it with a sharper object, friction, time window, and consequence from this user's hidden combination.
 
 Output valid JSON only:
 {
@@ -39,6 +41,7 @@ Wisdom paragraph rules:
 - The wisdom paragraph, innerWeather, todayMove, and release must not reuse the same distinctive phrase.
 - Make one concrete observation, one emotionally specific truth, and one practical action that can be done today.
 - Make the practical action precise enough to perform in under two hours today; avoid broad commands such as "choose peace", "trust yourself", "set boundaries", or "stay grounded".
+- Include at least one detail with a measurable edge: a time, count, amount, named object, room/location, exact reply length, or visible completion mark.
 - Do not forecast a feeling. Diagnose the user's practical friction as if it is already visible in the ordinary scene.
 - Include a grounded encouragement that does not sound like a slogan.
 - Write with warmth, precision, and quiet authority.
@@ -59,6 +62,7 @@ Wisdom paragraph rules:
 - Do not write the same mentor pattern of "notice pressure, take one step, feel calmer." Find the user's particular friction and name the useful move.
 - Do not lean on the same mentor skeleton of "object, name, instruction, relationship caution, reassurance" unless the Paragraph architecture specifically demands it. Even then, vary the verbs, emotional turn, and close.
 - Do not use assembled-sounding labels inside the paragraph, including "relational note", "useful edge", "body cue", "proof of care", "practical truth", "first honest reset", "private test", "signal, not a sentence", or "evidence enough".
+- Avoid app-like mentor filler such as "needs a practical container", "real pressure", "useful move", "one ordinary job", "less explanation", "mind/body vote", "larger story", "quiet proof", or "modest and workable". Say the actual human thing instead.
 - Do not make the user feel categorized. The line should feel like it was written after seeing one ordinary scene, one pressure pattern, and one doable correction from their specific day.
 
 Avoid these phrases and close variants:
@@ -89,6 +93,14 @@ Avoid these phrases and close variants:
 - "calm energy"
 - "this phase"
 - "the universe"
+- "one ordinary job"
+- "practical container"
+- "the real pressure"
+- "modest and workable"
+- "body gets the first vote"
+- "body as the first clock"
+- "larger story"
+- "less explanation"
 
 Do not overuse the words calm, steady, clarity, boundary, energy, reassurance, truth, or honest. Use them only when they are the best word.
 Do not sound mystical, vague, performative, or overly poetic.
@@ -134,6 +146,8 @@ Silent astrology-derived signals:
 - Opening scene seed: ${context.openingScene || context.dailyScene}
 - Paragraph architecture: ${buildParagraphArchitecture(user, context, today)}
 - Surface rhythm: ${buildSurfaceRhythm(user, context, today)}
+- Voice lane: ${buildVoiceLane(user, context, today)}
+- Specificity pattern: ${buildSpecificityPattern(user, context, today)}
 - Reading fingerprint: ${buildReadingFingerprint(user, context, today)}
 - Core need: ${context.coreNeed}
 - Personal edge: ${context.personalEdge}
@@ -163,6 +177,63 @@ ${rejectedWisdom || "No draft text available."}
 Rewrite from scratch. Do not preserve the rejected draft's sentence count, opening syntax, emotional arc, or closing action unless the supplied Paragraph architecture requires it.
 Before returning, count the sentences in wisdom and place the first name exactly where Paragraph architecture says it belongs. If those two checks fail, rewrite again internally. Keep the same JSON schema and all hidden-signal rules.
 `.trim();
+}
+
+function buildVoiceLane(user, context, today) {
+  const lanes = [
+    "spare and corrective; direct sentences, no soothing flourish",
+    "warm but exact; tenderness arrives through practical care",
+    "workbench mentor; tasks, timing, and visible finish lead",
+    "relationship-aware; access, reply length, and emotional cost lead",
+    "body-led; food, water, sleep, breath, or shoulders decide timing",
+    "money-and-duty plainspoken; numbers, promises, and self-respect stay separate",
+    "quietly protective; name the private cost without making it dramatic",
+    "creative discipline; first draft, visible work, and imperfect action lead"
+  ];
+  const key = [
+    user.name,
+    user.birthDate,
+    user.birthTime,
+    user.birthPlace,
+    today,
+    context.dailyArea,
+    context.timingTone,
+    context.dailyLunarMansion?.name,
+    context.dailyLunarMansion?.pada,
+    context.dailyLunarDay?.name,
+    context.innerWeather,
+    context.bodySignal,
+    context.workSignal
+  ].filter(Boolean).join("|");
+  return lanes[mod(stableHash(key), lanes.length)];
+}
+
+function buildSpecificityPattern(user, context, today) {
+  const patterns = [
+    "use one named object, one exact time window, and one consequence for a reply",
+    "use one body/routine cue, one visible finish mark, and one thing not to reopen tonight",
+    "use one work or money action, one relational limit, and one under-two-hour checkpoint",
+    "use one room/location detail, one count or length, and one private cost",
+    "use one delayed task, one exact action before the next meal, and one softer close",
+    "use one conversation behavior, one body preparation, and one limit that is phrased without the word boundary",
+    "use one calendar or list detail, one completion mark, and one consequence for sleep or evening",
+    "use one ordinary object as evidence, one exact repair, and one sentence about what not to carry"
+  ];
+  const key = [
+    user.name,
+    user.birthDate,
+    user.birthTime,
+    user.birthPlace,
+    today,
+    context.openingScene,
+    context.dailyArea,
+    context.emotionalKnot,
+    context.decisionGate,
+    context.relationshipMirror,
+    context.relationalCaution,
+    context.bodySignal
+  ].filter(Boolean).join("|");
+  return patterns[mod(stableHash(key), patterns.length)];
 }
 
 function buildReadingFingerprint(user, context, today) {
@@ -372,6 +443,14 @@ export function isLowQualityWisdom(text) {
     /\banswer come from care instead of alarm\b/,
     /\bgive the mind one less assignment\b/,
     /\bwhole report card\b/,
+    /\bone ordinary job\b/,
+    /\bpractical container\b/,
+    /\bthe real pressure\b/,
+    /\bmodest and workable\b/,
+    /\bbody gets the first vote\b/,
+    /\bbody as the first clock\b/,
+    /\blarger story\b/,
+    /\bless explanation\b/,
     /\bclosed work with a real ending\b/,
     /\bbody makes the next choice cleaner\b/,
     /\bcollecting one more assignment for bedtime\b/,
