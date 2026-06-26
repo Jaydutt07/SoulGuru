@@ -161,7 +161,13 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Authenticated production API sessions",
     readinessChecks: ["clerk"],
     envScope: ["CLERK_SECRET_KEY", "VITE_CLERK_PUBLISHABLE_KEY", "CLERK_REQUIRE_AUTH"],
-    artifacts: ["src/backend/auth.js", "src/authClient.js"],
+    artifacts: [
+      "src/backend/auth.js",
+      "src/authClient.js",
+      "scripts/check-auth-contracts.mjs",
+      "scripts/check-client-auth-flow-contracts.mjs",
+      "scripts/check-api-route-auth-contracts.mjs"
+    ],
     commands: ["npm run auth:check"],
     notes: "Set CLERK_REQUIRE_AUTH=true only after production login is verified end to end."
   },

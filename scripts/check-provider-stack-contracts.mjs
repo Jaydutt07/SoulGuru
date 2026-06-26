@@ -17,6 +17,7 @@ checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
 checkUpstashProviderCoversRouteRateLimitMatrix();
+checkClerkProviderCoversClientAndApiAuthContracts();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
 checkProviderPayloadValidatorRequiresExactStack();
 checkProviderMatrixPassesWithFullProductionEnv();
@@ -149,6 +150,20 @@ function checkUpstashProviderCoversRouteRateLimitMatrix() {
   const missing = requiredArtifacts.filter((artifact) => !upstash?.artifacts?.includes(artifact));
 
   pushCheck("Upstash provider evidence covers helper and API route rate-limit matrix", missing.length === 0, missing);
+}
+
+function checkClerkProviderCoversClientAndApiAuthContracts() {
+  const clerk = PROVIDER_STACK.find((provider) => provider.id === "clerk");
+  const requiredArtifacts = [
+    "src/backend/auth.js",
+    "src/authClient.js",
+    "scripts/check-auth-contracts.mjs",
+    "scripts/check-client-auth-flow-contracts.mjs",
+    "scripts/check-api-route-auth-contracts.mjs"
+  ];
+  const missing = requiredArtifacts.filter((artifact) => !clerk?.artifacts?.includes(artifact));
+
+  pushCheck("Clerk provider evidence covers client auth and protected API route matrix", missing.length === 0, missing);
 }
 
 function checkProviderMatrixReportsMissingEnvWithoutSecrets() {
