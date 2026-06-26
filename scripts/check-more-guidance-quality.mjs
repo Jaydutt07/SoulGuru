@@ -16,6 +16,7 @@ const env = {
 };
 const date = getArgValue("--date") || new Date().toISOString().slice(0, 10);
 const maxSimilarity = Number(getArgValue("--max-similarity") || 0.42);
+const maxRepeatedOwners = Number(getArgValue("--max-repeated-owners") || 1);
 const cases = getSoulWisdomQualityCases(caseSet);
 
 const started = performance.now();
@@ -41,7 +42,7 @@ const failures = [];
 for (const group of groups) {
   const similarity = buildSimilarity(group.results);
   const highSimilarity = similarity.filter((item) => item.score > maxSimilarity);
-  const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results);
+  const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results, maxRepeatedOwners);
   if (highSimilarity.length) {
     failures.push(`${group.source}: ${highSimilarity.length} overview pair(s) exceeded max similarity ${maxSimilarity}.`);
   }
@@ -193,7 +194,7 @@ function buildSimilarity(results) {
   return pairs;
 }
 
-function buildRepeatedDistinctivePhrases(results) {
+function buildRepeatedDistinctivePhrases(results, ownerLimit = 1) {
   const phraseOwners = new Map();
   for (const item of results) {
     const seen = new Set(buildDistinctivePhrases(item.allText));
@@ -204,7 +205,7 @@ function buildRepeatedDistinctivePhrases(results) {
     }
   }
   return [...phraseOwners]
-    .filter(([, names]) => names.length > 1)
+    .filter(([, names]) => names.length > ownerLimit)
     .map(([phrase, names]) => ({ phrase, names }))
     .sort((first, second) => second.names.length - first.names.length || second.phrase.length - first.phrase.length);
 }

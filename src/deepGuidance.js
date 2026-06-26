@@ -1,7 +1,7 @@
 export function buildFallbackDeepGuidance(user = {}, context = {}) {
   const name = firstName(user.name);
-  const scene = paidScene(context);
   const seed = paidSeed(user, context);
+  const scene = paidScene(context, seed);
   const area = readableArea(context.dailyArea, seed);
   const anchor = anchorPhrase(context.attentionAnchor || context.dailyScene || "one practical detail that keeps returning", seed, name);
   const move = mentorMovePhrase(context.mentorMove || context.stabilizer || "make the promise smaller and keep it completely", seed);
@@ -10,7 +10,7 @@ export function buildFallbackDeepGuidance(user = {}, context = {}) {
   const bodyStart = bodyPractice(context.bodySignal, seed);
   const work = workSignalPhrase(context.workSignal || "make the action plain enough to complete", seed, name);
   const cost = paidCost(context, seed, name);
-  const structure = monthStructure(context);
+  const structure = monthStructure(context, seed);
   const review = reviewAnchor(context);
 
   return {
@@ -24,31 +24,33 @@ export function buildFallbackDeepGuidance(user = {}, context = {}) {
 }
 
 export function buildPaidGuidanceFingerprint(user = {}, context = {}, date = "") {
+  const seed = paidSeed(user, context);
   return [
-    `scene=${capitalize(paidScene(context))}`,
-    `area=${readableArea(context.dailyArea, paidSeed(user, context))}`,
-    `cost=${paidCost(context, paidSeed(user, context), firstName(user.name))}`,
+    `scene=${capitalize(paidScene(context, seed))}`,
+    `area=${readableArea(context.dailyArea, seed)}`,
+    `cost=${paidCost(context, seed, firstName(user.name))}`,
     `week=${safePhrase(context.bodySignal || context.decisionGate || context.mentorMove)}`,
-    `month=${monthStructure(context)}`,
-    `caution=${relationPhrase(context.relationalCaution || context.relationshipMirror)}`,
+    `month=${monthStructure(context, seed)}`,
+    `caution=${relationPhrase(context.relationalCaution || context.relationshipMirror, seed)}`,
     `date=${date}`,
     `user=${firstName(user.name)}`
   ].filter((item) => item && !item.endsWith("=")).join("; ");
 }
 
-function paidScene(context = {}) {
+function paidScene(context = {}, seed = 0) {
   const raw = String(context.openingScene || context.dailyScene || context.attentionAnchor || "").toLowerCase();
-  if (raw.includes("water") || raw.includes("glass")) return "the water glass or first sip";
-  if (raw.includes("calendar") || raw.includes("appointment") || raw.includes("deadline")) return "the calendar square that keeps shifting";
-  if (raw.includes("notebook") || raw.includes("page") || raw.includes("pen") || raw.includes("written")) return "the notebook line waiting beside the day";
-  if (raw.includes("kitchen") || raw.includes("counter") || raw.includes("meal") || raw.includes("cup") || raw.includes("tea")) return "the kitchen counter or cooling cup";
-  if (raw.includes("wallet") || raw.includes("receipt") || raw.includes("payment") || raw.includes("money") || raw.includes("bill")) return "the receipt or small payment decision";
-  if (raw.includes("chair") || raw.includes("room") || raw.includes("desk") || raw.includes("drawer") || raw.includes("laundry")) return "the room detail you keep passing";
-  if (raw.includes("door") || raw.includes("shoes") || raw.includes("keys") || raw.includes("bag") || raw.includes("charger")) return "the doorway detail";
-  if (raw.includes("message") || raw.includes("sentence") || raw.includes("reply") || raw.includes("conversation")) return "the unsent sentence";
-  if (raw.includes("list") || raw.includes("task") || raw.includes("draft") || raw.includes("work") || raw.includes("promise")) return "the task list with one unnamed item";
-  if (raw.includes("tab") || raw.includes("worry") || raw.includes("thought") || raw.includes("mind")) return "the mental tab that keeps reopening";
-  return "one ordinary detail near the work";
+  const pickScene = (key, variants) => pickArea(stableHash(`${seed}|scene|${key}|${raw}`), variants);
+  if (raw.includes("water") || raw.includes("glass")) return pickScene("water", ["the water glass beside the first decision", "the first sip before the day speeds up", "the glass waiting near the work surface", "the small water break before the reply"]);
+  if (raw.includes("calendar") || raw.includes("appointment") || raw.includes("deadline")) return pickScene("calendar", ["the calendar square that keeps shifting", "the appointment box asking for a cleaner boundary", "the deadline line that needs one honest shape", "the marked deadline"]);
+  if (raw.includes("notebook") || raw.includes("page") || raw.includes("pen") || raw.includes("written")) return pickScene("notebook", ["the notebook line waiting beside the day", "the half-written page near the morning", "the pen mark that keeps asking for a finish", "the written line that needs fewer explanations"]);
+  if (raw.includes("kitchen") || raw.includes("counter") || raw.includes("meal") || raw.includes("cup") || raw.includes("tea")) return pickScene("kitchen", ["the cup cooling near the counter", "the kitchen surface after the first meal", "the tea mark beside an unfinished thought", "the counter corner where the day pauses", "the plate or cup that keeps pulling attention back"]);
+  if (raw.includes("wallet") || raw.includes("receipt") || raw.includes("payment") || raw.includes("money") || raw.includes("bill")) return pickScene("money", ["the receipt or small payment decision", "the bill line that needs a plain choice", "the wallet detail that should not become a mood", "the account note asking for one clean answer"]);
+  if (raw.includes("chair") || raw.includes("room") || raw.includes("desk") || raw.includes("drawer") || raw.includes("laundry")) return pickScene("room", ["the room detail you keep passing", "the desk corner holding one unfinished loop", "the chair or drawer asking for a visible decision", "the room cue that keeps returning without words"]);
+  if (raw.includes("door") || raw.includes("shoes") || raw.includes("keys") || raw.includes("bag") || raw.includes("charger")) return pickScene("doorway", ["the doorway detail", "the keys or bag waiting near the exit", "the threshold cue", "the charger, shoes, or door cue asking for order"]);
+  if (raw.includes("message") || raw.includes("sentence") || raw.includes("reply") || raw.includes("conversation")) return pickScene("message", ["the unsent sentence", "the message draft asking for less force", "the reply window before extra meaning enters", "the conversation line that needs a clean time"]);
+  if (raw.includes("list") || raw.includes("task") || raw.includes("draft") || raw.includes("work") || raw.includes("promise")) return pickScene("task", ["the task list with one unnamed item", "the draft line that should be made real", "the promise on the list without a finish", "the work note asking for a visible ending"]);
+  if (raw.includes("tab") || raw.includes("worry") || raw.includes("thought") || raw.includes("mind")) return pickScene("mind", ["the mental tab that keeps reopening", "the thought loop asking for a written edge", "the worry line that needs a practical container", "the private tab that should be closed on paper"]);
+  return pickScene("ordinary", ["one ordinary detail near the work", "the small cue waiting beside the next task", "the practical detail that keeps returning", "the unnoticed place where the day asks for order"]);
 }
 
 function pickOverview(parts, seed) {
@@ -56,19 +58,49 @@ function pickOverview(parts, seed) {
   const templates = [
     `${overviewPlainMarkerLine(seed, scene, area)} ${overviewCostSizeLine(seed, name, cost)} ${overviewContainerLine(seed, anchor)} Keep ${avoid} away from the next reply. In relationships, ${caution}; in work, ${work}. ${overviewProgressLine(seed, area)}`,
     `${capitalize(scene)} gives ${name} a practical doorway into ${area}. ${overviewEffortLine(seed, cost)} ${overviewVisibleAnchorLine(seed, anchor)} Let this rule lead: ${move}. Keep ${avoid} away from the next reply. In closeness, ${caution}. In work, ${work}. ${overviewEvidenceClose(seed, area, name)}`,
-    `Begin at ${scene}; that ordinary detail shows ${name} where ${area} has become heavier than the facts. ${overviewTimingDrainLine(seed, cost)} For the paid cycle, build a sequence that can be inspected: write ${anchor}, choose one reply window, and close a task before the mind reopens it. Keep ${avoid} out of the decision. With people, ${caution}. With work, ${work}. ${overviewUrgencyClose(seed, area)}`,
-    `${capitalize(scene)} is the useful evidence today: the issue around ${area} has a shape, and it gets louder when ${anchor} stays unnamed. ${name}, the old response is ${cost}, then trying to repair the discomfort by becoming more available, more careful, or more persuasive. The paid guidance is to stop paying for that pattern with attention. Place the recurring duty on paper, use this rule: ${move}, and close the part that is already ready. Let relationships follow this caution: ${caution}. Let work stay plain through this signal: ${work}.`,
+    `Begin at ${scene}; ${overviewEvidenceWeightLine(seed, name, area)} ${overviewTimingDrainLine(seed, cost)} ${overviewInspectableSequenceLine(seed, anchor)} Keep ${avoid} out of the decision. With people, ${caution}. With work, ${work}. ${overviewUrgencyClose(seed, area)}`,
+    `${overviewUsefulEvidenceLine(seed, { name, scene, area, anchor, cost, move, caution, work })}`,
     `The paid map begins with ${scene}, not with a dramatic breakthrough. Around ${area}, ${name} needs a structure that stops the habit of ${cost} from turning each small duty into a verdict. Give the returning detail a fixed place: a calendar slot, a written cost, and a finish line that can be seen by tonight. Keep ${avoid} away from the next explanation, especially if the room starts asking for reassurance before anything has actually changed. In relationships, ${caution}. In work, ${work}. This is how guidance becomes trackable: less emotional rent, more visible repair.`,
     `${overviewMapOpening(seed, scene, area)} ${overviewCostCrowdLine(seed, name, cost)} ${overviewInspectLine(seed, anchor)} ${overviewManagerLine(seed, avoid, caution)} ${overviewWorkPracticalClose(seed, work)}`,
     `${overviewMethodOpening(seed, scene, area)} For ${name}, the drain is ${cost}; ${overviewSmallDutyLine(seed, cost)} ${overviewVisibleSequenceLine(seed, anchor)} Keep ${avoid} out of the review. With people, ${caution}. With work, ${work}. ${overviewRecordClose(seed, area)}`,
-    `Let ${scene} be the place where ${name} stops carrying ${area} as a private mood and starts treating it as a pattern with handles. The cost is ${cost}; it asks for extra emotional payment long after the practical bill is clear. This paid cycle needs three anchors: ${anchor} written plainly, one boundary that can be repeated without apology, and one finish that proves the day is not only reacting. Keep ${avoid} from choosing the tone. In closeness, ${caution}. In work, ${work}. The guidance becomes real when the same correction is visible next week, not only understood today.`,
+    `${overviewHandleCycleLine(seed, { name, scene, area, cost, anchor, avoid, caution, work })}`,
     `${overviewNoticeOpening(seed, name, scene, area)} ${overviewRepairLine(seed, cost)} ${overviewPlanLine(seed, anchor)} ${overviewAvoidLine(seed, avoid)} ${overviewRelationshipLine(seed, caution)} ${overviewWorkLine(seed, work)} ${overviewThreeMonthClose(seed)}`,
-    `${overviewDeepPlacementOpening(seed, scene, name, area)} ${overviewHabitCostLine(seed, cost)} Make the next three months very visible. ${overviewSmallPromiseLine(seed, anchor)} ${overviewRuleLine(seed, move)} Keep ${avoid} outside the review. With people, ${caution}. With work, ${work}. ${overviewCareProofLine(seed)}`,
-    `Start by handling ${scene} as evidence, not decoration. For ${name}, the pressure around ${area} is becoming expensive because the pattern is ${cost} before the facts have been sorted. The paid map is to reduce the emotional tax: name ${anchor}, give the next answer a time window, and close the part that already has enough information. Let ${move} be the repeatable correction. If ${avoid} tries to hurry the moment, do less and make the action cleaner. In relationships, ${caution}. In work, ${work}. A good month will feel less dramatic because it has fewer loose ends.`,
-    `${capitalize(scene)} matters because it gives ${name} a small, testable place to work with ${area}. The pressure is not random; it repeats through ${cost}. ${overviewBodyNegotiationLine(seed)} ${overviewVisibleChainLine(seed, anchor)} ${overviewExplanationLine(seed, avoid, caution)} Let work follow ${work}. The reading is useful only if it turns into evidence you can review on the seventh day.`
+    `${overviewDeepPlacementOpening(seed, scene, name, area)} ${overviewHabitCostLine(seed, cost)} ${overviewThreeMonthVisibleLine(seed, area)} ${overviewSmallPromiseLine(seed, anchor)} ${overviewRuleLine(seed, move)} Keep ${avoid} outside the review. With people, ${caution}. With work, ${work}. ${overviewCareProofLine(seed)}`,
+    `${overviewEvidenceHandlingLine(seed, { name, scene, area, cost, anchor, move, avoid, caution, work })}`,
+    `${overviewTestablePlaceLine(seed, name, scene, area)} ${overviewPressureRepeatLine(seed, cost)} ${overviewBodyNegotiationLine(seed, area)} ${overviewVisibleChainLine(seed, anchor)} ${overviewExplanationLine(seed, avoid, caution)} Let work follow ${work}. ${overviewSeventhDayLine(seed, area)}`
   ];
   const fingerprint = stableHash(`${seed}|${scene}|${area}|${anchor}|${work}|${cost}|${name}|overview-v4`);
   return templates[mod(seed + fingerprint + overviewSceneOffset(scene), templates.length)];
+}
+
+function overviewHandleCycleLine(seed, parts) {
+  const { name, scene, area, cost, anchor, avoid, caution, work } = parts;
+  return [
+    `Let ${scene} be the place where ${name} stops carrying ${area} as a private mood and starts treating it as a pattern with handles. The cost is ${cost}; it asks for extra emotional payment long after the practical bill is clear. This paid cycle needs three anchors: ${anchor} written plainly, one boundary that can be repeated without apology, and one finish that proves the day is not only reacting. Keep ${avoid} from choosing the tone. In closeness, ${caution}. In work, ${work}. The guidance becomes real when the same correction is visible next week, not only understood today.`,
+    `${capitalize(scene)} gives ${name} a place to separate ${area} from the mood around it. The cost is ${cost}, and it keeps charging attention after the real duty is already visible. Build the paid cycle around ${anchor}: write it plainly, choose the boundary that can repeat, and finish one part that proves the day is not only reacting. Keep ${avoid} away from the tone. With people, ${caution}. With work, ${work}. The proof should be visible enough to compare next week.`,
+    `Use ${scene} as ${name}'s handle for ${area}. The expensive part is ${cost}; the practical bill around ${cost} is charging attention. For the next cycle, put ${anchor} where the day can see it, give one boundary a sentence that can repeat, and close the task that can show progress today. Keep ${avoid} out of the tone. Let closeness practice ${caution}. Let work follow ${work}. The same correction should be easier to see seven days from now.`,
+    `${capitalize(scene)} is the practical entry point for ${name}: ${area} needs handles, not another private weather report. The cost is ${cost}, so the paid map should make ${anchor} visible, give one boundary a repeatable shape, and close one finish before the day starts defending itself. Keep ${avoid} from choosing the tone. In closeness, ${caution}. In work, ${work}. Next week should show evidence, not only understanding.`
+  ][mod(stableHash(`${seed}|${name}|${scene}|${area}|handle-cycle-v2`), 4)];
+}
+
+function overviewEvidenceHandlingLine(seed, parts) {
+  const { name, scene, area, cost, anchor, move, avoid, caution, work } = parts;
+  return [
+    `Start by handling ${scene} as evidence, not decoration. For ${name}, ${area} gets expensive when ${cost} starts pricing the facts before they are sorted. The paid map reduces the emotional tax: name ${anchor}, give the next answer a time window, and close the informed part of the issue. ${capitalize(move)} becomes the repeatable correction. If ${avoid} tries to hurry the moment, do less; make the next action cleaner. In relationships, ${caution}. In work, ${work}. A good month will feel less dramatic because it has fewer loose ends.`,
+    `Treat ${scene} as evidence first. For ${name}, the pressure around ${area} grows when ${cost} moves faster than the facts. The paid map is practical: put ${anchor} in writing, give the next answer a time window, and finish the data-ready piece tied to ${anchor}. Let the repeatable correction be ${move}. If ${avoid} rushes the moment, reduce the action until it is clean. With people, ${caution}. With work, ${work}. The month improves when fewer pieces stay open.`,
+    `Use ${scene} as the proof point. For ${name}, ${area} becomes costly when ${cost} starts speaking before the real information is complete. The paid map should name ${anchor}, give the next reply a time edge, and finish the part that can honestly close today. Repeat this correction: ${move}. If ${avoid} presses for speed, make the action smaller and clearer. In closeness, ${caution}. In work, ${work}. Fewer loose ends will make the month less dramatic.`,
+    `${capitalize(scene)} is evidence, not background. For ${name}, the expensive pattern around ${area} is ${cost} before the facts have a clean place to land. The paid map asks for ${anchor} on paper, one answer window, and one close that does not need more information. Keep repeating ${move}. If ${avoid} tries to hurry the tone, choose the smaller action. Let relationships follow ${caution}. Let work follow ${work}. The month should become quieter because the open loops are fewer.`
+  ][mod(stableHash(`${seed}|${name}|${scene}|${area}|evidence-handling-v2`), 4)];
+}
+
+function overviewUsefulEvidenceLine(seed, parts) {
+  const { name, scene, area, anchor, cost, move, caution, work } = parts;
+  return [
+    `${capitalize(scene)} is useful evidence: ${area} has a shape, and ${anchor} shows where it gets louder. ${name}, the old response is ${cost}; the repair is not more availability, care, or persuasion. Put the recurring duty on paper, use this rule: ${move}, and close the part that is already ready. In relationships, ${caution}. In work, ${work}. The next review should be able to see what changed without asking the mood to explain it again.`,
+    `Use ${scene} as the evidence point for ${area}. When ${anchor} stays unnamed, the pressure gets louder. For ${name}, the old response is ${cost}, then trying to solve discomfort with extra care or persuasion. The paid guidance is to stop paying attention to that loop. Write the duty, apply ${move}, and close the ready part. Let relationships practice ${caution}. Let work follow ${work}. Save the proof while it is still practical enough to repeat tomorrow.`,
+    `${capitalize(scene)} shows ${name} where ${area} has become specific enough to handle. The pressure rises around ${anchor}; the old response is ${cost}, then overpaying with attention. Put the recurring duty on paper, let ${move} set the rule, and close what is ready without making the day prove itself. With people, ${caution}. With work, ${work}. The paid value is in the visible correction, not another private explanation.`,
+    `Start with ${scene}; it gives ${area} a visible edge. ${name}, the pressure around ${anchor} grows when ${cost} tries to repair discomfort by adding more effort. The paid move is simpler: write the duty, repeat ${move}, and close the piece that is ready. Relationships should follow ${caution}. Work should stay plain through ${work}. Let the saved result show where effort became cleaner, smaller, and easier to trust.`
+  ][mod(stableHash(`${seed}|${name}|${scene}|${area}|useful-evidence-v2`), 4)];
 }
 
 function overviewSceneOffset(scene) {
@@ -78,6 +110,35 @@ function overviewSceneOffset(scene) {
   if (value.includes("receipt") || value.includes("payment")) return 2;
   if (value.includes("notebook")) return 3;
   return 0;
+}
+
+function overviewSeventhDayLine(seed, area) {
+  return [
+    `The reading becomes useful when ${area} leaves evidence for the seventh-day review.`,
+    `${capitalize(area)} gets day-seven proof.`,
+    `The useful test is whether ${area} gives the next review something visible to inspect.`,
+    `Let the seventh-day review find evidence in ${area}, not another mood to interpret.`
+  ][mod(stableHash(`${seed}|${area}|seventh-day`), 4)];
+}
+
+function overviewTestablePlaceLine(seed, name, scene, area) {
+  return [
+    `For ${name}, ${scene} tests ${area} through one practical detail.`,
+    `For ${name}, ${scene} is the small proof-point where ${area} can stop staying abstract.`,
+    `${capitalize(scene)} matters because it turns ${area} into one visible detail ${name} can work with.`,
+    `Use ${scene} as ${name}'s test surface for ${area}; the pattern needs evidence before interpretation.`,
+    `${capitalize(scene)} gives ${area} a handle, so ${name} can change one visible detail instead of carrying the whole mood.`
+  ][mod(stableHash(`${seed}|${name}|${scene}|${area}|testable-place`), 5)];
+}
+
+function overviewEvidenceWeightLine(seed, name, area) {
+  return [
+    `that ordinary detail shows ${name} where the facts around ${area} cannot carry ${area}'s extra weight anymore.`,
+    `${name} can see there how ${area} asks for interpretation before the real duty is clear.`,
+    `the useful signal shows ${name} where meaning around ${area} starts arriving before the facts settle.`,
+    `that small cue shows ${name} where ${area} needs evidence before another explanation.`,
+    `${area} becomes easier to handle when ${name} treats this detail as proof, not atmosphere.`
+  ][mod(stableHash(`${seed}|${name}|${area}|evidence-weight`), 5)];
 }
 
 function overviewPlainMarkerLine(seed, scene, area) {
@@ -103,10 +164,19 @@ function overviewCostSizeLine(seed, name, cost) {
 function overviewTimingDrainLine(seed, cost) {
   return [
     `The drain is ${cost}, which makes timing feel personal even when the next step is practical.`,
-    `${cost} is the drain; it turns timing personal before the practical next step has been chosen.`,
+    `The timing problem belongs to ${cost}; let the practical step answer ${cost} before emotion adds a price.`,
     `The cost pattern is ${cost}, especially when timing starts carrying more meaning than the next action.`,
     `What drains the day is ${cost}; the next practical step should not have to prove emotional safety.`
   ][mod(stableHash(`${seed}|${cost}|timing-drain`), 4)];
+}
+
+function overviewInspectableSequenceLine(seed, anchor) {
+  return [
+    `For the paid cycle, build a sequence that can be inspected: write ${anchor}, choose one reply window, and close a task before the mind reopens it.`,
+    `Mark ${anchor}: cue for ${anchor}, reply time for ${anchor}, closed proof.`,
+    `Let ${anchor} carry the sequence: write it down, give the next reply a window, and close one task before the case reopens.`,
+    `The paid cycle needs visible order around ${anchor}: written cue, timed reply, finished task, and no reopened case before evening.`
+  ][mod(stableHash(`${seed}|${anchor}|inspectable-sequence`), 4)];
 }
 
 function overviewUrgencyClose(seed, area) {
@@ -122,18 +192,20 @@ function overviewContainerLine(seed, anchor) {
   return [
     `The paid map gives that pressure a container: write ${anchor}, name the hidden cost, and close one part that can be finished today.`,
     `Turn the pressure into a visible sequence: put ${anchor} on paper, choose the useful limit, and finish one factual step.`,
-    `Give the pattern a place to land by naming ${anchor}, setting one boundary, and completing the piece that no longer needs debate.`,
+    `Give the pattern a place to land by naming ${anchor}, setting one boundary, and completing the part of ${anchor} that is ready to close.`,
     `Make the pressure inspectable: record ${anchor}, mark the cost of leaving it vague, and close the smallest honest part.`
   ][mod(stableHash(`${seed}|${anchor}|container`), 4)];
 }
 
 function overviewProgressLine(seed, area) {
   return [
-    `For ${area}, progress becomes believable when the body can see what changed.`,
+    `For ${area}, let the body see the changed detail before calling the progress real.`,
     `This is how ${area} becomes less private: the repair has evidence before the mood changes.`,
     `The useful shift in ${area} is not intensity; it is proof that can be reviewed tomorrow.`,
-    `Let ${area} improve through visible repair, not through another hidden negotiation.`
-  ][mod(stableHash(`${seed}|${area}|progress`), 4)];
+    `Let ${area} improve through visible repair, not through another hidden negotiation.`,
+    `The body trusts ${area} faster when the proof is visible, dated, and small enough to repeat.`,
+    `Progress in ${area} should leave a mark the body can recognize before the mind argues again.`
+  ][mod(stableHash(`${seed}|${area}|progress-v2`), 6)];
 }
 
 function overviewEvidenceClose(seed, area, name) {
@@ -185,7 +257,7 @@ function overviewInspectLine(seed, anchor) {
   return [
     `Use the next paid cycle to make the pressure inspectable: write ${anchor}, mark the cost, choose the part that closes before evening, and leave the rest outside the next conversation.`,
     `Make the next paid cycle visible: place ${anchor} on paper, mark its cost, finish one evening-sized piece, and leave the rest outside the next conversation.`,
-    `The next cycle needs evidence: record ${anchor}, name the price of keeping it vague, close one useful part, and stop reopening it in conversation.`,
+    `The next cycle needs evidence around ${anchor}: name the price, close one useful part, and keep the next conversation lighter.`,
     `Build the paid cycle around ${anchor}: one written duty, one named cost, one part closed before evening, and one conversation left lighter.`
   ][mod(stableHash(`${seed}|${anchor}|inspect`), 4)];
 }
@@ -195,7 +267,7 @@ function overviewManagerLine(seed, avoid, caution) {
     `Keep ${avoid} from becoming the manager. Let closeness follow this rule: ${caution}.`,
     `Do not let ${avoid} manage the tone. For closeness, return to this rule: ${caution}.`,
     `When ${avoid} tries to take charge, give closeness a cleaner rule: ${caution}.`,
-    `Keep the manager role away from ${avoid}; let closeness stay guided by ${caution}.`
+    `Keep ${avoid} out of the manager role; let closeness stay guided by ${caution}.`
   ][mod(stableHash(`${seed}|${avoid}|${caution}|manager`), 4)];
 }
 
@@ -204,7 +276,7 @@ function overviewWorkPracticalClose(seed, work) {
     `Let work stay practical through this signal: ${work}. The win is a trackable rhythm, not a perfect mood.`,
     `For work, keep returning to ${work}. The paid cycle succeeds when rhythm becomes visible before mood has to approve it.`,
     `Let the practical side follow ${work}. The real win is a rhythm that can be tracked, saved, and repeated.`,
-    `Use ${work} as the work signal. Progress should become visible as a record, not as a temporary perfect mood.`
+    `Use ${work} as the work signal; let the saved record carry ${work}, not a temporary mood.`
   ][mod(stableHash(`${seed}|${work}|practical-close`), 4)];
 }
 
@@ -231,7 +303,7 @@ function overviewSmallDutyLine(seed, cost) {
     `${cost} makes the smallest duty feel like evidence about love, value, or timing.`,
     `under ${cost}, even a small duty can start sounding like proof about timing or worth.`,
     `the pattern turns a small duty into evidence before the day has enough facts.`,
-    `one small duty is carrying ${cost}, which is too much meaning for it.`
+    `the pattern gives one small duty more meaning than the facts can support.`
   ][mod(stableHash(`${seed}|${cost}|small-duty`), 4)];
 }
 
@@ -262,6 +334,15 @@ function overviewHabitCostLine(seed, cost) {
   ][mod(stableHash(`${seed}|${cost}|habit-cost`), 4)];
 }
 
+function overviewThreeMonthVisibleLine(seed, area) {
+  return [
+    `Make the next three months very visible.`,
+    `Let the next three months leave visible evidence for ${area}.`,
+    `Give the next three months a record that can be reviewed.`,
+    `Use the next three months to make ${area} trackable.`
+  ][mod(stableHash(`${seed}|${area}|three-month-visible`), 4)];
+}
+
 function overviewSmallPromiseLine(seed, anchor) {
   return [
     `Write ${anchor}, choose the smallest promise that can close today, and`,
@@ -289,13 +370,24 @@ function overviewRuleLine(seed, move) {
   ][mod(stableHash(`${seed}|${move}|rule-line`), 4)];
 }
 
-function overviewBodyNegotiationLine(seed) {
+function overviewBodyNegotiationLine(seed, area) {
   return [
-    `The body should not keep negotiating after the choice is simple.`,
-    `The next repair is to stop asking the body to renegotiate what has already been chosen.`,
-    `Once the choice is simple, the body needs proof rather than another negotiation.`,
-    `The pattern eases when the body sees the choice instead of carrying the negotiation.`
-  ][mod(stableHash(`${seed}|body-negotiation`), 4)];
+    `For ${area}, the body needs proof after the choice, not another negotiation.`,
+    `Once the choice is plain, let ${area} stop asking the body to reargue it.`,
+    `${area} can settle when the body sees one action for ${area}, then stops rearguing it.`,
+    `Put one action inside ${area}; if the body reopens ${area}, answer with proof.`,
+    `The repair is to give ${area} a visible answer before the body turns it into another argument.`,
+    `When ${area} has a clean next step, the body does not need to carry the whole debate.`
+  ][mod(stableHash(`${seed}|${area}|body-negotiation-v3`), 6)];
+}
+
+function overviewPressureRepeatLine(seed, cost) {
+  return [
+    `The pressure is not random; it repeats through ${cost}.`,
+    `The pressure repeats through ${cost}, then looks for a place to settle.`,
+    `Answer the evidence around ${cost}; do not let the private argument grow.`,
+    `The pattern returns through ${cost}, so the repair has to be visible.`
+  ][mod(stableHash(`${seed}|${cost}|pressure-repeat`), 4)];
 }
 
 function overviewVisibleChainLine(seed, anchor) {
@@ -309,7 +401,7 @@ function overviewVisibleChainLine(seed, anchor) {
 
 function overviewExplanationLine(seed, avoid, caution) {
   return [
-    `Keep ${avoid} from becoming the explanation. Let closeness follow ${caution}.`,
+    `Keep ${avoid} out of the explanation; use ${caution} as the closeness rule.`,
     `Do not let ${avoid} explain the whole day. Let closeness take its shape from ${caution}.`,
     `When ${avoid} tries to explain everything, return closeness to this rule: ${caution}.`,
     `Keep the explanation smaller than ${avoid}; let closeness stay guided by ${caution}.`
@@ -321,13 +413,13 @@ function overviewNoticeOpening(seed, name, scene, area) {
     `${name}, notice ${scene}; it points to where ${area} has been taking space from steadier choices.`,
     `${scene} gives ${name} a close-range view of ${area}, especially where attention starts leaving the present task.`,
     `For ${name}, ${scene} marks the part of ${area} that keeps asking for structure before it asks for emotion.`,
-    `${name}, start with ${scene} because ${area} is showing itself through practical friction, not a vague mood.`
+    `${name}, start with ${scene}; practical friction gives ${area} a usable place to begin.`
   ][mod(stableHash(`${seed}|${name}|${scene}|${area}|notice`), 4)];
 }
 
 function overviewRepairLine(seed, cost) {
   return [
-    `The repeating cost is ${cost}, and the repair is to make the hidden rule visible before it writes the whole day.`,
+    `The repeating cost is ${cost}; make a visible rule around ${cost}.`,
     `The expensive pattern is ${cost}, so the correction needs to be seen on paper before the feeling gets louder.`,
     `What keeps draining the day is ${cost}; the answer is a cleaner rule, not another round of self-pressure.`,
     `The old tax is ${cost}, which means the repair has to be small enough to repeat and clear enough to measure.`
@@ -412,11 +504,21 @@ function weekPracticalBlockLine(seed, bodyStart) {
 
 function weekEvidenceLine(seed, bodyStart, avoid) {
   return [
-    `Treat the next seven days as evidence. Before a hard conversation, practice ${bodyStart}; before a hard task, name what finished means in one sentence. Keep ${avoid} outside the work. The aim is one rhythm that protects care from leaking into every request and can be repeated tomorrow.`,
+    `Let the next seven days test ${bodyStart}. Before a hard conversation, use that cue; before a hard task, name what finished means in one sentence. Keep ${avoid} outside the work. The rhythm should show where ${bodyStart} protected care and which proof can be used tomorrow.`,
     `Use the week as a proof cycle. Start difficult replies with ${bodyStart}, define the finish line before the task begins, and keep ${avoid} away from the room where work happens. Certainty can arrive later; repetition has to arrive first.`,
-    `Let the week collect facts instead of moods. Practice ${bodyStart} before the first demanding exchange, decide the task's finish line early, and leave ${avoid} outside the next work block. The win is a rhythm that can be repeated without drama, with the result written down before the day moves on.`,
+    `${weekDemandingExchangeLine(seed, bodyStart, avoid)}`,
     `Build seven days around one visible experiment. Use ${bodyStart} before the hardest reply, write what done means before the hardest task, and refuse to let ${avoid} manage the work. Care gets cleaner when the rhythm is observable.`
   ][mod(stableHash(`${seed}|${bodyStart}|${avoid}|week-evidence`), 4)];
+}
+
+function weekDemandingExchangeLine(seed, bodyStart, avoid) {
+  return [
+    `Let ${bodyStart} open the exchange. Name the finish line before ${avoid} enters, keep the work block plain, and save one written proof that tomorrow can use without reopening the debate. Close by noting where ${bodyStart} changed the tone, the timing, or the amount of explanation required.`,
+    `Start the exchange through ${bodyStart}. Put the finish line where the task can see it, keep ${avoid} outside the work block, and leave tomorrow one small written result. The useful win is not a bigger explanation; it is one completed piece that still looks honest later.`,
+    `Make ${bodyStart} the first fact for the demanding exchange. Give it one finish line, keep ${avoid} away from the next work block, and save proof small enough to repeat tomorrow. Let the week measure the result by what closed, what stayed kind, and what did not need another performance.`,
+    `Let ${bodyStart} gather facts before the exchange gets crowded. The task needs one finish line, ${avoid} needs to stay outside the block, and tomorrow needs one proof it can reuse. Record the proof before the mood starts editing it into a larger story.`,
+    `Place ${bodyStart} before the exchange, then write the finish line in one sentence. Keep ${avoid} away from the work block and leave the day with one proof, not another mood. The week should end with a result that is visible enough to repeat without extra force.`
+  ][mod(stableHash(`${seed}|${bodyStart}|${avoid}|demanding-exchange-v2`), 5)];
 }
 
 function weekFirstRepairLine(seed, bodyStart, work, caution) {
@@ -433,14 +535,14 @@ function monthTrackLine(seed, area) {
     `Track how ${area} changes names across work, money, family, rest, and communication. Review saved readings every seventh day, circle the repeating cost, and let one habit become the container that holds it.`,
     `Follow ${area} through the places it hides: timing, money, messages, rest, and duty. On the seventh day, save the evidence, name the cost, and choose one habit to contain it.`,
     `Watch ${area} move through ordinary scenes instead of waiting for one dramatic moment. Use each seventh-day review to mark the cost and decide which habit will hold the pressure next.`,
-    `Let the saved readings show where ${area} repeats under different labels. Each week, write the cost in one sentence and give the pressure one habit that can hold it.`
+    `Let saved readings label the repeat inside ${area}. Each week, write the cost in one sentence and give the pressure one habit that can hold it.`
   ][mod(stableHash(`${seed}|${area}|month-track`), 4)];
 }
 
 function monthProgressClose(seed, area) {
   return [
     `For ${area}, progress shows up when the weekly system starts replacing the dramatic speech with evidence.`,
-    `Let ${area} improve through the weekly system: less dramatic speech, more evidence that can be reviewed.`,
+    `Let reviewable evidence around ${area} replace the dramatic speech.`,
     `The win in ${area} is a weekly system that keeps the pressure visible before it becomes a dramatic speech.`,
     `For ${area}, the weekly system should make repair visible before the mood asks for a bigger speech.`
   ][mod(stableHash(`${seed}|${area}|month-progress`), 4)];
@@ -449,7 +551,7 @@ function monthProgressClose(seed, area) {
 function monthDutyTaxLine(seed, area, avoid) {
   return [
     `Use the month to separate duty from the emotional tax around ${area}. Each week, choose where attention became too expensive, remove one layer of ${avoid}, and keep one promise visible. By the end, the pattern should have fewer hiding places and a clearer repair.`,
-    `Let the month show the difference between the real duty and the added tax around ${area}. Once a week, name the costly spot, reduce ${avoid}, and protect one body cue. The pattern gets easier to catch when the review stays small and repeatable.`,
+    `Let ${area} show the difference between the real duty and the added tax. Once a week, name the costly spot, reduce ${avoid}, and protect one body cue. The pattern gets easier to catch when ${area} has a small repeatable review.`,
     `Make ${area} easier to inspect by separating the task from the emotional charge. Each week, mark where attention got expensive, remove one layer of ${avoid}, and keep a visible promise beside the review. The goal is fewer hiding places, not a bigger speech.`,
     `For ${area}, choose one weekly place where the real duty is being crowded by emotional tax. Name it, reduce ${avoid}, and keep one protected body cue in the review. By the last week, the pattern should be easier to interrupt.`
   ][mod(stableHash(`${seed}|${area}|${avoid}|duty-tax`), 4)];
@@ -457,7 +559,7 @@ function monthDutyTaxLine(seed, area, avoid) {
 
 function monthSundayReviewLine(seed, structure) {
   return [
-    `${capitalize(structure)}, then use the Sunday review for evidence rather than mood. Save the readings that repeat a theme, name the cost in one sentence, and connect it to a habit around time, money, sleep, or communication. The review should end with one action small enough to repeat.`,
+    `${capitalize(structure)}. On Sunday, let ${structure} hold evidence; name the cost before mood enters and connect ${structure} to one practical habit. The review should end with a named next step.`,
     `${capitalize(structure)}. Each Sunday, measure what changed through proof: the repeated theme, the cost it charged, and the practical habit that can hold it next week. Add one visible adjustment so the month becomes a record, not a memory.`,
     `${capitalize(structure)}, then let the weekly review leave a trail. Save the reading that repeats, name the cost plainly, and attach the theme to one habit around time, money, rest, or communication. The trail should show what changed and what still needs a container.`,
     `${capitalize(structure)}. Use Sunday as the evidence point: what repeated, what it cost, and which practical habit made the pressure easier to hold. The month should leave a trail that can be inspected, adjusted, and repeated without needing a crisis.`
@@ -466,33 +568,53 @@ function monthSundayReviewLine(seed, structure) {
 
 function monthVisibleReviewLine(seed, anchor, area, avoid) {
   return [
-    `Use one weekly review to make the month visible. Put ${anchor} beside the calendar, write where ${area} became heavier than necessary, and mark the moment ${avoid} tried to take over. Then ${monthCorrectionLine(seed, avoid)}. The point is to notice the pattern early enough that it no longer needs a crisis to get your attention.`,
-    `Set one review while the week is still flexible. Keep ${anchor} near the calendar, name where ${area} asked for too much attention, and catch the first move of ${avoid}. Then ${monthCorrectionLine(seed, avoid)}. Use the evidence for ${area} early; leave drama out of the review.`,
-    `Make the month trackable through one saved note each week. Record ${anchor}, the place where ${area} became louder than the facts, and the exact moment ${avoid} tried to lead. Then ${monthCorrectionLine(seed, avoid)}. A pattern loses power when it has a timestamp and a next action.`,
-    `Use the calendar as a witness instead of a judge. Each week, write ${anchor}, mark where ${area} became costly, and notice how ${avoid} tried to take the steering wheel. Then ${monthCorrectionLine(seed, avoid)}. The review should catch the pressure while it is still small enough to redirect.`,
-    `For ${area}, keep a weekly page. Start with ${anchor}, add where ${area} got expensive, and write how ${avoid} entered the room. Then ${monthCorrectionLine(seed, avoid)}. Keep it brief for ${area}, specific for ${avoid}, and easy to repeat next week.`,
+    `Use one weekly review for ${area}. Put ${area} beside ${anchor}; let the calendar mark ${area}'s heavy place and name when ${avoid} tried to take over. Then ${monthCorrectionLine(seed, avoid)}. Catch ${area} before it needs a crisis.`,
+    `Set the review before the week hardens. Keep ${anchor} near the calendar, name where ${area} asked for attention it did not need, and catch how ${avoid} first entered. Then ${monthCorrectionLine(seed, avoid)}. ${monthEarlyReviewClose(seed, area)}`,
+    `For ${area}, save one note each week around ${anchor}; name where ${area} became louder than the facts and when ${avoid} tried to lead. Then ${monthCorrectionLine(seed, avoid)}. A pattern loses power when it has a timestamp and a next action.`,
+    `Use the calendar as a witness instead of a judge. Each week, write ${anchor}, mark where ${area} became costly, and notice where ${avoid} tried to take the steering wheel. Then ${monthCorrectionLine(seed, avoid)}. ${monthSmallPressureClose(seed, area)}`,
+    `For ${area}, keep a weekly page. Start with ${anchor}, add where ${area} got expensive, and write the entry point for ${avoid}. Then ${monthCorrectionLine(seed, avoid)}. Keep it brief for ${area}, specific for ${avoid}, and easy to repeat next week.`,
     `Treat each week as a checkpoint. Save ${anchor}, underline the moment ${area} pulled attention away from facts, and name the first sign of ${avoid}. Then ${monthCorrectionLine(seed, avoid)}. For ${area}, the pressure weakens when it is caught before it becomes the atmosphere.`,
     `Give the next four Sundays a single question: where did ${area} become louder than the real duty? Keep ${anchor} in view, note how ${avoid} pressed for control, and ${monthCorrectionLine(seed, avoid)}. This turns the month into evidence rather than memory.`,
-    `Make one saved reading the weekly marker. Compare it with ${anchor}, name the pressure around ${area}, and catch the first sentence where ${avoid} wanted control. Then ${monthCorrectionLine(seed, avoid)}. The review should leave one clean adjustment, not a larger emotional project.`
+    `Make one saved reading the weekly marker. Compare it with ${anchor}, name the pressure around ${area}, and catch the first sentence where ${avoid} wanted control. Then ${monthCorrectionLine(seed, avoid)}. Let one clean adjustment belong to ${area}; keep the review practical.`
   ][mod(stableHash(`${seed}|${anchor}|${area}|${avoid}|month-visible-v2`), 8)];
+}
+
+function monthEarlyReviewClose(seed, area) {
+  return [
+    `Let the evidence for ${area} arrive early, while the review can still stay practical.`,
+    `Bring ${area} to the review early, before the pattern asks for a bigger scene.`,
+    `Use the first proof around ${area} before the month turns it into a story.`,
+    `Keep the review close to ${area}, where the evidence is still fresh enough to redirect.`,
+    `Review ${area} early, while one clean correction can still change the week.`
+  ][mod(stableHash(`${seed}|${area}|early-review`), 5)];
+}
+
+function monthSmallPressureClose(seed, area) {
+  return [
+    `Catch the pressure around ${area} while one practical change can still redirect it.`,
+    `Let ${area} meet correction early, before the review has to manage a larger story.`,
+    `Keep the pressure visible in ${area}, then answer it before it hardens into atmosphere.`,
+    `Use the review to interrupt ${area} while the next step is still small.`,
+    `Let the evidence around ${area} stay close enough to change without drama.`
+  ][mod(stableHash(`${seed}|${area}|small-pressure`), 5)];
 }
 
 function pickPractice(parts, seed) {
   const { review, bodyStart, move } = parts;
   const templates = [
-    `${practiceSevenDayLine(seed, review)}`,
+    `${practiceSevenDayLine(seed, review, move)}`,
     `${practiceFactsLine(seed, move)} ${practiceRecordLine(seed, move)}`,
     `${practiceDemandingMessageLine(seed, bodyStart)}`,
-    `${practiceMorningPromiseLine(seed)}`
+    `${practiceMorningPromiseLine(seed, move)}`
   ];
   return templates[mod(seed + 11, templates.length)];
 }
 
-function practiceSevenDayLine(seed, review) {
+function practiceSevenDayLine(seed, review, move) {
   return [
     `For seven days, use ${review} before the first difficult reply. At night, write one line about what became lighter because the limit stayed visible, then choose tomorrow's first action from that evidence.`,
     `Use ${review} as the daily opening practice. Before sleep, record the one place where a visible limit changed the outcome, then let that proof decide the first small action for tomorrow.`,
-    `For the next week, place ${review} before the hardest reply. Each night, write what stayed cleaner because the limit was visible, and give the next morning one action that follows the evidence.`,
+    `For the next week, put the hardest reply after ${review}. Tie the night note to ${move}; let tomorrow start from that proof and one small decision.`,
     `Begin seven days with ${review} before a demanding message. When the day closes, name the detail that became lighter, save the proof, and let tomorrow start with one concrete repair.`
   ][mod(stableHash(`${seed}|${review}|seven-day`), 4)];
 }
@@ -501,25 +623,25 @@ function practiceDemandingMessageLine(seed, bodyStart) {
   return [
     `Before the first demanding message, practice ${bodyStart} and write the clean version of your answer. After the day closes, note where a shorter explanation protected care and what made that possible.`,
     `Practice ${bodyStart} before the first message that wants too much from you. Write the clean answer, send only what belongs, and later record where less explanation kept care intact.`,
-    `Let ${bodyStart} come before a demanding reply, then write the answer in its simplest honest form. At night, mark one place where restraint protected care without making the day colder.`,
+    `Before the demanding reply, let ${bodyStart} choose the sentence ${bodyStart} can keep. At night, let ${bodyStart} name what it protected; because ${bodyStart} did the holding, care stayed warm.`,
     `Before a difficult message, let ${bodyStart} settle the body and give the reply one clear job. When the day closes, record where fewer words preserved more trust.`
   ][mod(stableHash(`${seed}|${bodyStart}|demanding`), 4)];
 }
 
-function practiceMorningPromiseLine(seed) {
+function practiceMorningPromiseLine(seed, move) {
   return [
     `Each morning, choose one small promise and give it a finish line that can be seen. Before sleep, record whether it stayed clear, where it blurred, and which adjustment would make tomorrow easier to keep without adding another task.`,
     `Start the day with one promise small enough to complete. At night, note the proof: what stayed clear, where the line softened, and what tomorrow needs so the promise can hold its shape with less effort.`,
-    `Choose one visible promise before the day gets crowded. Before bed, write whether the promise held, where it became negotiable, and the first repair tomorrow should receive before attention moves elsewhere.`,
-    `Give the morning one small promise with a visible end. When the day closes, record the moment it stayed intact, the place it blurred, and the support tomorrow needs to keep it practical.`
-  ][mod(stableHash(`${seed}|morning-promise`), 4)];
+    `Choose one visible promise before the day gets crowded. Before bed, mark whether ${move} helped it hold, where it blurred, and which repair belongs to the next morning.`,
+    `Give the morning one small promise with a visible end. When the day closes, record the moment it stayed intact, the place it blurred, and the support ${move} needs tomorrow.`
+  ][mod(stableHash(`${seed}|${move}|morning-promise-v2`), 4)];
 }
 
 function weekBlockLine(seed, work, move) {
   return [
     `choose a two-hour block where ${work} gets a real finish before new promises enter`,
-    `use one protected block to make ${move} visible before the next request arrives`,
-    `timebox ${work}; let the next request wait outside`,
+    `use one protected block where ${move} becomes visible before the next request arrives`,
+    `put a timed edge around ${work}`,
     `pick one block for ${work}, then close the open item in the form it needs`,
     `make one visible block answer the pressure before another promise joins the list`
   ][mod(stableHash(`${seed}|${work}|${move}`), 5)];
@@ -527,20 +649,33 @@ function weekBlockLine(seed, work, move) {
 
 function weekMessageLine(seed, avoid) {
   return [
-    `If a message pulls you toward ${avoid}, answer the practical part and leave the emotional surplus outside.`,
-    `When ${avoid} starts shaping a reply, pause and send only the piece that has a clean purpose.`,
+    `If a message pulls you toward ${avoid}, answer the factual need and keep the surplus outside.`,
+    `When ${avoid} starts shaping a reply, ${weekReplyCorrectionLine(seed, avoid)}`,
     `If ${avoid} tries to turn the message into a performance, choose timing over extra explanation.`,
     `When a reply begins carrying ${avoid}, make it shorter, clearer, and easier to keep.`,
     `If the screen invites ${avoid}, step back until the next sentence can carry one job.`
   ][mod(stableHash(`${seed}|${avoid}|message`), 5)];
 }
 
+function weekReplyCorrectionLine(seed, avoid) {
+  return [
+    `wait for the practical sentence and send only that.`,
+    `write the plain purpose first, then delete the extra defense.`,
+    `move the answer to a quieter moment before choosing words.`,
+    `answer the factual need before adding any emotional explanation.`,
+    `let the reply shrink until one honest job remains.`,
+    `name the real request on paper before touching the send button.`,
+    `choose the timing first, then make the words carry less strain.`,
+    `keep the sentence close to the action it can actually complete.`
+  ][mod(stableHash(`${seed}|${avoid}|reply-correction`), 8)];
+}
+
 function practiceHandledLine(seed, move) {
   return [
-    `what stayed easier because ${move} remained visible`,
-    `which detail stayed closed because ${move} stayed active`,
-    `where the rule helped the day avoid another loop`,
-    `what became easier to repeat because the move stayed small`,
+    `what changed by nightfall after ${move}`,
+    `where ${move} kept one detail closed`,
+    `where ${move} left one loop closed around ${move} instead of running privately`,
+    `what became easier to repeat because ${move} stayed small`,
     `which promise held after ${move} replaced extra explanation`
   ][mod(stableHash(`${seed}|${move}`), 5)];
 }
@@ -549,21 +684,24 @@ function practiceFactsLine(seed, move) {
   const handled = practiceHandledLine(seed, move);
   return [
     `After ${move}, note the repeat, its cost, and ${handled}.`,
-    `Use a small night note for three facts: the pattern, the price, and ${handled}.`,
+    `At night, let ${handled} name the return and price.`,
     `Before sleep, capture what came back, what it charged you, and ${handled}.`,
     `At the end of the day, record the recurring moment, the cost, and ${handled}.`,
-    `Keep one nightly line for the pressure that returned, the price it asked, and ${handled}.`
+    `${capitalize(handled)}; then record the pressure and price.`
   ][mod(stableHash(`${seed}|${move}|facts`), 5)];
 }
 
 function practiceRecordLine(seed, move = "the move") {
   return [
     `Make it brief enough to keep on a tired night and specific enough to guide tomorrow.`,
-    `Keep ${move} visible in the proof; skip polish and save the fact.`,
-    `Keep the note simple; it should survive busy days and still show ${move}.`,
-    `Stop after the evidence is captured; the review should guide action instead of becoming another task.`,
-    `A short record will teach the pattern faster than a perfect reflection that cannot be repeated.`
-  ][mod(stableHash(`${seed}|record`), 5)];
+    `Let the proof show ${move}; save the fact before the story starts improving itself.`,
+    `Name ${move} in a tired-night note, then keep the record small enough for busy days.`,
+    `Stop after capturing evidence for ${move}; after ${move}, pick the action first and keep the note small.`,
+    `Let ${move} teach through ${move}; save proof, stop early.`,
+    `Give ${move} one dated line, then close the note before it turns into a second task.`,
+    `Save the plain result of ${move}; tomorrow needs a usable fact, not a polished explanation.`,
+    `Keep the record close to ${move}, so the next review can find proof without searching your mood.`
+  ][mod(stableHash(`${seed}|${move}|record-v2`), 8)];
 }
 
 function monthCorrectionLine(seed, avoid) {
@@ -581,17 +719,17 @@ function monthCorrectionLine(seed, avoid) {
 function readableArea(area, seed = 0) {
   const lower = String(area || "").toLowerCase();
   if (lower.includes("money")) return pickArea(seed, ["money, restraint, and self-respect", "the money question and self-respect", "financial pressure and measured care"]);
-  if (lower.includes("relationship")) return pickArea(seed, ["relationship timing and unspoken expectation", "closeness, timing, and unsaid needs", "relationship access and emotional pacing"]);
+  if (lower.includes("relationship")) return pickArea(seed, ["relationship timing", "closeness, timing, and unsaid needs", "relationship access and emotional pacing"]);
   if (lower.includes("family")) return pickArea(seed, ["family duty and private fatigue", "family care and hidden tiredness", "home responsibility and quiet resentment"]);
   if (lower.includes("health")) return pickArea(seed, ["body rhythm and recovery", "health rhythm and daily repair", "body timing and sustainable care"]);
   if (lower.includes("public") || lower.includes("ambition")) return pickArea(seed, ["visible work and delayed recognition", "public effort and slower recognition", "ambition, visibility, and earned proof"]);
-  if (lower.includes("creative") || lower.includes("visibility")) return pickArea(seed, ["voice, visibility, and first attempts", "creative visibility and unfinished drafts", "expression, visibility, and the first version"]);
+  if (lower.includes("creative") || lower.includes("visibility")) return pickArea(seed, ["early visibility", "creative visibility and unfinished drafts", "expression, visibility, and the first version"]);
   if (lower.includes("friendship") || lower.includes("belonging")) return pickArea(seed, ["belonging pressure and social access", "friendship timing and access", "belonging, availability, and quiet truth"]);
   if (lower.includes("sleep") || lower.includes("closure")) return pickArea(seed, ["closure, sleep, and unfinished meaning", "sleep, closure, and the open loop", "rest and the meaning still left open"]);
   if (lower.includes("learning") || lower.includes("discipline")) return pickArea(seed, [
     "discipline and scattered attention",
     "learning rhythm and scattered focus",
-    "attention, discipline, and repeatable effort",
+    "repeatable effort",
     "study rhythm and practical concentration",
     "focus, repetition, and unfinished learning",
     "daily discipline and mental steadiness",
@@ -625,10 +763,19 @@ function anchorPhrase(text, seed = 0, name = "") {
       "the reply that should become shorter before it becomes heavier"
     ]);
   }
+  if (value.includes("task") && (value.includes("unnamed") || value.includes("heavier"))) {
+    return pickArea(salt, [
+      "the unnamed task asking for a finish",
+      "the task that needs a visible name",
+      "the work item that should stop gathering weight",
+      "the task asking for a smaller edge",
+      "the open duty that needs one clean label"
+    ]);
+  }
   if (value.includes("tab") || value.includes("bill") || value.includes("receipt")) {
     return pickArea(salt, [
       "the tab, bill, or receipt that keeps reopening in the mind",
-      "the small account detail that keeps asking for a decision",
+      "the account detail needing a decision",
       "the payment or task detail that needs a clean place",
       "the open tab where money, timing, or duty keeps returning",
       "the receipt-like thought that needs one visible action"
@@ -664,7 +811,7 @@ function anchorPhrase(text, seed = 0, name = "") {
   if (value.includes("delay") && value.includes("rejection")) {
     return pickArea(salt, [
       "the moment a small delay starts sounding like rejection",
-      "the delay that needs facts before interpretation",
+      "delay needing facts",
       "the waiting point that should not become a verdict",
       "the slow answer that needs a calmer reading",
       "the delay that should stay practical before it becomes personal"
@@ -683,7 +830,7 @@ function paidCost(context = {}, seed = 0, name = "") {
   if (knot.includes("delay")) return pickArea(salt, ["treating delay as rejection", "letting waiting sound like refusal", "turning a slow answer into proof", "hearing delay as a verdict before the facts arrive"]);
   if (knot.includes("responsibility")) return pickArea(salt, ["using responsibility as proof of love", "making duty prove affection", "treating responsibility as the receipt for care", "letting obligation stand in for tenderness"]);
   if (knot.includes("self-respect")) return pickArea(salt, ["letting another person's softness set the price of self-respect", "pricing self-respect through someone else's warmth", "letting softness elsewhere decide your boundary", "making another person's gentleness the cost of self-respect"]);
-  if (knot.includes("unfinished work")) return pickArea(salt, ["turning unfinished work into a private verdict", "making unfinished work sound like a personal sentence", "letting an open task judge your worth", "treating an unfinished piece as the whole story"]);
+  if (knot.includes("unfinished work")) return pickArea(salt, ["turning unfinished work into a private verdict", "making the unfinished piece feel personal", "letting an open task judge your worth", "treating an unfinished piece as the whole story"]);
   if (knot.includes("available")) return pickArea(salt, ["staying reachable past the point where care still feels honest", "remaining available after care has lost its clean shape", "treating constant access as proof of care", "letting availability continue after honesty has thinned"]);
   if (knot.includes("certainty")) return pickArea(salt, ["asking uncertain people to become your proof", "using uncertain people as the source of certainty", "waiting for unclear people to steady the day", "making someone else's clarity carry your proof"]);
   if (knot.includes("understood")) return understoodCostPhrase(salt);
@@ -724,7 +871,7 @@ function mentorMovePhrase(text, seed = 0) {
   if (value.includes("shape") && value.includes("limit")) {
     return pickArea(seed, [
       "let care arrive with a shape and a limit",
-      "give care timing, edges, and one clean follow-through",
+      "give care timed edges",
       "make care visible through one shaped limit",
       "let care become specific before it becomes available"
     ]);
@@ -748,7 +895,7 @@ function mentorMovePhrase(text, seed = 0) {
       "make the promise smaller and keep it completely",
       "reduce the promise until it can be kept cleanly",
       "choose a smaller promise with a real finish",
-      "make the promise plain enough to complete today",
+      "make a plain promise today",
       "shrink the promise until follow-through becomes visible"
     ]);
   }
@@ -791,6 +938,16 @@ function workSignalPhrase(text, seed = 0, name = "") {
       "give the deep task priority over scattered effort",
       "let one deeper task beat scattered movement",
       "make depth visible before attention splits"
+    ]);
+  }
+  if (value.includes("protect") && value.includes("unnecessary explanation")) {
+    return pickArea(salt, [
+      "protect the work from unnecessary explanation",
+      "keep unnecessary explanation outside the work",
+      "let the work stay protected from extra explanation",
+      "give the work a boundary before explanation expands",
+      "finish the work before explaining it again",
+      "make the work visible before adding another explanation"
     ]);
   }
   if (value.includes("enough information") || value.includes("close the loop")) {
@@ -842,24 +999,61 @@ function avoidPressurePhrase(text, seed = 0, name = "") {
     return pickArea(seed, [
       "turning tiredness into doubt",
       "letting fatigue rewrite the facts",
-      "calling exhaustion a warning before resting",
+      "exhaustion acting like warning",
       "using a tired mood as the final judge"
     ]);
   }
   return value;
 }
 
-function monthStructure(context = {}) {
+function monthStructure(context = {}, seed = 0) {
   const area = String(context.dailyArea || "").toLowerCase();
-  if (area.includes("money")) return "build a weekly money review before emotion gets to rename restraint as fear";
-  if (area.includes("relationship")) return "give replies a visible timing rule before closeness becomes constant access";
-  if (area.includes("family")) return "separate helpfulness from rescue through one repeating household or family limit";
-  if (area.includes("health")) return "let food, sleep, and movement become the calendar before pressure becomes interpretation";
-  if (area.includes("public") || area.includes("ambition")) return "make visible work measurable before recognition gets to decide your confidence";
-  if (area.includes("creative") || area.includes("visibility")) return "schedule imperfect expression before comparison drains the first version";
-  if (area.includes("friendship") || area.includes("belonging")) return "make belonging prove itself through timing, not constant availability";
-  if (area.includes("sleep") || area.includes("closure")) return "close one mental loop each week before sleep becomes the storage place";
-  return "turn the repeating pressure into one visible weekly system";
+  const pickStructure = (key, variants) => pickArea(stableHash(`${seed}|month-structure|${key}|${area}`), variants);
+  if (area.includes("money")) return pickStructure("money", [
+    "build a weekly money review before emotion gets to rename restraint as fear",
+    "give money one weekly page before worry turns restraint into a verdict",
+    "make the money review visible before emotion starts changing the numbers"
+  ]);
+  if (area.includes("relationship")) return pickStructure("relationship", [
+    "give replies a visible timing rule before closeness becomes constant access",
+    "make closeness answer through timing before every reply becomes proof",
+    "let relationship pressure meet one weekly timing boundary"
+  ]);
+  if (area.includes("family")) return pickStructure("family", [
+    "separate helpfulness from rescue through one repeating household or family limit",
+    "let one family limit repeat before helpfulness becomes rescue again",
+    "make household care visible without turning every duty into rescue"
+  ]);
+  if (area.includes("health")) return pickStructure("health", [
+    "let food, sleep, and movement become the calendar before pressure becomes interpretation",
+    "give the body one weekly rhythm before pressure starts explaining everything",
+    "make rest, food, and movement visible before the mood gets to interpret the week"
+  ]);
+  if (area.includes("public") || area.includes("ambition")) return pickStructure("public", [
+    "make visible work measurable before recognition gets to decide your confidence",
+    "let public effort answer through proof before recognition becomes the judge",
+    "give ambition a measurable weekly finish before comparison enters the room"
+  ]);
+  if (area.includes("creative") || area.includes("visibility")) return pickStructure("creative", [
+    "schedule imperfect expression before comparison drains the first version",
+    "give the rough version a weekly doorway before comparison edits it into silence",
+    "make one visible draft survive the week before the inner critic asks for polish"
+  ]);
+  if (area.includes("friendship") || area.includes("belonging")) return pickStructure("belonging", [
+    "make belonging prove itself through timing, not constant availability",
+    "let friendship show through rhythm before availability becomes the test",
+    "give belonging one repeatable boundary before closeness starts asking for proof"
+  ]);
+  if (area.includes("sleep") || area.includes("closure")) return pickStructure("sleep", [
+    "close one mental loop each week before sleep becomes the storage place",
+    "give sleep one closed decision before the night starts holding unfinished work",
+    "make closure visible before the mind brings the same tab to bed"
+  ]);
+  return pickStructure("default", [
+    "turn the repeating pressure into one visible weekly system",
+    "give the pressure one weekly container that can be reviewed",
+    "make the recurring theme visible before the month turns it into mood"
+  ]);
 }
 
 function reviewAnchor(context = {}) {
@@ -876,9 +1070,65 @@ function reviewAnchor(context = {}) {
 function bodyPractice(text, seed = 0) {
   const value = lowerFirst(safePhrase(text || "let the body settle before choosing words"));
   if (!value) return "one body cue and one written limit";
-  if (value.startsWith("do not ")) return `refusing to ${value.replace(/^do not\s+/i, "")}`;
-  if (value.startsWith("eat ")) return value.replace(/^eat\b/i, "eating");
-  if (value.startsWith("leave ")) return value.replace(/^leave\b/i, "leaving");
+  if (value.startsWith("do not ")) {
+    const action = value.replace(/^do not\s+/i, "");
+    if (action.includes("exhaustion")) {
+      return [
+        "checking exhaustion before treating it as truth",
+        "letting exhaustion lose its vote before the reply",
+        "declining the argument exhaustion wants to start",
+        "placing one body fact between tiredness and decision",
+        "resting before exhaustion gets to explain the whole day"
+      ][mod(stableHash(`${seed}|${action}|exhaustion-practice`), 5)];
+    }
+    return [
+      `declining the urge to ${action}`,
+      `putting one pause before the habit to ${action}`,
+      `letting the body settle before ${action}`,
+      `using one written limit instead of trying to ${action}`
+    ][mod(stableHash(`${seed}|${action}|do-not-practice`), 4)];
+  }
+  if (value.startsWith("eat ")) {
+    const foodCue = value.replace(/^eat\b/i, "eating");
+    return [
+      foodCue,
+      "putting food before the difficult conversation",
+      "letting a meal come before the harder reply",
+      "checking hunger before choosing the tone",
+      "using food as the first boundary before the exchange"
+    ][mod(stableHash(`${seed}|${value}|food-practice`), 5)];
+  }
+  if (value.includes("screen")) {
+    return [
+      "stepping away before the screen chooses the tone",
+      "putting the screen down before words get selected",
+      "leaving the screen before the reply gets a mood",
+      "giving the eyes a break before choosing words",
+      "using a screen pause before the reply"
+    ][mod(stableHash(`${seed}|${value}|screen-practice-v2`), 5)];
+  }
+  if (value.includes("breath") && value.includes("movement")) {
+    return [
+      "starting with breath before judgment",
+      "using food or movement before judgment",
+      "letting breath check the first reaction",
+      "placing movement before the verdict",
+      "giving the body one cue before judgment"
+    ][mod(stableHash(`${seed}|${value}|breath-movement`), 5)];
+  }
+  if (value.startsWith("leave ")) {
+    const leaveCue = value.replace(/^leave\b/i, "leaving");
+    if (value.includes("screen")) {
+      return [
+        leaveCue,
+        "stepping away before the screen chooses the tone",
+        "putting the screen down before words get selected",
+        "leaving the screen before the reply gets a mood",
+        "giving the eyes a break before choosing words"
+      ][mod(stableHash(`${seed}|${value}|screen-practice`), 5)];
+    }
+    return leaveCue;
+  }
   if (value.startsWith("walk ")) return value.replace(/^walk\b/i, "walking");
   if (value.startsWith("drink ")) {
     return [
@@ -890,31 +1140,68 @@ function bodyPractice(text, seed = 0) {
     ][mod(stableHash(`${seed}|${value}|water`), 5)];
   }
   if (value.startsWith("lower ")) return value.replace(/^lower\b/i, "lowering");
-  if (value.startsWith("protect ")) return value.replace(/^protect\b/i, "protecting");
+  if (value.startsWith("protect ")) {
+    if (value.includes("sleep")) {
+      return [
+        "protecting sleep first",
+        "closing the day before another check",
+        "letting sleep outrank the extra review",
+        "giving sleep the first boundary",
+        "ending the check before sleep gets traded away"
+      ][mod(stableHash(`${seed}|${value}|sleep-protect`), 5)];
+    }
+    return value.replace(/^protect\b/i, "protecting");
+  }
   if (value.startsWith("notice ")) return value.replace(/^notice\b/i, "noticing");
   if (value.startsWith("step ")) return value.replace(/^step\b/i, "stepping");
   if (value.startsWith("start ")) return value.replace(/^start\b/i, "starting");
   if (value.startsWith("let ")) return value.replace(/^let\b/i, "letting");
-  if (value.includes("sleep matters")) return "protecting sleep before one more check";
+  if (value.includes("protecting sleep") || value.includes("sleep matters")) {
+    return [
+      "protecting sleep first",
+      "closing the day before another check",
+      "letting sleep outrank the extra review",
+      "giving sleep the first boundary",
+      "ending the check before sleep gets traded away"
+    ][mod(stableHash(`${seed}|${value}|sleep-check`), 5)];
+  }
   return value;
 }
 
 function relationPhrase(text, seed = 0) {
   const value = lowerFirst(safePhrase(text || "do not turn another person's uncertainty into your assignment"));
   if (value.includes("uncertainty")) return pickArea(seed, ["leave uncertainty with the person who owns it", "do not carry another person's uncertainty as your assignment", "let unclear people keep the weight of being unclear"]);
-  if (value.includes("warmth")) return pickArea(seed, ["give warmth a time and a doorway", "let warmth arrive with timing instead of constant access", "keep warmth generous without making yourself permanently available"]);
+  if (value.includes("warmth")) return pickArea(seed, ["give warmth a time and a doorway", "time warmth cleanly", "keep warmth generous without permanent access"]);
   if (value.includes("shorter")) return pickArea(seed, ["keep the clean reply shorter than fear prefers", "make the reply clean before it becomes convincing", "answer the part that belongs to today and leave the rest"]);
   if (value.includes("kind no")) return pickArea(seed, ["let a kind no protect trust before resentment starts", "use a kind no while trust is still intact", "make the no early enough that care can stay clean"]);
-  if (value.includes("behavior")) return pickArea(seed, ["wait for behavior before treating words as proof", "let behavior confirm the promise before spending more trust", "ask actions to carry proof before words receive full credit"]);
+  if (value.includes("behavior")) return pickArea(stableHash(`${seed}|${value}|behavior-v2`), [
+    "wait for behavior before treating words as proof",
+    "let behavior confirm the promise before spending more trust",
+    "ask actions to carry proof before words receive full credit",
+    "let the promise earn trust through behavior first",
+    "give behavior the job of proving what words began",
+    "spend trust after behavior has carried the promise",
+    "let steady action speak before trust gets extended",
+    "ask behavior to make the promise visible"
+  ]);
   if (value.includes("listening")) return pickArea(seed, ["listen without volunteering for every consequence", "hear the feeling without adopting the whole consequence", "let listening stay present without becoming rescue"]);
   if (value.includes("needed")) return pickArea(seed, ["do not confuse being needed with being chosen", "separate being useful from being chosen", "let neediness prove need, not commitment"]);
-  if (value.includes("closeness")) return pickArea(seed, [
+  if (value.includes("closeness")) return pickArea(stableHash(`${seed}|${value}|closeness`), [
     "give closeness a doorway instead of leaving every window open",
     "let closeness enter through timing, not constant access",
-    "keep closeness warm without removing every boundary",
+    "keep closeness bounded",
     "make closeness timely instead of constantly available",
-    "let access prove itself through timing",
-    "keep closeness protected by one honest boundary"
+    "let access wait for timing before closeness expands",
+    "keep closeness protected by one honest boundary",
+    "give access a time so closeness stays clean",
+    "let timing protect closeness from constant availability",
+    "keep the doorway clear before offering more access",
+    "make closeness warm, timed, and easier to trust",
+    "let the next boundary keep closeness honest",
+    "give closeness a timed limit before access becomes automatic",
+    "let access become earned before closeness widens",
+    "keep closeness honest by giving access a clean edge",
+    "make the next access point smaller than the feeling"
   ]);
   return value;
 }
