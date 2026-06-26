@@ -50,6 +50,11 @@ function buildReport() {
       evidence: ["`npm run soul:cache:check`", "`npm run supabase:schema:check`"],
       remaining: missingFor("supabase")
     }),
+    requirement("soulWisdomFeedback", "Capture Soul Guru reading feedback for prompt tuning without storing raw PII or raw reading text", {
+      status: combinedStatus(["supabase"]),
+      evidence: ["`npm run soul:feedback:check`", "`npm run local:smoke`", "`npm run supabase:migrations:check`"],
+      remaining: missingFor("supabase")
+    }),
     requirement("astrologyEngine", "Replace estimated astrology with proper chart/transit calculations", {
       status: checkStatus("birthPlaceAccuracy", "complete", "implemented_local_provider_warning"),
       evidence: ["`npm run astrology:check`", "`npm run place:geocoder:smoke -- --place=\"Paris, France\"`"],

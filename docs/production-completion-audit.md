@@ -1,83 +1,43 @@
 # SoulGuru Production Completion Audit
 
-Generated on 2026-06-26 from the current local workspace and GitHub main state.
+Generated: 2026-06-26T14:25:30.932Z
 
-This audit preserves the full product objective. It separates what is implemented and verified from what still requires external provider setup before the app can honestly be called production ready.
+This audit maps the original app objective to current evidence. It is secret-safe: it prints statuses, missing env names, evidence commands, and artifact paths only.
 
-## Audit Summary
+## Summary
 
-- Local app implementation: implemented and broadly verified.
-- GitHub main push: complete for code/docs that can be pushed without workflow-scope permission.
-- Local Android test APK: built and audited.
-- Backend AI key handling: implemented server-side; OpenAI is ready in the current local environment.
-- Full production launch: not complete yet because external providers still need real dashboard/env configuration.
-
-Authoritative current checks:
-
-```bash
-npm run release:check:local
-npm run production:check -- --strict --allow-fail
-npm run production:audit
-```
-
-Latest local results:
-
-- `release:check:local`: passed with 0 failures; deployed backend and mobile backend URL checks skipped because no production API URL is configured yet.
-- `production:check -- --strict --allow-fail`: `needs_configuration`; 4/15 readiness checks passing; 3/14 providers ready; 11 providers need configuration.
-- `production:audit`: generates the current objective-to-evidence audit and final completion gates without printing secret values.
+- Overall status: needs_configuration
+- Production readiness: 4/15 checks passing, 7 warnings
+- Providers: 3/14 ready, 11 need configuration
 
 ## Requirement Audit
 
-| Requirement | Status | Evidence |
-| --- | --- | --- |
-| Calm SoulGuru splash/login/create-account flow with OTP fields | Implemented locally | `npm run client:surface:check` in `release:check:local` passed splash, login, existing-account, create-account, and OTP surface contracts. |
-| Store profile/account data in backend database | Implemented, production provider pending | Supabase schema and profile contracts pass locally; strict readiness fails until `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured and migrations are applied. |
-| Top tabs: Soul Guru, Astro Solves, Shani, #Numbers, Harmony | Implemented and runtime verified | `docs/runtime-ui-qa-report.md` confirms all five top navigation labels at runtime. |
-| Soul Guru default tab with Words of Wisdom under 100 words | Implemented and runtime verified | Runtime QA observed `Words of Wisdom` and a 90-word displayed article. `soul:quality`, `soul:quality:extended`, and live AI quality gates passed. |
-| Soul Guru guidance based on astrology without mentioning astrology | Implemented and quality-gated | `scripts/check-soul-wisdom-quality.mjs` enforces no astrology-term leakage and diversity. Live AI report shows 5/5 Soul Guru OpenAI cases passed. First-read pending and generation-lock windows now cover five-minute live AI repair runs. |
-| Cache one daily Soul Guru reading per user | Implemented, production provider pending | `soul:cache:check` passed in release readiness; strict production depends on Supabase configuration. |
-| Replace estimated astrology with proper chart/transit engine | Implemented | `astrology:check` passed sidereal birth/transit placements, lunar mansion/pada, tithi, timezone-safe dates, and Saade Sati windows. |
-| Astro Solves: 3 free questions, detailed problem-to-solution answers | Implemented | `astro:check`, `astro:quality`, and live `astro:quality:ai` passed. Runtime QA shows `Solution for everything`, input, and Root/Astrology/Solution sections. |
-| More Guidance subscription button and page | Implemented and runtime verified | Runtime QA confirms `More Guidance` opens `Soul Guru + Astro Solve` with 3-month tracking, deeper guidance map, reading history, saved advice, and 15-question bonus copy. |
-| Paid More Guidance daily cache/history/saved advice/3-month tracking | Implemented, production provider pending | `more-guidance:check`, `more-guidance:quality`, `more-guidance:quality:extended`, and live `more-guidance:quality:ai` passed. First-read pending and generation-lock windows now cover five-minute live AI repair runs. Production depends on Supabase and Razorpay setup. |
-| Shani/Saade Sati status, countdown, remedy memberships, Pandit chatbot | Implemented, paid production provider pending | `shani:check` and live `shani:quality:ai` passed. Runtime QA confirms Shani capitalization and years/months/days countdown. Production paid access requires Razorpay and Shani plan prices. |
-| #Numbers: playful numerology cards and title | Implemented and runtime verified | Runtime QA confirms `Numbers that Build Life`; `numbers:check` passed deterministic numerology cards and one-line notes. |
-| Harmony Love Guru compatibility | Implemented and runtime verified | Runtime QA submitted synthetic partner data and received a score, match label, and compatibility details. `compatibility:check` passed sidereal compatibility contract. |
-| Settings with user details and backend status | Implemented and runtime verified | Runtime QA confirms profile, phone/email, birth details, entitlement, and backend connection status. |
-| Backend-only OpenAI key for mobile/API readings | Implemented locally | `openai:check` passed; strict readiness reports OpenAI AI routes pass. `public-env:check` scans `VITE_` exposure and passes. |
-| No OpenAI key pushed to GitHub | Verified by scans | `security:check` passed with release secret scan and public env scan. `.env` remains ignored. |
-| Local mobile APK for phone testing | Built and audited | `/Users/jkv6333/Desktop/SoulGuru/SoulGuru-debug.apk`, 6.7M, SHA-256 `8ca632c2f6c2b8161213e93b424ee251740c6a80ddffc0d6fb334a92a1618cdc`; `android:artifact:check` passed. |
-| Push code to `git@github.com:Jaydutt07/SoulGuru.git` | Complete for pushable code/docs | GitHub main is kept current for pushable code/docs. Local `prod-polish` has one workflow-related commit that is not pushed to main because workflow-file updates require a GitHub token with `workflow` scope. `npm run ci:install-workflow` installs the documented workflow when that credential is available. |
-
-## Remaining Production Blockers
-
-These cannot be truthfully completed from code alone; they require provider accounts, dashboard values, DNS, or payment setup.
-
-| Area | Missing |
-| --- | --- |
-| Supabase persistence | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, applied migrations |
-| Birth-place geocoder | `PLACE_GEOCODER_URL`, `PLACE_GEOCODER_USER_AGENT`, `PLACE_GEOCODER_REQUIRE_RESOLUTION=true` |
-| Backend OTP login | `OTP_HASH_SECRET`, `OTP_SMS_WEBHOOK_URL`, `OTP_SMS_WEBHOOK_TOKEN`, plus Supabase |
-| Razorpay checkout | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_WEBHOOK_URL`, `RAZORPAY_WEBHOOK_READY=true`, `MORE_GUIDANCE_PRICE_PAISE` |
-| Shani paid plans | `SHANI_PLAN_3M_PRICE_PAISE`, `SHANI_PLAN_6M_PRICE_PAISE`, `SHANI_PLAN_1Y_PRICE_PAISE`, `SHANI_PLAN_FULL_PRICE_PAISE` |
-| Resend email | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
-| Clerk auth | `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_REQUIRE_AUTH=true` |
-| Upstash rate limiting | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `RATE_LIMIT_REQUIRE_UPSTASH=true` |
-| Pinecone memory | `PINECONE_API_KEY`, `PINECONE_HOST`, `PINECONE_INDEX`, `GUIDANCE_MEMORY_REQUIRE_PINECONE=true` |
-| Observability | `SENTRY_DSN` or `VITE_SENTRY_DSN`, `VITE_POSTHOG_KEY` |
-| Domain/DNS/deployed backend | `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, `VITE_API_BASE_URL` |
+| Requirement | Status | Evidence | Remaining |
+| --- | --- | --- | --- |
+| Calm splash, OTP login/create-account flow, five product tabs, settings, and mobile-friendly app shell | `implemented_local` | `npm run client:surface:check`<br>`docs/runtime-ui-qa-report.md` | Run runtime QA again after production provider values and domain are configured. |
+| OpenAI key stays backend-only for mobile/API readings | `complete` | `npm run openai:check`<br>`npm run public-env:check:strict` | none |
+| Cache one daily Soul Guru reading per user | `implemented_local_provider_pending` | `npm run soul:cache:check`<br>`npm run supabase:schema:check` | SUPABASE_URL<br>SUPABASE_SERVICE_ROLE_KEY |
+| Capture Soul Guru reading feedback for prompt tuning without storing raw PII or raw reading text | `implemented_local_provider_pending` | `npm run soul:feedback:check`<br>`npm run local:smoke`<br>`npm run supabase:migrations:check` | SUPABASE_URL<br>SUPABASE_SERVICE_ROLE_KEY |
+| Replace estimated astrology with proper chart/transit calculations | `implemented_local_provider_warning` | `npm run astrology:check`<br>`npm run place:geocoder:smoke -- --place="Paris, France"` | PLACE_GEOCODER_URL<br>PLACE_GEOCODER_USER_AGENT<br>PLACE_GEOCODER_REQUIRE_RESOLUTION=true |
+| Astro Solves gives 3 persisted free questions with detailed root-cause and solution answers | `implemented_local_provider_pending` | `npm run astro:check`<br>`npm run astro:quality`<br>`npm run astro:quality:ai` | SUPABASE_URL<br>SUPABASE_SERVICE_ROLE_KEY |
+| Paid More Guidance page has deeper reading, history, saved advice, and 3-month tracking | `implemented_local_provider_pending` | `npm run more-guidance:check`<br>`npm run more-guidance:quality`<br>`npm run more-guidance:quality:ai` | SUPABASE_URL<br>SUPABASE_SERVICE_ROLE_KEY<br>RAZORPAY_KEY_ID<br>RAZORPAY_KEY_SECRET<br>RAZORPAY_WEBHOOK_SECRET<br>RAZORPAY_WEBHOOK_URL<br>RAZORPAY_WEBHOOK_READY=true<br>MORE_GUIDANCE_PRICE_PAISE |
+| Shani tab has Saade Sati timeline, paid remedy memberships, and member-gated Pandit guidance | `implemented_local_provider_pending` | `npm run shani:check`<br>`npm run shani:quality`<br>`npm run shani:quality:ai` | SHANI_PLAN_3M_PRICE_PAISE<br>SHANI_PLAN_6M_PRICE_PAISE<br>SHANI_PLAN_1Y_PRICE_PAISE<br>SHANI_PLAN_FULL_PRICE_PAISE<br>RAZORPAY_KEY_ID<br>RAZORPAY_KEY_SECRET<br>RAZORPAY_WEBHOOK_SECRET<br>RAZORPAY_WEBHOOK_URL<br>RAZORPAY_WEBHOOK_READY=true<br>MORE_GUIDANCE_PRICE_PAISE |
+| Numbers and Harmony tabs provide numerology and compatibility surfaces | `implemented_local` | `npm run numbers:check`<br>`npm run compatibility:check`<br>`docs/runtime-ui-qa-report.md` | Run runtime QA again after production provider values and domain are configured. |
+| Planning-image provider stack is mapped to production readiness | `needs_provider_configuration` | `npm run production:providers`<br>`npm run production:actions`<br>`npm run providers:check` | Supabase: SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL<br>Vercel: VITE_API_BASE_URL<br>Namecheap: PRODUCTION_DOMAIN<br>Cloudflare: CLOUDFLARE_DNS_READY=true, CLOUDFLARE_ZONE_ID<br>Razorpay: MORE_GUIDANCE_PRICE_PAISE, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_READY=true, RAZORPAY_WEBHOOK_SECRET, RAZORPAY_WEBHOOK_URL, SHANI_PLAN_1Y_PRICE_PAISE, SHANI_PLAN_3M_PRICE_PAISE, SHANI_PLAN_6M_PRICE_PAISE, SHANI_PLAN_FULL_PRICE_PAISE<br>Resend: RESEND_API_KEY, RESEND_FROM_EMAIL<br>Clerk: CLERK_REQUIRE_AUTH=true, CLERK_SECRET_KEY, VITE_CLERK_PUBLISHABLE_KEY<br>PostHog: VITE_POSTHOG_KEY<br>Sentry: SENTRY_DSN or VITE_SENTRY_DSN<br>Upstash: RATE_LIMIT_REQUIRE_UPSTASH=true, UPSTASH_REDIS_REST_TOKEN, UPSTASH_REDIS_REST_URL<br>Pinecone: GUIDANCE_MEMORY_REQUIRE_PINECONE=true, OPENAI_EMBEDDING_MODEL, PINECONE_API_KEY, PINECONE_HOST, PINECONE_INDEX |
+| No OpenAI key or server secret is pushed to GitHub/browser/APK | `implemented_local` | `npm run security:check`<br>`npm run public-env:check:strict`<br>`.gitignore` contains `.env` | Run strict release scans before every production deploy. |
+| Push code and SoulGuru details to the GitHub repo | `pushed_except_workflow_activation` | `git log --oneline origin/main -5`<br>`docs/github-actions-ci.yml`<br>`npm run ci:install-workflow`<br>`npm run ci:check` | Run `npm run ci:install-workflow` and push `.github/workflows/ci.yml` after GitHub credentials include `workflow` scope or SSH workflow-write permission. |
+| Create a local mobile app artifact for phone testing | `complete_local` | `npm run android:apk:local`<br>`npm run android:artifact:check`<br>`/Users/jkv6333/Desktop/SoulGuru/SoulGuru-debug.apk` (6.7 MB, SHA-256 `5add4c59c856cde4f92e0dd99d908799159d7fbcb2feaeaa01c295457523a0e1`) | Build production APK only after `VITE_API_BASE_URL` points at the production HTTPS domain. |
+| Full production launch readiness | `needs_provider_configuration` | `npm run production:check -- --strict`<br>`npm run production:domain:smoke -- --expect-ready`<br>`npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready`<br>`npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` | Supabase persistence: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY<br>Birth place accuracy: PLACE_GEOCODER_URL, PLACE_GEOCODER_USER_AGENT, PLACE_GEOCODER_REQUIRE_RESOLUTION=true<br>Shani remedy membership persistence: SHANI_PLAN_3M_PRICE_PAISE, SHANI_PLAN_6M_PRICE_PAISE, SHANI_PLAN_1Y_PRICE_PAISE, SHANI_PLAN_FULL_PRICE_PAISE<br>Backend OTP login: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OTP_HASH_SECRET, OTP_SMS_WEBHOOK_URL, OTP_SMS_WEBHOOK_TOKEN<br>Transactional emails: RESEND_API_KEY, RESEND_FROM_EMAIL<br>Razorpay checkout: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, RAZORPAY_WEBHOOK_URL, RAZORPAY_WEBHOOK_READY=true, MORE_GUIDANCE_PRICE_PAISE<br>Upstash rate limiting: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, RATE_LIMIT_REQUIRE_UPSTASH=true<br>Long-term guidance memory: PINECONE_API_KEY, PINECONE_HOST, PINECONE_INDEX, OPENAI_EMBEDDING_MODEL, GUIDANCE_MEMORY_REQUIRE_PINECONE=true<br>Authenticated API protection: CLERK_SECRET_KEY, VITE_CLERK_PUBLISHABLE_KEY, CLERK_REQUIRE_AUTH=true<br>Observability: SENTRY_DSN or VITE_SENTRY_DSN, VITE_POSTHOG_KEY<br>Production domain and DNS: PRODUCTION_DOMAIN, CLOUDFLARE_ZONE_ID, CLOUDFLARE_DNS_READY=true, VITE_API_BASE_URL |
 
 ## Final Completion Criteria
 
-The goal can be marked complete only after all of these pass with real production provider values:
+The goal should be marked complete only after all of these pass with production provider values:
 
-```bash
+```sh
 npm run production:check -- --strict
 npm run production:domain:smoke -- --expect-ready
-npm run deployment:smoke -- --url=https://your-production-domain --expect-ready
-npm run release:check -- --url=https://your-production-domain --include-ai --include-android-signing
+npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready
+npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing
 npm run android:apk:backend
-npm run android:artifact:check -- --expect-url=https://your-production-domain
+npm run android:artifact:check -- --expect-url=https://your-production-domain.app
 ```
-
-Until those checks pass, the correct status is: app implementation is substantially complete and locally verified; full production launch is pending external provider configuration.
