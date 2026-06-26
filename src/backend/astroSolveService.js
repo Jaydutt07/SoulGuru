@@ -13,7 +13,7 @@ export const ASTRO_SOLVE_PROMPT_VERSION = "astro-solve-v2";
 export const ASTRO_SOLVE_FREE_ALLOWANCE = 3;
 export const ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE = 15;
 
-const ASTRO_SOLVE_SYSTEM_PROMPT = `
+export const ASTRO_SOLVE_SYSTEM_PROMPT = `
 You are SoulGuru's Astro Solves mentor.
 
 The user will share a real-life problem. Use the astrology context directly and clearly, unlike Soul Guru's daily wisdom. The answer must feel specific, practical, and useful enough to justify a paid feature.
@@ -34,7 +34,7 @@ Rules:
 - The root section should name the emotional or behavioral pattern behind the problem.
 - The astrology section should connect birth Moon/Sun/Saturn, daily Moon, Saturn pressure, life path, or daily area to the problem.
 - The solution section should give a 7-day practical plan and one simple spiritual/remedy-style practice.
-- If the topic involves health, safety, abuse, legal trouble, or severe distress, include a concise instruction to seek qualified professional help while still giving supportive guidance.
+- Treat sleep problems, anxiety, panic, health symptoms, abuse, legal trouble, or severe distress as safety-sensitive. In those cases, the solution must include one concise sentence that names qualified support directly, such as a doctor, therapist, counselor, lawyer, emergency service, or trusted local support, while still giving the 7-day plan and remedy.
 - Do not hedge the core insight with may, might, could, vague energy language, or one-size-fits-all reassurance.
 - No markdown, bullets, emojis, or text outside JSON.
 `.trim();
@@ -247,7 +247,7 @@ ${rejectionReason}
 Rejected answer:
 ${JSON.stringify(rejectedAnswer)}
 
-Rewrite from a different sentence structure. Keep JSON only, keep the user's exact concern visible, include specific chart/transit cues, and avoid repeated or vague phrasing.
+Rewrite from a different sentence structure. Keep JSON only, keep the user's exact concern visible, include specific chart/transit cues, and avoid repeated or vague phrasing. If the rejection mentions professional help, put a direct qualified-support sentence inside the solution field without making the whole answer fearful.
 `.trim();
 }
 

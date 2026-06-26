@@ -1,7 +1,9 @@
+import fs from "node:fs";
 import {
   ASTRO_SOLVE_FREE_ALLOWANCE,
   ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
   ASTRO_SOLVE_PROMPT_VERSION,
+  ASTRO_SOLVE_SYSTEM_PROMPT,
   createAstroSolve,
   isLocalAstroSolveQuotaAllowed
 } from "../src/backend/astroSolveService.js";
@@ -43,6 +45,27 @@ async function checkLocalQuotaModeRequiresExplicitFlag() {
     openAiRequests.length === 0,
     isLocalAstroSolveQuotaAllowed({ ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "true" }) === true,
     isLocalAstroSolveQuotaAllowed({ ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "false" }) === false
+  ].every(Boolean));
+}
+
+function checkPromptRequiresSafetySupportForSleepAnxiety() {
+  pushCheck("Astro Solves prompt requires qualified support for sleep and anxiety topics", [
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("sleep problems"),
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("anxiety"),
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("safety-sensitive"),
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("qualified support"),
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("doctor"),
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("therapist"),
+    ASTRO_SOLVE_SYSTEM_PROMPT.includes("counselor")
+  ].every(Boolean));
+}
+
+function checkPromptRepairKeepsProfessionalHelpDirect() {
+  const source = fs.readFileSync("src/backend/astroSolveService.js", "utf8");
+  pushCheck("Astro Solves repair prompt keeps professional-help fixes direct", [
+    source.includes("If the rejection mentions professional help"),
+    source.includes("direct qualified-support sentence"),
+    source.includes("without making the whole answer fearful")
   ].every(Boolean));
 }
 
@@ -597,6 +620,8 @@ function printReport() {
 }
 
 async function main() {
+  checkPromptRequiresSafetySupportForSleepAnxiety();
+  checkPromptRepairKeepsProfessionalHelpDirect();
   await checkLocalQuotaModeRequiresExplicitFlag();
   await checkExplicitLocalQuotaModeReturnsUnstoredAnswer();
   await checkClientOnlySubscriptionDoesNotExtendSupabaseQuota();
