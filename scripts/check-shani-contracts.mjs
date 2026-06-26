@@ -312,6 +312,54 @@ async function checkOpenAiAnswerIsStoredForMember() {
   ].every(Boolean));
 }
 
+async function checkOpenAiSafetyAnswerRepairsWithoutFallback() {
+  const user = shaniUser("openai-safety-repair");
+  const supabase = createFakeSupabase({
+    memberships: [activeMembership(user.id)]
+  });
+  const result = await createPanditGuidance({
+    user,
+    question: "Saade Sati is not active, but anxiety and sleep are weak. How do I prepare?",
+    report: {
+      active: false,
+      phaseIndex: 0,
+      phaseTitle: "Outside Saade Sati",
+      moonSign: "Virgo",
+      saturnSign: "Pisces",
+      endLabel: "Next watch begins around Aug 8, 2036",
+      summary: "Saade Sati does not appear active right now."
+    }
+  }, {
+    OPENAI_API_KEY: "fake-openai-key",
+    SHANI_PANDIT_MODEL: "gpt-contract"
+  }, {
+    supabase,
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async () => ({
+            output_text: JSON.stringify({
+              text: "Mira, this Outside Saade Sati period is preparation, not punishment. Moon in Virgo shows why weak sleep quickly becomes panic, while Saturn in Pisces asks for routine, service, and steady conduct before pressure grows. Mira should keep sleep and anxiety practical for the next seven days: protect the first hour, reduce late checking, and complete one small duty early. Shani support stays clean when preparation is quiet, repeated, and free from fear.",
+              practice: "For seven days, sleep and wake at fixed times, sit for nine breaths before sunrise, and keep Saturday simple with lamp and service.",
+              caution: "Mira, do not treat weak sleep as a sign; let routine and humility lead."
+            })
+          })
+        }
+      };
+    }
+  });
+
+  pushCheck("Shani OpenAI safety answer repairs qualified support without fallback", [
+    result.source === "openai",
+    result.quality?.fallbackUsed === false,
+    result.quality?.passed === true,
+    !/\bpanic\b/i.test(JSON.stringify(result.answer || {})),
+    countWord(JSON.stringify(result.answer || {}), "Mira") <= 1,
+    /qualified doctor|therapist|trusted local support/i.test(result.answer?.caution || ""),
+    supabase.state.messages[0]?.source === "openai"
+  ].every(Boolean));
+}
+
 function passingPanditAnswerJson() {
   return JSON.stringify({
     text: "Mira, this career pressure belongs to the Peak phase lesson: finish responsibility before chasing escape. Shani is not asking for fear; Shani is asking for visible conduct. Moon in Pisces shows why uncertainty becomes heavy in the body, while Saturn in Pisces asks for a cleaner work rhythm, fewer claims, and one completed duty that can be inspected. For the next seven days, keep the question practical: what work can be documented, repaid, or completed before another promise is made?",
@@ -480,6 +528,12 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function countWord(text, word) {
+  if (!word) return 0;
+  const pattern = new RegExp(`\\b${word}\\b`, "gi");
+  return (String(text || "").match(pattern) || []).length;
+}
+
 function pushCheck(label, passed) {
   checks.push({ label, passed });
 }
@@ -504,6 +558,7 @@ async function main() {
   await checkActiveMembershipStoresPanditAnswer();
   await checkStoreFailureDoesNotReturnPaidAnswer();
   await checkOpenAiAnswerIsStoredForMember();
+  await checkOpenAiSafetyAnswerRepairsWithoutFallback();
 
   const failed = checks.filter((check) => !check.passed);
   printReport();

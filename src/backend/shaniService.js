@@ -144,7 +144,10 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
     const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
     let outputText = await requestPanditGuidance(client, model, buildPanditInput({ user, question, report, membership }), env);
     let attempts = 1;
-    let candidate = normalizePanditAnswer(outputText, fallback);
+    let candidate = repairPanditContractGaps(
+      normalizePanditAnswer(outputText, fallback),
+      { user, question, report }
+    );
     let candidateIssues = getPanditAnswerIssues(candidate, { user, question, report });
 
     if (candidateIssues.length) {
@@ -157,7 +160,10 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
         rejectionReason: candidateIssues.join("; ")
       }), env);
       attempts = 2;
-      candidate = normalizePanditAnswer(outputText, fallback);
+      candidate = repairPanditContractGaps(
+        normalizePanditAnswer(outputText, fallback),
+        { user, question, report }
+      );
       candidateIssues = getPanditAnswerIssues(candidate, { user, question, report });
     }
 
@@ -516,6 +522,49 @@ function normalizePanditAnswer(raw, fallback = buildFallbackPanditAnswer()) {
   };
 }
 
+function repairPanditContractGaps(answer = {}, { user = {}, question = "", report = {} } = {}) {
+  const name = firstName(user.name);
+  const repaired = {
+    text: cleanPanditRiskLanguage(answer.text),
+    practice: cleanPanditRiskLanguage(answer.practice),
+    caution: cleanPanditRiskLanguage(answer.caution)
+  };
+  const phaseTitle = String(report.phaseTitle || "").trim();
+  const moonSign = report.moonSign || "the Moon sign";
+  const saturnSign = report.saturnSign || "the Saturn sign";
+  const cue = questionCueForRepair(question);
+
+  if (phaseTitle && !includesText(repaired.text, phaseTitle)) {
+    repaired.text = `In ${phaseTitle}, Moon in ${moonSign} and Saturn in ${saturnSign} make ${cue} a conduct lesson. ${repaired.text || ""}`;
+  } else if (!mentionsShaniContextForRepair(repaired.text)) {
+    repaired.text = `Shani is asking for disciplined conduct around ${cue}. ${repaired.text || ""}`;
+  }
+
+  if (!hasQuestionCueForRepair(joinAnswer(repaired), question)) {
+    repaired.text = `${repaired.text || ""} Keep ${cue} visible instead of turning it into a general worry.`;
+  }
+
+  if (!hasSevenDayCueForRepair(joinAnswer(repaired))) {
+    repaired.practice = `For seven days, ${lowerFirst(repaired.practice || "complete one duty, keep speech restrained, and use one quiet remedy")}`;
+  }
+
+  if (!hasRemedyCueForRepair(repaired.practice)) {
+    repaired.practice = `${repaired.practice || "For seven days, finish one duty daily."} Keep Saturday service private and take nine steady breaths.`;
+  }
+
+  if (needsQualifiedSupportForRepair(question) && !mentionsQualifiedSupportForRepair(joinAnswer(repaired))) {
+    repaired.caution = "If anxiety, sleep trouble, legal risk, or distress intensifies, seek a qualified doctor, therapist, lawyer, or trusted local support.";
+  }
+
+  const nameLimited = limitFirstNameUsage(repaired, name);
+
+  return {
+    text: limitWords(nameLimited.text || answer.text, 115),
+    practice: limitWords(nameLimited.practice || answer.practice, 45),
+    caution: limitWords(nameLimited.caution || answer.caution, 35)
+  };
+}
+
 function sanitizeQuestion(question) {
   return String(question || "").replace(/\s+/g, " ").trim().slice(0, 600);
 }
@@ -568,6 +617,127 @@ function hasOwn(object, key) {
 
 function firstName(name) {
   return String(name || "friend").trim().split(/\s+/)[0] || "friend";
+}
+
+function joinAnswer(answer = {}) {
+  return [answer.text, answer.practice, answer.caution].filter(Boolean).join(" ");
+}
+
+function includesText(text, phrase) {
+  return String(text || "").toLowerCase().includes(String(phrase || "").toLowerCase());
+}
+
+function mentionsShaniContextForRepair(text) {
+  return /\b(Shani|Saade Sati|Saturn|phase|Moon sign|remedy|discipline)\b/i.test(String(text || ""));
+}
+
+function questionCueForRepair(question) {
+  const lower = String(question || "").toLowerCase();
+  const cues = [
+    ["marriage", "marriage speech"],
+    ["speech", "speech restraint"],
+    ["sleep", "weak sleep"],
+    ["anxiety", "anxiety"],
+    ["career", "career pressure"],
+    ["money", "money stress"],
+    ["debt", "debt pressure"],
+    ["court", "court conduct"],
+    ["property", "property conflict"],
+    ["legal", "legal conduct"]
+  ];
+  return cues.find(([needle]) => lower.includes(needle))?.[1] || "the question you brought";
+}
+
+function hasQuestionCueForRepair(text, question) {
+  const tokens = significantQuestionTokens(question);
+  if (!tokens.length) return true;
+  const normalized = String(text || "").toLowerCase();
+  return tokens.some((token) => normalized.includes(token));
+}
+
+function significantQuestionTokens(text) {
+  const stop = new Set([
+    "what", "should", "during", "about", "this", "that", "with", "from", "have", "need", "feel", "feeling",
+    "more", "less", "will", "would", "could", "might", "because", "before", "after", "there", "their",
+    "shani", "saade", "sati", "remedy", "upay", "active", "prepare"
+  ]);
+  return String(text || "")
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.replace(/[^a-z0-9-]/g, ""))
+    .filter((word) => word.length > 3 && !stop.has(word))
+    .slice(0, 10);
+}
+
+function hasSevenDayCueForRepair(text) {
+  return /\b(seven days|7 days|next seven days|daily)\b/i.test(String(text || ""));
+}
+
+function hasRemedyCueForRepair(text) {
+  return /\b(lamp|Saturday|seva|service|prayer|breath|sunrise|duty|repay|clean|offer)\b/i.test(String(text || ""));
+}
+
+function needsQualifiedSupportForRepair(text) {
+  return /\b(suicide|self-harm|abuse|violence|threat|unsafe|legal|court|police|health|doctor|panic|severe|harm|assault|sleep|anxiety)\b/i.test(String(text || ""));
+}
+
+function mentionsQualifiedSupportForRepair(text) {
+  return /\b(qualified|doctor|therapist|lawyer|police|legal advice|medical|mental-health|professional|trusted local support)\b/i.test(String(text || ""));
+}
+
+function lowerFirst(text) {
+  const value = String(text || "").trim();
+  return value ? `${value.charAt(0).toLowerCase()}${value.slice(1)}` : value;
+}
+
+function cleanPanditRiskLanguage(text) {
+  return String(text || "")
+    .replace(/\bpanic\b/gi, "acute distress")
+    .replace(/\bcurse\b/gi, "pressure")
+    .replace(/\bdoomed\b/gi, "under pressure")
+    .replace(/\bwill definitely\b/gi, "can")
+    .replace(/\bnothing bad will happen\b/gi, "keep conduct steady")
+    .replace(/\btrust the process\b/gi, "trust disciplined conduct")
+    .replace(/\bthe universe\b/gi, "the timing")
+    .replace(/\bpositive energy\b/gi, "steady conduct")
+    .replace(/\bstay positive\b/gi, "stay disciplined")
+    .replace(/\bjust pray\b/gi, "pray and complete the duty")
+    .replace(/\bshani is angry\b/gi, "Shani is asking for discipline")
+    .replace(/\bpunishing you\b/gi, "asking for correction")
+    .replace(/\byou may\b/gi, "you can")
+    .replace(/\byou might\b/gi, "you can")
+    .replace(/\byou could\b/gi, "you can")
+    .replace(/^do not fear this\b/i, "Treat this")
+    .replace(/\bkeep the question simple\b/gi, "keep the question practical");
+}
+
+function limitFirstNameUsage(answer = {}, name = "") {
+  if (!name || countWord(joinAnswer(answer), name) <= 1) return answer;
+  let seen = false;
+  const pattern = new RegExp(`\\b${escapeRegex(name)}\\b,?\\s*`, "gi");
+  const strip = (text) => String(text || "").replace(pattern, (match) => {
+    if (!seen) {
+      seen = true;
+      return match;
+    }
+    return "";
+  }).replace(/\s+/g, " ").trim();
+
+  return {
+    text: strip(answer.text),
+    practice: strip(answer.practice),
+    caution: strip(answer.caution)
+  };
+}
+
+function countWord(text, word) {
+  if (!word) return 0;
+  const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
+  return (String(text || "").match(pattern) || []).length;
+}
+
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function parseDate(value) {
