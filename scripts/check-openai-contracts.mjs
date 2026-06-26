@@ -9,6 +9,14 @@ import {
   requestOpenAIEmbedding,
   requestOpenAIResponse
 } from "../src/backend/openaiClient.js";
+import { ASTRO_SOLVE_PROMPT_VERSION } from "../src/backend/astroSolveService.js";
+import { DEEP_GUIDANCE_PROMPT_VERSION } from "../src/backend/guidanceService.js";
+import { SHANI_PANDIT_PROMPT_VERSION } from "../src/backend/shaniService.js";
+import {
+  SOUL_WISDOM_MAX_WORDS,
+  SOUL_WISDOM_MIN_WORDS,
+  SOUL_WISDOM_PROMPT_VERSION
+} from "../src/soulWisdomVersion.js";
 
 const checks = [];
 
@@ -18,6 +26,7 @@ await checkResponsesUseBoundedRequestOptions();
 await checkEmbeddingsUseBoundedRequestOptions();
 checkClientReceivesBoundedDefaults();
 checkBackendServicesUseSharedHelper();
+checkPromptVersionsAreDocumented();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -160,6 +169,23 @@ function checkBackendServicesUseSharedHelper() {
   }
 
   pushCheck("Backend OpenAI calls are centralized through the timeout helper", violations.length === 0);
+}
+
+function checkPromptVersionsAreDocumented() {
+  const roadmap = fs.readFileSync(path.join(process.cwd(), "docs", "production-roadmap.md"), "utf8");
+  const expected = [
+    SOUL_WISDOM_PROMPT_VERSION.replace("soul-wisdom-", "Soul Guru "),
+    DEEP_GUIDANCE_PROMPT_VERSION.replace("more-guidance-", "More Guidance "),
+    ASTRO_SOLVE_PROMPT_VERSION.replace("astro-solve-", "Astro Solves "),
+    SHANI_PANDIT_PROMPT_VERSION.replace("shani-pandit-", "Shani Pandit ")
+  ];
+  const missing = expected.filter((label) => !roadmap.includes(label));
+
+  pushCheck("OpenAI prompt versions stay documented in the production roadmap", [
+    missing.length === 0,
+    roadmap.includes(`${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS}`),
+    !roadmap.includes("More Guidance v3")
+  ].every(Boolean));
 }
 
 function pushCheck(label, passed) {
