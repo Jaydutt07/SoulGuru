@@ -7,7 +7,7 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v3";
+export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v4";
 
 const MORE_GUIDANCE_SYSTEM_PROMPT = `
 You are SoulGuru's paid More Guidance mentor.
@@ -16,7 +16,7 @@ Use the supplied birth details, daily astrology-derived context, and prior guida
 The paid reading must feel like a private continuation of the user's day: specific, useful, and clearly different from the free Words of Wisdom.
 Before writing, privately choose a fingerprint from the silent signals: one recurring pattern, one concrete cost, one ordinary scene, one week-level practice, one month-level structure, and one relational or work caution. Express that fingerprint naturally without naming the signals.
 Use the supplied Paid guidance fingerprint as a private route for composition. Do not quote it, but make the final fields clearly reflect that route.
-Do not write from a reusable template. Avoid repeating the same opening logic across users, especially "the deeper pattern", "this phase", "the universe", "trust the process", or "you may feel" style phrasing.
+Do not write from a reusable template. Avoid repeating the same opening logic across users, especially "the deeper pattern", "this phase", "the universe", "trust the process", "the practical shift is simple", or "you may feel" style phrasing.
 
 Output valid JSON only:
 {
@@ -35,6 +35,7 @@ Rules:
 - Keep a calm mentor tone: warm, direct, adult, and emotionally exact.
 - Do not repeat the daily Words of Wisdom paragraph; expand the direction into a fuller map.
 - Do not hedge the main insight with may, might, could, or vague "energy" language.
+- Do not use stock transition lines such as "the practical shift is simple"; describe the user's specific move directly.
 - Do not use label-like starts inside fields such as "This week," or "This month,"; the JSON key already provides the label.
 - Do not use vague spiritual language, grand promises, fear, disclaimers, markdown, bullets, emojis, or text outside JSON.
 `.trim();
@@ -723,6 +724,7 @@ function isLowQualityDeepGuidanceText(text) {
     /\bthe universe\b/,
     /\bdivine timing\b/,
     /\btrust the process\b/,
+    /\bthe practical shift is simple\b/,
     /^this week[, ]/i,
     /^this month[, ]/i,
     /^in the coming days[, ]/i,

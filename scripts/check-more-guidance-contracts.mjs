@@ -132,7 +132,7 @@ async function checkGeneratedLocalPaidGuidanceIsHighQuality() {
     result.guidance?.watch
   ].filter(Boolean).join("\n");
 
-  pushCheck("Generated local paid guidance uses v3 quality fallback", [
+  pushCheck("Generated local paid guidance uses current quality fallback", [
     result.allowed === true,
     result.source === "local-fallback",
     result.promptVersion === DEEP_GUIDANCE_PROMPT_VERSION,
