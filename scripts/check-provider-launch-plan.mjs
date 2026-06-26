@@ -125,7 +125,9 @@ function checkFinalVerificationCommands() {
     "npm run production:providers",
     "npm run production:check -- --strict",
     "npm run production:domain:smoke -- --expect-ready",
-    "npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing"
+    "npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing",
+    "npm run android:apk:backend",
+    "npm run android:artifact:check -- --expect-url=https://your-production-domain.app"
   ];
   const missing = expectedCommands.filter((command) => !output.includes(`\`${command}\``));
 

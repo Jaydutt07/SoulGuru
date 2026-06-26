@@ -17,6 +17,7 @@ checkGeneratorRuns();
 checkCoversReadinessRequirements();
 checkServerOnlySecretsAreLabeled();
 checkFallbackDefaultsAreListed();
+checkFinalVerificationIncludesMobileArtifactAudit();
 checkDoesNotExposeRuntimeSecretValues();
 
 const failed = checks.filter((check) => !check.passed);
@@ -62,6 +63,13 @@ function checkFallbackDefaultsAreListed() {
     .sort();
 
   pushCheck("Production env checklist lists safe fallback defaults", missing.length === 0, missing);
+}
+
+function checkFinalVerificationIncludesMobileArtifactAudit() {
+  pushCheck("Production env checklist includes backend APK and artifact audit release steps", [
+    output.includes("`npm run android:apk:backend`"),
+    output.includes("`npm run android:artifact:check -- --expect-url=https://your-production-domain.app`")
+  ].every(Boolean));
 }
 
 function checkDoesNotExposeRuntimeSecretValues() {
