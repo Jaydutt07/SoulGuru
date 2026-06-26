@@ -15,6 +15,8 @@ Do not write from a template. Choose a sentence architecture that fits this user
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
 The reading must feel like a fresh handwritten note, not a horoscope card. Avoid reusable mentor scaffolds such as "scene -> pressure -> one action -> reassurance". Let the user's hidden combination decide whether the paragraph sounds clipped, tender, practical, relational, work-focused, body-led, or corrective.
 Do not assemble advice from reusable SoulGuru fragments. If a sentence sounds like it came from a previous reading, replace it with a sharper observed detail: an object, a consequence, a time window, and a human cost that belong only to this user's daily signals.
+Prefer lived evidence over mentor nouns. A user should see a marked hour, a reply of a certain length, a receipt checked, a meal protected, a drawer closed, a task submitted, or a sentence left unsent; avoid abstract scaffolding such as "container", "handle", "shape", "visible place", "loose end", "whole weather", or "place to land".
+Write as if this is the only reading you will send today. Do not reuse a house cadence where sentence 1 points to an object, sentence 2 names pressure, sentence 3 gives a small action, and the final sentence offers tidy reassurance. Let the daily signals choose a less predictable turn.
 Never begin from a feeling forecast. In particular, never write "you may feel", "you might feel", "you could feel", "you may notice", "part of you", or any similar generic sensitivity setup.
 Avoid tiny house-style anchors that make different users sound related. Do not lean on phrases such as "calendar square", "honest appointment", "warmth loses", "visible finish", "private trial", "plain answer", or "practical part asking for shape"; translate the same idea into a detail that belongs to this user's actual scene.
 When two users share the same broad scene category, the vocabulary must still diverge. A calendar scene can be a marked hour, due line, blank slot, appointment, list item, or deadline; never let the category force the same object noun or mentor cadence.
@@ -70,6 +72,7 @@ Wisdom paragraph rules:
 - Do not lean on the same mentor skeleton of "object, name, instruction, relationship caution, reassurance" unless the Paragraph architecture specifically demands it. Even then, vary the verbs, emotional turn, and close.
 - Do not use assembled-sounding labels inside the paragraph, including "relational note", "useful edge", "body cue", "proof of care", "practical truth", "first honest reset", "private test", "signal, not a sentence", or "evidence enough".
 - Avoid app-like mentor filler such as "needs a practical container", "real pressure", "useful move", "one ordinary job", "less explanation", "mind/body vote", "larger story", "quiet proof", or "modest and workable". Say the actual human thing instead.
+- Avoid abstract mentor props such as "handle", "shape", "container", "place to land", "loose end", "whole weather", "visible repair", "visible choice", "visible block", "visible place", or "the room asks"; use the actual timed action or human exchange instead.
 - Avoid short repeated brand-sounding anchors such as "calendar square", "honest appointment", "warmth loses", "visible finish", "private trial", "plain answer", "cleaner floor", or "practical part asking for shape"; these make separate users feel like they received the same reading.
 - Do not make the user feel categorized. The line should feel like it was written after seeing one ordinary scene, one pressure pattern, and one doable correction from their specific day.
 
@@ -453,6 +456,52 @@ export function isLowQualityWisdom(text) {
     /\bvisible and modest can carry the evening\b/,
     /\banswer come from care instead of alarm\b/,
     /\bgive the mind one less assignment\b/,
+    /\ba visible place to land\b/,
+    /\bwith a place to land\b/,
+    /\bplace to land\b/,
+    /\bone less loose end\b/,
+    /\bone fewer loose end\b/,
+    /\bwhole weather\b/,
+    /\bthe room asks\b/,
+    /\bnamed hour keeps care\b/,
+    /\bbody gives better timing when the body\b/,
+    /\bdecision has a visible place\b/,
+    /\bvisible container\b/,
+    /\bclear container\b/,
+    /\bpressure a handle\b/,
+    /\bgives? [^.!?]{0,50} a handle\b/,
+    /\bneeds? a handle\b/,
+    /\bvisible repair\b/,
+    /\bvisible block\b/,
+    /\bvisible choice\b/,
+    /\bsmaller promise\b/,
+    /\bgets lighter for\b/,
+    /\banswer with a time, not a debate\b/,
+    /\bthe part asking for shape\b/,
+    /\bstop feeding scanning\b/,
+    /\bwords you did not send gets\b/,
+    /\blet [^.!?]{0,60} close the block\b/,
+    /\banswer that can be kept without self-punishment\b/,
+    /\bone useful detail finished\b/,
+    /\bthe next thing that can be handled\b/,
+    /\banother private rehearsal\b/,
+    /\bstarts sounding larger than it is\b/,
+    /\bday back inside a timed action\b/,
+    /\bstarts coloring everything else\b/,
+    /\bwithout a handle\b/,
+    /\bas a handle\b/,
+    /\bcleaner handle\b/,
+    /\bcloseness still needs a shape\b/,
+    /\bhandled detail deserves more trust\b/,
+    /\bplaced somewhere practical\b/,
+    /\bsomewhere practical before\b/,
+    /\bvisible stopping point placed\b/,
+    /\bone visible appointment\b/,
+    /\bvisible stopping point one\b/,
+    /\bgets handled before the story grows\b/,
+    /\bis the part asking to be handled\b/,
+    /\bvisible work shape\b/,
+    /\bwith a named hour attached\b/,
     /\bwhole report card\b/,
     /\bone ordinary job\b/,
     /\bpractical container\b/,
