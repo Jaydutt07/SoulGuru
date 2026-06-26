@@ -17,7 +17,13 @@ export const PROVIDER_STACK = Object.freeze([
     readinessChecks: ["openai"],
     envScope: ["OPENAI_API_KEY", "OPENAI_MODEL"],
     artifacts: ["src/backend/openaiClient.js", "api/soul-wisdom.js", "api/astro-solve.js"],
-    commands: ["npm run openai:check", "npm run soul:quality:ai"],
+    commands: [
+      "npm run openai:check",
+      "npm run soul:quality:ai",
+      "npm run astro:quality:ai",
+      "npm run more-guidance:quality:ai",
+      "npm run shani:quality:ai"
+    ],
     notes: "The API key must stay server-side in Vercel or local backend env."
   },
   {

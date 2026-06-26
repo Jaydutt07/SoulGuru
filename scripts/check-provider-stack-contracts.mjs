@@ -12,6 +12,7 @@ const checks = [];
 checkProviderStackCoversPlannedProviders();
 checkProviderMappingsTargetRealReadinessChecks();
 checkProviderArtifactsExist();
+checkOpenAIProviderCoversEveryLiveQualityGate();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
 checkProviderPayloadValidatorRequiresExactStack();
 checkProviderMatrixPassesWithFullProductionEnv();
@@ -73,6 +74,19 @@ function checkProviderArtifactsExist() {
   );
 
   pushCheck("Every provider evidence artifact exists in the repository", missing.length === 0, missing);
+}
+
+function checkOpenAIProviderCoversEveryLiveQualityGate() {
+  const openai = PROVIDER_STACK.find((provider) => provider.id === "openai");
+  const requiredCommands = [
+    "npm run soul:quality:ai",
+    "npm run astro:quality:ai",
+    "npm run more-guidance:quality:ai",
+    "npm run shani:quality:ai"
+  ];
+  const missing = requiredCommands.filter((command) => !openai?.commands?.includes(command));
+
+  pushCheck("OpenAI provider verifies every live AI reading surface", missing.length === 0, missing);
 }
 
 function checkProviderMatrixReportsMissingEnvWithoutSecrets() {
