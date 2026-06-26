@@ -125,6 +125,14 @@ function evaluateGuidance({ user, source, result }) {
     guidance.focus,
     guidance.watch
   ].filter(Boolean).join("\n");
+  const fieldTexts = [
+    guidance.overview,
+    guidance.thisWeek,
+    guidance.thisMonth,
+    guidance.practice,
+    guidance.focus,
+    guidance.watch
+  ].filter(Boolean);
 
   if (overviewWords < 105 || overviewWords > 160) failures.push(`overview expected 105-160 words, got ${overviewWords}.`);
   if (weekWords < 45 || weekWords > 90) failures.push(`thisWeek expected 45-90 words, got ${weekWords}.`);
@@ -133,9 +141,19 @@ function evaluateGuidance({ user, source, result }) {
   if (focusWords < 4 || focusWords > 12) failures.push(`focus expected 4-12 words, got ${focusWords}.`);
   if (watchWords < 4 || watchWords > 12) failures.push(`watch expected 4-12 words, got ${watchWords}.`);
   if (countWord(guidance.overview, firstName(user.name)) !== 1) failures.push("overview must address first name exactly once.");
+  const supportNameCount = [
+    guidance.thisWeek,
+    guidance.thisMonth,
+    guidance.practice,
+    guidance.focus,
+    guidance.watch
+  ].reduce((total, text) => total + countWord(text, firstName(user.name)), 0);
+  if (supportNameCount !== 0) failures.push(`support fields should not repeat first name, got ${supportNameCount}.`);
   if (!hasConcretePaidCue(guidance.overview)) failures.push("overview needs an ordinary concrete cue.");
   if (mentionsAstrologyTerms(allText)) failures.push("mentioned astrology/planet terminology.");
   if (isLowQualityPaidGuidance(allText)) failures.push("matched low-quality paid guidance phrasing.");
+  const repeatedInsideReading = buildInternalRepeatedDistinctivePhrases(fieldTexts);
+  if (repeatedInsideReading.length) failures.push(`repeated distinctive phrase inside one reading: "${repeatedInsideReading[0].phrase}".`);
   if (source === "openai" && result.source !== "openai") {
     failures.push(`expected live OpenAI source, got ${result.source || "unknown"}.`);
   }
@@ -158,6 +176,7 @@ function evaluateGuidance({ user, source, result }) {
     },
     overview: guidance.overview || "",
     allText,
+    fieldTexts,
     guidance,
     failures
   };
@@ -197,7 +216,7 @@ function buildSimilarity(results) {
 function buildRepeatedDistinctivePhrases(results, ownerLimit = 1) {
   const phraseOwners = new Map();
   for (const item of results) {
-    const seen = new Set(buildDistinctivePhrases(item.allText));
+    const seen = new Set(buildDistinctivePhrasesForFields(item.fieldTexts || [item.allText]));
     for (const phrase of seen) {
       const names = phraseOwners.get(phrase) || [];
       names.push(item.name);
@@ -261,6 +280,13 @@ function isLowQualityPaidGuidance(text) {
     /\bdivine timing\b/,
     /\btrust the process\b/,
     /\bcalm energy\b/,
+    /\bpaid\b/,
+    /\bkeep it plain for\b/,
+    /\breply sent for\b/,
+    /\bthe limit stays with\b/,
+    /\bone duty closes for\b/,
+    /\bcan complete today\b/,
+    /\bcan compare it\b/,
     /^this week[, ]/im,
     /^this month[, ]/im,
     /^in the coming days[, ]/im,
@@ -276,6 +302,29 @@ function isLowQualityPaidGuidance(text) {
     /\blet do not\b/,
     /\bbegin with do not\b/
   ].some((pattern) => pattern.test(normalized));
+}
+
+function buildDistinctivePhrasesForFields(fields) {
+  return fields.flatMap((field) => buildDistinctivePhrases(field));
+}
+
+function buildInternalRepeatedDistinctivePhrases(fields) {
+  const counts = new Map();
+  for (const field of Array.isArray(fields) ? fields : [fields]) {
+    const tokens = normalizedPhraseTokens(field);
+    for (const size of [7, 6, 5]) {
+      for (let index = 0; index <= tokens.length - size; index += 1) {
+        const phraseTokens = tokens.slice(index, index + size);
+        if (!isDistinctivePhrase(phraseTokens)) continue;
+        const phrase = phraseTokens.join(" ");
+        counts.set(phrase, (counts.get(phrase) || 0) + 1);
+      }
+    }
+  }
+  return [...counts]
+    .filter(([, count]) => count > 4)
+    .map(([phrase, count]) => ({ phrase, count }))
+    .sort((first, second) => second.count - first.count || second.phrase.length - first.phrase.length);
 }
 
 function mentionsAstrologyTerms(text) {

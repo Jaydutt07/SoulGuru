@@ -7,7 +7,7 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
 const DEFAULT_LIMIT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v4";
+export const DEEP_GUIDANCE_PROMPT_VERSION = "more-guidance-v5";
 
 const MORE_GUIDANCE_SYSTEM_PROMPT = `
 You are SoulGuru's paid More Guidance mentor.
@@ -30,6 +30,7 @@ Output valid JSON only:
 
 Rules:
 - Address the user by first name exactly once in overview.
+- Do not use the user's name in thisWeek, thisMonth, practice, focus, or watch.
 - Make the guidance specific enough to feel paid: name a pattern, a cost, a practical shift, and a relationship/work caution.
 - The overview must include at least one ordinary concrete detail from the silent signals: room, desk, meal, calendar, money, body, door, message, notebook, or unfinished task behavior.
 - Keep a calm mentor tone: warm, direct, adult, and emotionally exact.
@@ -37,6 +38,8 @@ Rules:
 - Do not hedge the main insight with may, might, could, or vague "energy" language.
 - Do not use stock transition lines such as "the practical shift is simple"; describe the user's specific move directly.
 - Do not use label-like starts inside fields such as "This week," or "This month,"; the JSON key already provides the label.
+- Do not use the word "paid" inside any returned field; the user already knows this is the subscription surface.
+- Do not repeat the same distinctive 5+ word phrase across fields. The focus/watch cues can echo the direction, but the paragraph language must stay fresh.
 - Do not use vague spiritual language, grand promises, fear, disclaimers, markdown, bullets, emojis, or text outside JSON.
 `.trim();
 
@@ -639,9 +642,29 @@ function getDeepGuidanceContractIssues(guidance, user = {}) {
   if (nameCount !== 1) {
     issues.push(`overview expected first name exactly once, got ${nameCount}`);
   }
+  const supportNameCount = [
+    value.thisWeek,
+    value.thisMonth,
+    value.practice,
+    value.focus,
+    value.watch
+  ].reduce((total, text) => total + countWord(text, firstName(user.name)), 0);
+  if (supportNameCount !== 0) {
+    issues.push(`support fields should not repeat first name, got ${supportNameCount}`);
+  }
 
   if (!hasConcretePaidCue(value.overview)) {
     issues.push("overview needs an ordinary concrete cue");
+  }
+
+  const repeatedPhrases = buildInternalRepeatedDistinctivePhrases([
+    value.overview,
+    value.thisWeek,
+    value.thisMonth,
+    value.practice
+  ]);
+  if (repeatedPhrases.length) {
+    issues.push(`repeated distinctive phrase: ${repeatedPhrases[0].phrase}`);
   }
 
   for (const [field, text] of [["focus", value.focus], ["watch", value.watch]]) {
@@ -725,6 +748,13 @@ function isLowQualityDeepGuidanceText(text) {
     /\bdivine timing\b/,
     /\btrust the process\b/,
     /\bthe practical shift is simple\b/,
+    /\bpaid\b/,
+    /\bkeep it plain for\b/,
+    /\breply sent for\b/,
+    /\bthe limit stays with\b/,
+    /\bone duty closes for\b/,
+    /\bcan complete today\b/,
+    /\bcan compare it\b/,
     /^this week[, ]/i,
     /^this month[, ]/i,
     /^in the coming days[, ]/i,
@@ -733,6 +763,37 @@ function isLowQualityDeepGuidanceText(text) {
     /\bquiet proof\b/,
     /\bverdict on your worth\b/
   ].some((pattern) => pattern.test(normalized));
+}
+
+function buildInternalRepeatedDistinctivePhrases(fields) {
+  const counts = new Map();
+  for (const field of Array.isArray(fields) ? fields : [fields]) {
+    const tokens = normalizedPhraseTokens(field);
+    for (const size of [7, 6, 5]) {
+      for (let index = 0; index <= tokens.length - size; index += 1) {
+        const phraseTokens = tokens.slice(index, index + size);
+        if (!isDistinctivePhrase(phraseTokens)) continue;
+        const phrase = phraseTokens.join(" ");
+        counts.set(phrase, (counts.get(phrase) || 0) + 1);
+      }
+    }
+  }
+  return [...counts]
+    .filter(([, count]) => count > 4)
+    .map(([phrase, count]) => ({ phrase, count }))
+    .sort((first, second) => second.count - first.count || second.phrase.length - first.phrase.length);
+}
+
+function normalizedPhraseTokens(text) {
+  return words(text.toLowerCase())
+    .map((word) => word.replace(/[^a-z0-9']/g, ""))
+    .filter(Boolean);
+}
+
+function isDistinctivePhrase(tokens) {
+  const stop = new Set(["a", "an", "and", "are", "as", "at", "be", "been", "before", "by", "can", "do", "for", "from", "has", "have", "in", "is", "it", "its", "not", "of", "on", "or", "that", "the", "then", "this", "to", "when", "where", "with", "without", "you", "your"]);
+  const distinctive = tokens.filter((token) => token.length >= 5 && !stop.has(token));
+  return distinctive.length >= 3;
 }
 
 function mentionsAstrologyTerms(text) {
