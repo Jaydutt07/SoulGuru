@@ -4,6 +4,7 @@ import {
   buildPanditFingerprint,
   getPanditAnswerIssues
 } from "../shaniGuidance.js";
+import { buildServerAstrologyContext } from "./astrologyContextService.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
@@ -48,9 +49,16 @@ const SHANI_MEMBERSHIP_SELECT = [
 ].join(", ");
 
 export async function getShaniDashboard(payload, env = process.env, deps = {}) {
-  const user = payload.user || {};
+  let user = payload.user || {};
   const userKey = buildUserKey(user);
   const now = deps.now || new Date();
+  if (!payload.report) {
+    const serverContext = await buildServerAstrologyContext({
+      user,
+      date: toDateKey(now)
+    }, env, deps);
+    user = serverContext.user;
+  }
   const report = payload.report || buildShaniReport(user, now);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
 
@@ -82,10 +90,17 @@ export async function getShaniDashboard(payload, env = process.env, deps = {}) {
 }
 
 export async function createPanditGuidance(payload, env = process.env, deps = {}) {
-  const user = payload.user || {};
+  let user = payload.user || {};
   const userKey = buildUserKey(user);
   const question = sanitizeQuestion(payload.question);
   const now = deps.now || new Date();
+  if (!payload.report) {
+    const serverContext = await buildServerAstrologyContext({
+      user,
+      date: toDateKey(now)
+    }, env, deps);
+    user = serverContext.user;
+  }
   const report = payload.report || buildShaniReport(user, now);
   const model = env.SHANI_PANDIT_MODEL || env.OPENAI_MODEL || "gpt-5.5";
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
@@ -557,6 +572,11 @@ function firstName(name) {
 function parseDate(value) {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isFinite(date.getTime()) ? date : new Date();
+}
+
+function toDateKey(value) {
+  const date = parseDate(value);
+  return date.toISOString().slice(0, 10);
 }
 
 function addYears(date, years) {

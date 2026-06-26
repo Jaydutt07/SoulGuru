@@ -1,9 +1,9 @@
-import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import {
   buildAstroSolveFingerprint,
   buildFallbackAstroSolveInsight,
   getAstroSolveContractIssues
 } from "../astroSolveGuidance.js";
+import { buildServerAstrologyContext } from "./astrologyContextService.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertGuidanceMemory } from "./memoryService.js";
 import { upsertUserProfileId } from "./profileService.js";
@@ -40,7 +40,7 @@ Rules:
 `.trim();
 
 export async function createAstroSolve(payload, env = process.env, deps = {}) {
-  const user = payload.user || {};
+  let user = payload.user || {};
   const question = String(payload.question || "").trim();
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const model = env.ASTRO_SOLVE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
@@ -74,7 +74,9 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
+  const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
+  user = serverContext.user;
+  const astrologyContext = serverContext.astrologyContext;
   const fallback = normalizeAstroSolveAnswer(buildFallbackAstroSolveInsight(
     question,
     user,

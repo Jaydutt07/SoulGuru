@@ -1,5 +1,5 @@
-import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import { buildFallbackDeepGuidance, buildPaidGuidanceFingerprint } from "../deepGuidance.js";
+import { buildServerAstrologyContext } from "./astrologyContextService.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
@@ -159,7 +159,7 @@ export async function saveGuidance(payload, env = process.env, deps = {}) {
 }
 
 export async function createMoreGuidanceReading(payload, env = process.env, deps = {}) {
-  const user = payload.user || {};
+  let user = payload.user || {};
   const userKey = buildUserKey(user);
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || user.birthTimezone || "Asia/Kolkata";
@@ -194,7 +194,9 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
     }
   }
 
-  const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
+  const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
+  user = serverContext.user;
+  const astrologyContext = serverContext.astrologyContext;
   const fallback = normalizeDeepGuidance(payload.fallback || buildFallbackDeepGuidance(user, astrologyContext));
   let guidance = fallback;
   let source = "local-fallback";

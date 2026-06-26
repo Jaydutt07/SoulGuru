@@ -1,4 +1,3 @@
-import { buildAstrologyContext, buildTransitDateForUser } from "../astrologyEngine.js";
 import { getDailyWisdom } from "../localSoulWisdom.js";
 import {
   buildParagraphArchitecture,
@@ -9,6 +8,7 @@ import {
   normalizeWisdomPayload,
   SOUL_WISDOM_SYSTEM_PROMPT
 } from "../soulGuruPrompt.js";
+import { buildServerAstrologyContext } from "./astrologyContextService.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
@@ -17,7 +17,7 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v16";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
-  const user = payload.user || {};
+  let user = payload.user || {};
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || "Asia/Kolkata";
   const model = env.OPENAI_MODEL || "gpt-5.5";
@@ -46,7 +46,9 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const astrologyContext = payload.context || buildAstrologyContext(user, buildTransitDateForUser(user, date));
+  const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
+  user = serverContext.user;
+  const astrologyContext = serverContext.astrologyContext;
   const memory = await searchMemory({
     user,
     query: buildMemoryQuery({ user, astrologyContext, date }),

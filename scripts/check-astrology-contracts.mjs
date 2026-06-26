@@ -6,11 +6,16 @@ import {
   getSaadeSatiFromChart,
   getSaturnSignWindow
 } from "../src/astrologyEngine.js";
+import { readFileSync } from "node:fs";
+import { buildServerAstrologyContext } from "../src/backend/astrologyContextService.js";
 import { enrichUserWithPlace, resolveBirthPlace } from "../src/placeResolver.js";
 
 const checks = [];
 
 checkPlaceResolutionContract();
+await checkServerAstrologyContextUsesResolvedPlace();
+await checkServerAstrologyContextFailsClosedWhenPlaceIsRequired();
+checkBackendAiServicesUseServerAstrologyContext();
 checkTimezoneAwareTransitDates();
 checkSiderealChartAndTransitContract();
 checkDailyTransitSensitivity();
@@ -46,6 +51,113 @@ function checkPlaceResolutionContract() {
     profile.timezone === "America/New_York",
     toronto.birthPlaceResolvedLabel === "Toronto, Canada",
     toronto.birthTimezone === "America/Toronto"
+  ].every(Boolean));
+}
+
+async function checkServerAstrologyContextUsesResolvedPlace() {
+  let fetchCalls = 0;
+  const result = await buildServerAstrologyContext({
+    user: {
+      name: "Nisha Verma",
+      birthDate: "1991-02-14",
+      birthTime: "09:18",
+      birthPlace: "Paris, France"
+    },
+    date: "2026-06-24"
+  }, {
+    PLACE_GEOCODER_URL: "https://geocoder.example/search",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Geocoder"
+  }, {
+    fetch: async () => {
+      fetchCalls += 1;
+      return {
+        ok: true,
+        async json() {
+          return [{
+            display_name: "Paris, Ile-de-France, France",
+            lat: "48.8566",
+            lon: "2.3522"
+          }];
+        }
+      };
+    }
+  });
+
+  pushCheck("Server astrology context resolves uncatalogued places before chart calculation", [
+    result.resolvedPlace === true,
+    fetchCalls === 1,
+    result.user.birthPlaceResolutionSource === "geocoder",
+    result.user.birthTimezone === "Europe/Paris",
+    approx(result.user.birthLatitude, 48.8566, 0.0001),
+    approx(result.user.birthLongitude, 2.3522, 0.0001),
+    result.astrologyContext.birthLocation.source === "geocoder",
+    result.astrologyContext.birthLocation.timezone === "Europe/Paris",
+    result.astrologyContext.birthChart.system.ephemeris === "astronomy-engine"
+  ].every(Boolean));
+}
+
+async function checkServerAstrologyContextFailsClosedWhenPlaceIsRequired() {
+  let strictError = null;
+  let fetchCalls = 0;
+
+  try {
+    await buildServerAstrologyContext({
+      user: {
+        name: "Unresolved User",
+        birthDate: "1990-01-01",
+        birthTime: "12:00",
+        birthPlace: "A very specific unmapped village"
+      },
+      date: "2026-06-24"
+    }, {
+      PLACE_GEOCODER_REQUIRE_RESOLUTION: "true"
+    }, {
+      fetch: async () => {
+        fetchCalls += 1;
+        return { ok: false, async json() { return []; } };
+      }
+    });
+  } catch (error) {
+    strictError = error;
+  }
+
+  const suppliedContext = { marker: "prebuilt-context" };
+  const bypass = await buildServerAstrologyContext({
+    user: {
+      name: "Context User",
+      birthDate: "1990-01-01",
+      birthTime: "12:00",
+      birthPlace: "Unmapped"
+    },
+    context: suppliedContext,
+    date: "2026-06-24"
+  }, {
+    PLACE_GEOCODER_REQUIRE_RESOLUTION: "true"
+  });
+
+  pushCheck("Server astrology context fails closed when strict place resolution is required", [
+    strictError?.statusCode === 422,
+    /Birth place could not be resolved accurately/.test(strictError?.message || ""),
+    fetchCalls === 0,
+    bypass.resolvedPlace === false,
+    bypass.astrologyContext === suppliedContext
+  ].every(Boolean));
+}
+
+function checkBackendAiServicesUseServerAstrologyContext() {
+  const files = [
+    "src/backend/soulWisdomService.js",
+    "src/backend/guidanceService.js",
+    "src/backend/astroSolveService.js",
+    "src/backend/shaniService.js"
+  ];
+  const sources = files.map((file) => readFileSync(file, "utf8"));
+
+  pushCheck("Backend AI services build charts through server-side place resolution", [
+    sources.every((source) => source.includes("buildServerAstrologyContext")),
+    !sources.slice(0, 3).some((source) => /buildAstrologyContext\(user/.test(source)),
+    !sources.slice(0, 3).some((source) => /buildTransitDateForUser\(user/.test(source)),
+    sources[3].includes("buildServerAstrologyContext({")
   ].every(Boolean));
 }
 
