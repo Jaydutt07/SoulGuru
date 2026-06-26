@@ -121,11 +121,12 @@ Print and verify the provider stack from the planning image against the real pro
 
 ```bash
 npm run production:providers
+npm run production:actions
 npm run production:launch-plan
 npm run providers:check
 ```
 
-The provider matrix covers OpenAI, Supabase, Vercel, Namecheap, Razorpay, GitHub, Resend, Clerk, Cloudflare, PostHog, Sentry, Upstash, and Pinecone without printing secret values. The launch plan groups those providers into setup phases with dashboard notes, env visibility labels, evidence artifacts, and verification commands.
+The provider matrix covers OpenAI, Supabase, Vercel, Namecheap, Razorpay, GitHub, Resend, Clerk, Cloudflare, PostHog, Sentry, Upstash, and Pinecone without printing secret values. The action report shows the current missing launch work from your private environment, and the launch plan groups providers into setup phases with dashboard notes, env visibility labels, evidence artifacts, and verification commands.
 
 Generate one secret-safe local production launch folder for provider setup:
 
@@ -134,7 +135,7 @@ npm run production:launch-pack
 npm run production:launch-pack -- --out=tmp/soulguru-production-launch-pack
 ```
 
-The launch pack writes the env template, production env checklist, provider launch plan, and ordered Supabase SQL bundle into one operator folder. It is still placeholder-only; do not commit filled secrets or provider dashboard values.
+The launch pack writes the env template, production env checklist, current readiness action report, provider launch plan, and ordered Supabase SQL bundle into one operator folder. It is still placeholder-only; do not commit filled secrets or provider dashboard values.
 
 Check the production-domain smoke contract and, after DNS is live, smoke-test the HTTPS custom domain:
 
@@ -410,6 +411,7 @@ The CI template checks:
 - `npm run env:check`
 - `npm run production:env:checklist`
 - `npm run production:env:template`
+- `npm run production:actions`
 - `npm run production:launch-plan`
 - `npm run production:launch-pack`
 - `npm run deployment:check`

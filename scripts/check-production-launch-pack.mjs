@@ -108,6 +108,7 @@ function checkManifestContract() {
     missing.length === 0,
     verification.includes("npm run android:security:check"),
     verification.includes("npm run android:artifact:check"),
+    verification.includes("npm run production:actions"),
     verification.includes("npm run production:check -- --strict"),
     verification.some((command) => command.includes("release:check"))
   ].every(Boolean), missing);

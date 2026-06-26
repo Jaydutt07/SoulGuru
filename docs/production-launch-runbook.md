@@ -8,9 +8,10 @@ Run this any time to get the authoritative status from your current environment:
 
 ```bash
 npm run production:check -- --strict --allow-fail
+npm run production:actions
 ```
 
-As of the latest local check, OpenAI backend AI routes are configured locally. The app is still `needs_configuration` for production until the external provider accounts, dashboard settings, and Vercel environment variables below are configured.
+As of the latest local check, OpenAI backend AI routes are configured locally. The app is still `needs_configuration` for production until the external provider accounts, dashboard settings, and Vercel environment variables below are configured. After each provider step, run `npm run production:actions` again; it prints only missing env names, provider statuses, evidence files, and verification commands.
 
 Do not paste real secret values into this file, README, issues, screenshots, commits, or chat. Put production values in Vercel/provider dashboards or a private local `.env` only.
 

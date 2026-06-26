@@ -96,6 +96,7 @@ This project is being built toward the stack shown in the product planning image
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
 - Generated production env checklist for Vercel/provider setup that stays secret-safe and follows readiness requirements
 - Generated provider-grouped production env template that leaves server-only secrets blank and keeps local fallback flags production-safe
+- Generated current production action report so provider setup can be repeated as a secret-safe fix/verify loop
 - Generated production launch pack bundling env setup artifacts, provider plan, and Supabase SQL for operator handoff
 - Shared OpenAI backend timeout/retry policy for Responses and Embeddings requests
 - Shared backend fetch timeout policy for external REST vendors and smoke-safe contract coverage
@@ -157,7 +158,7 @@ This project is being built toward the stack shown in the product planning image
 15. Apply `supabase/migrations/015_more_guidance_generation_locks.sql`.
 16. Generate the ordered Supabase SQL bundle with `npm run supabase:bundle` or `npm run supabase:bundle -- --out=tmp/soulguru-supabase.sql` when applying migrations through the SQL editor.
 17. Run `npm run supabase:schema:check` against the Supabase project.
-18. Run `npm run production:env:checklist`, `npm run production:env:template`, `npm run production:providers`, `npm run production:launch-plan`, and `npm run production:launch-pack` while configuring Vercel, Cloudflare, and provider dashboards.
+18. Run `npm run production:env:checklist`, `npm run production:env:template`, `npm run production:providers`, `npm run production:actions`, `npm run production:launch-plan`, and `npm run production:launch-pack` while configuring Vercel, Cloudflare, and provider dashboards.
 19. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
 20. Run `npm run place:geocoder:smoke -- --place="Paris, France"` against the configured geocoder.
 21. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
