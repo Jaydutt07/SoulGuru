@@ -194,7 +194,11 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Server-side rate limiting for paid, OTP, and AI routes",
     readinessChecks: ["rateLimit"],
     envScope: ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "RATE_LIMIT_REQUIRE_UPSTASH"],
-    artifacts: ["src/backend/rateLimit.js"],
+    artifacts: [
+      "src/backend/rateLimit.js",
+      "scripts/check-rate-limit-contracts.mjs",
+      "scripts/check-api-rate-limit-contracts.mjs"
+    ],
     commands: ["npm run rate-limit:check"],
     notes: "Rate-limit subjects are deterministic hashes, not raw PII."
   },

@@ -16,6 +16,7 @@ checkSupabaseProviderCoversEveryMigration();
 checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
+checkUpstashProviderCoversRouteRateLimitMatrix();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
 checkProviderPayloadValidatorRequiresExactStack();
 checkProviderMatrixPassesWithFullProductionEnv();
@@ -136,6 +137,18 @@ function checkRazorpayProviderCoversEveryPaidAccessRoute() {
   const missing = requiredArtifacts.filter((artifact) => !razorpay?.artifacts?.includes(artifact));
 
   pushCheck("Razorpay provider evidence covers More Guidance and Shani paid routes", missing.length === 0, missing);
+}
+
+function checkUpstashProviderCoversRouteRateLimitMatrix() {
+  const upstash = PROVIDER_STACK.find((provider) => provider.id === "upstash");
+  const requiredArtifacts = [
+    "src/backend/rateLimit.js",
+    "scripts/check-rate-limit-contracts.mjs",
+    "scripts/check-api-rate-limit-contracts.mjs"
+  ];
+  const missing = requiredArtifacts.filter((artifact) => !upstash?.artifacts?.includes(artifact));
+
+  pushCheck("Upstash provider evidence covers helper and API route rate-limit matrix", missing.length === 0, missing);
 }
 
 function checkProviderMatrixReportsMissingEnvWithoutSecrets() {
