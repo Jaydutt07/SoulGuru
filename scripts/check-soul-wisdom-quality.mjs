@@ -16,7 +16,7 @@ const env = {
 };
 const date = getArgValue("--date") || new Date().toISOString().slice(0, 10);
 const minWords = Number(getArgValue("--min-words") || 65);
-const maxWords = Number(getArgValue("--max-words") || 100);
+const maxWords = Number(getArgValue("--max-words") || 98);
 const maxSimilarity = Number(getArgValue("--max-similarity") || 0.24);
 const cases = getSoulWisdomQualityCases(caseSet);
 const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || defaultMaxSceneRepeats(cases.length));

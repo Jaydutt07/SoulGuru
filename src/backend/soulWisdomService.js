@@ -14,7 +14,7 @@ import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v16";
+export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v17";
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
@@ -257,8 +257,8 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
   if (isLowQualityWisdom(text)) {
     issues.push("matched low-quality or repeated phrasing rules");
   }
-  if (wordCount < 72 || wordCount > 100) {
-    issues.push(`expected 72-100 words, got ${wordCount}`);
+  if (wordCount < 72 || wordCount > 98) {
+    issues.push(`expected 72-98 words, got ${wordCount}`);
   }
   const nameCount = countWord(text, firstName(user.name));
   if (nameCount !== 1) {
