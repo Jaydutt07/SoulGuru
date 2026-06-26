@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { getDailyWisdom } from "../localSoulWisdom.js";
 import {
   buildParagraphArchitecture,
@@ -32,6 +33,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
   const makeOpenAIClient = deps.createOpenAIClient || createOpenAIClient;
+  let generationLock = null;
 
   if (supabase) {
     const cached = await readCachedReading(supabase, userKey, date);
@@ -52,6 +54,25 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
+  if (supabase) {
+    generationLock = await acquireDailyReadingLock(supabase, { userKey, date, env });
+    if (!generationLock.acquired) {
+      const preparedReading = await waitForCachedReading(supabase, userKey, date, env);
+      if (preparedReading) {
+        return { ...preparedReading, cached: true, source: "supabase", stored: true };
+      }
+      throwHttpError("Soul Guru reading is already being prepared. Please try again in a moment.", 409);
+    }
+
+    const cachedAfterLock = await readCachedReading(supabase, userKey, date);
+    if (cachedAfterLock) {
+      await releaseDailyReadingLock(supabase, generationLock);
+      generationLock = null;
+      return { ...cachedAfterLock, cached: true, source: "supabase", stored: true };
+    }
+  }
+
+  try {
   const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
   user = serverContext.user;
   const astrologyContext = serverContext.astrologyContext;
@@ -160,6 +181,11 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   }, env);
 
   return result;
+  } finally {
+    if (generationLock?.acquired) {
+      await releaseDailyReadingLock(supabase, generationLock);
+    }
+  }
 }
 
 export function isUncachedSoulWisdomAllowed(env = process.env) {
@@ -228,6 +254,103 @@ async function writeCachedReading(supabase, { user, userKey, date, timezone, rea
   return { stored: true };
 }
 
+async function acquireDailyReadingLock(supabase, { userKey, date, env }) {
+  const now = new Date();
+  const lockOwner = buildLockOwner();
+  const ttlMs = parseBoundedInteger(env.SOUL_WISDOM_LOCK_TTL_MS, 90000, 15000, 600000);
+  const expiresAt = new Date(now.getTime() + ttlMs).toISOString();
+
+  const { error: cleanupError } = await supabase
+    .from("soul_wisdom_generation_locks")
+    .delete()
+    .lt("expires_at", now.toISOString());
+
+  if (cleanupError) {
+    console.warn("Unable to clean expired Soul Guru generation locks", cleanupError.message);
+    throwHttpError("Soul Guru generation lock could not be prepared. Please try again.", 503);
+  }
+
+  const { data, error } = await supabase
+    .from("soul_wisdom_generation_locks")
+    .insert({
+      user_key: userKey,
+      reading_date: date,
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
+      lock_owner: lockOwner,
+      expires_at: expiresAt
+    })
+    .select("id, lock_owner, expires_at")
+    .single();
+
+  if (isUniqueViolation(error)) {
+    return { acquired: false };
+  }
+
+  if (error) {
+    console.warn("Unable to acquire Soul Guru generation lock", error.message);
+    throwHttpError("Soul Guru generation lock could not be acquired. Please try again.", 503);
+  }
+
+  return {
+    acquired: true,
+    id: data?.id || null,
+    userKey,
+    date,
+    promptVersion: SOUL_WISDOM_PROMPT_VERSION,
+    lockOwner,
+    expiresAt: data?.expires_at || expiresAt
+  };
+}
+
+async function releaseDailyReadingLock(supabase, lock) {
+  const { error } = await supabase
+    .from("soul_wisdom_generation_locks")
+    .delete()
+    .eq("user_key", lock.userKey)
+    .eq("reading_date", lock.date)
+    .eq("prompt_version", lock.promptVersion)
+    .eq("lock_owner", lock.lockOwner);
+
+  if (error) {
+    console.warn("Unable to release Soul Guru generation lock", error.message);
+  }
+}
+
+async function waitForCachedReading(supabase, userKey, date, env) {
+  const attempts = parseBoundedInteger(env.SOUL_WISDOM_LOCK_POLL_ATTEMPTS, 4, 0, 20);
+  const intervalMs = parseBoundedInteger(env.SOUL_WISDOM_LOCK_POLL_INTERVAL_MS, 300, 0, 3000);
+
+  for (let attempt = 0; attempt <= attempts; attempt += 1) {
+    const cached = await readCachedReading(supabase, userKey, date);
+    if (cached) return cached;
+    if (attempt < attempts && intervalMs > 0) {
+      await delay(intervalMs);
+    }
+  }
+
+  return null;
+}
+
+function buildLockOwner() {
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isUniqueViolation(error) {
+  return error?.code === "23505" || /duplicate key|unique/i.test(error?.message || "");
+}
+
+function parseBoundedInteger(value, fallback, min, max) {
+  const parsed = Number.parseInt(String(value || ""), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object || {}, key);
 }
@@ -267,6 +390,9 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
   }
   if (hasMechanicalDirectAddressCasing(text, firstName(user.name))) {
     issues.push("direct address used mechanical capitalized imperative casing");
+  }
+  if (hasAwkwardTemplateJoin(text)) {
+    issues.push("used awkward assembled guidance phrasing");
   }
   const openingSeed = context.openingScene || context.dailyScene || "";
   if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
@@ -372,6 +498,21 @@ function hasMechanicalDirectAddressCasing(text, name) {
   ];
   const pattern = new RegExp(`\\b${escapeRegex(name)},\\s+(?:${verbs.join("|")})\\b`);
   return pattern.test(String(text || ""));
+}
+
+function hasAwkwardTemplateJoin(text) {
+  return [
+    /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i,
+    /\blet\s+let\b/i,
+    /\bwhen\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b/i,
+    /\bwhen\s+do not\b/i,
+    /\blet\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b[^.!?]+\bdecide\b/i,
+    /\bhandle simplify\b/i,
+    /\bprotect [^.!?]{0,60} belongs before\b/i,
+    /\bcan give room to\b/i,
+    /\bbody that has been included\b/i,
+    /\basking small changes to explain\b/i
+  ].some((pattern) => pattern.test(String(text || "")));
 }
 
 function openingUsesSeed(opening, seed) {

@@ -48,6 +48,18 @@ const schemaContract = [
     ]
   },
   {
+    table: "soul_wisdom_generation_locks",
+    columns: [
+      "id",
+      "user_key",
+      "reading_date",
+      "prompt_version",
+      "lock_owner",
+      "expires_at",
+      "created_at"
+    ]
+  },
+  {
     table: "more_guidance_subscriptions",
     columns: [
       "id",
@@ -177,6 +189,11 @@ const indexContract = [
     columns: ["user_key", "reading_date"]
   },
   {
+    name: "soul_wisdom_generation_locks_expiry_idx",
+    table: "soul_wisdom_generation_locks",
+    columns: ["expires_at"]
+  },
+  {
     name: "subscriptions_user_status_idx",
     table: "more_guidance_subscriptions",
     columns: ["user_key", "status", "ends_at"]
@@ -284,6 +301,12 @@ const constraintContract = [
     type: "UNIQUE"
   },
   {
+    label: "Daily Soul Guru generation lock is unique per user/date/prompt",
+    table: "soul_wisdom_generation_locks",
+    columns: ["user_key", "reading_date", "prompt_version"],
+    type: "UNIQUE"
+  },
+  {
     label: "More Guidance cache is unique per user/date/prompt",
     table: "more_guidance_readings",
     columns: ["user_key", "reading_date", "prompt_version"],
@@ -297,6 +320,7 @@ const constraintContract = [
   },
   ...[
     "daily_soul_readings",
+    "soul_wisdom_generation_locks",
     "more_guidance_subscriptions",
     "saved_guidance",
     "astro_solve_questions",

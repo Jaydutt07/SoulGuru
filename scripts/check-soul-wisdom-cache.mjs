@@ -243,6 +243,8 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
 
   const dailyWrites = supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert");
   const profileWrites = supabase.state.calls.filter((call) => call.table === "user_profiles" && call.operation === "upsert");
+  const lockInserts = supabase.state.calls.filter((call) => call.table === "soul_wisdom_generation_locks" && call.operation === "insert");
+  const lockDeletes = supabase.state.calls.filter((call) => call.table === "soul_wisdom_generation_locks" && call.operation === "delete");
   const storedReading = [...supabase.state.dailyReadings.values()][0];
   const userKey = buildBackendUserKey(user);
 
@@ -283,11 +285,71 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     openAiRequests.length === 1,
     dailyWrites.length === 1
   ].every(Boolean));
+  pushCheck("Cache miss acquires and releases one daily generation lock", [
+    lockInserts.length === 1,
+    lockInserts[0].payload.user_key === userKey,
+    isBackendUserKey(lockInserts[0].payload.user_key),
+    lockInserts[0].payload.reading_date === date,
+    lockInserts[0].payload.prompt_version === SOUL_WISDOM_PROMPT_VERSION,
+    lockDeletes.length >= 2,
+    supabase.state.generationLocks.size === 0
+  ].every(Boolean));
   pushCheck("Fresh reading is stored in guidance memory once", [
     memoryUpserts.length === 1,
     memoryUpserts[0].kind === "daily-soul-reading",
     memoryUpserts[0].sourceId === `${date}-${SOUL_WISDOM_PROMPT_VERSION}`,
     memoryUpserts[0].metadata?.model === "gpt-contract"
+  ].every(Boolean));
+}
+
+async function checkGenerationLockContentionDoesNotCallOpenAI() {
+  const user = soulUser("lock-contention");
+  const date = "2026-06-24";
+  const userKey = buildBackendUserKey(user);
+  const supabase = createFakeSupabase({
+    generationLocks: [{
+      user_key: userKey,
+      reading_date: date,
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
+      lock_owner: "existing-worker",
+      expires_at: "2099-01-01T00:00:00.000Z"
+    }]
+  });
+  const openAiRequests = [];
+  let error = null;
+
+  try {
+    await createDailySoulWisdom({
+      user,
+      date
+    }, {
+      OPENAI_API_KEY: "test-openai-key",
+      SOUL_WISDOM_LOCK_POLL_ATTEMPTS: "0",
+      SOUL_WISDOM_LOCK_POLL_INTERVAL_MS: "0"
+    }, {
+      supabase,
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("Concurrent daily Soul Guru generation returns 409 without OpenAI", [
+    error?.statusCode === 409,
+    /already being prepared/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    supabase.state.calls.filter((call) => call.table === "soul_wisdom_generation_locks" && call.operation === "insert").length === 1,
+    supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert").length === 0,
+    supabase.state.generationLocks.size === 1
   ].every(Boolean));
 }
 
@@ -524,19 +586,37 @@ async function checkCacheWriteFailureDoesNotReturnReading() {
   ].every(Boolean));
 }
 
-function createFakeSupabase({ dailyReadings = [], failDailySelect = false, failDailyUpsert = false } = {}) {
+function createFakeSupabase({
+  dailyReadings = [],
+  generationLocks = [],
+  failDailySelect = false,
+  failDailyUpsert = false,
+  failLockInsert = false,
+  failLockDelete = false
+} = {}) {
   const state = {
     calls: [],
     dailyReadings: new Map(),
+    generationLocks: new Map(),
     profiles: new Map(),
     nextProfileId: 1,
     nextDailyId: 1,
+    nextLockId: 1,
     failDailySelect,
-    failDailyUpsert
+    failDailyUpsert,
+    failLockInsert,
+    failLockDelete
   };
 
   for (const reading of dailyReadings) {
     state.dailyReadings.set(dailyKey(reading), { ...reading });
+  }
+  for (const lock of generationLocks) {
+    state.generationLocks.set(lockKey(lock), {
+      id: lock.id || `lock-${state.nextLockId++}`,
+      created_at: lock.created_at || "2026-06-24T00:00:00.000Z",
+      ...clone(lock)
+    });
   }
 
   return {
@@ -552,6 +632,7 @@ class FakeQuery {
     this.state = state;
     this.table = table;
     this.filters = {};
+    this.pendingDelete = false;
     this.result = { data: null, error: null };
   }
 
@@ -561,6 +642,57 @@ class FakeQuery {
 
   eq(column, value) {
     this.filters[column] = value;
+    return this;
+  }
+
+  lt(column, value) {
+    this.filters[column] = { operator: "lt", value };
+    return this;
+  }
+
+  delete() {
+    this.pendingDelete = true;
+    return this;
+  }
+
+  insert(payload) {
+    this.state.calls.push({
+      table: this.table,
+      operation: "insert",
+      payload: clone(payload)
+    });
+
+    if (this.table === "soul_wisdom_generation_locks") {
+      if (this.state.failLockInsert) {
+        this.result = {
+          data: null,
+          error: { message: "contract lock insert failure" }
+        };
+        return this;
+      }
+
+      const key = lockKey(payload);
+      if (this.state.generationLocks.has(key)) {
+        this.result = {
+          data: null,
+          error: {
+            code: "23505",
+            message: "duplicate key value violates unique constraint \"soul_wisdom_generation_locks_user_date_prompt_key\""
+          }
+        };
+        return this;
+      }
+
+      const lock = {
+        ...clone(payload),
+        id: `lock-${this.state.nextLockId++}`,
+        created_at: "2026-06-24T00:00:00.000Z"
+      };
+      this.state.generationLocks.set(key, lock);
+      this.result = { data: lock, error: null };
+      return this;
+    }
+
     return this;
   }
 
@@ -630,8 +762,41 @@ class FakeQuery {
     return this.result;
   }
 
+  async single() {
+    return this.result;
+  }
+
   then(resolve, reject) {
+    if (this.pendingDelete) {
+      this.result = this.executeDelete();
+      this.pendingDelete = false;
+    }
     return Promise.resolve(this.result).then(resolve, reject);
+  }
+
+  executeDelete() {
+    this.state.calls.push({
+      table: this.table,
+      operation: "delete",
+      filters: clone(this.filters)
+    });
+
+    if (this.table !== "soul_wisdom_generation_locks") {
+      return { data: null, error: null };
+    }
+    if (this.state.failLockDelete) {
+      return { data: null, error: { message: "contract lock delete failure" } };
+    }
+
+    let deleted = 0;
+    for (const [key, lock] of [...this.state.generationLocks.entries()]) {
+      if (matchesFilters(lock, this.filters)) {
+        this.state.generationLocks.delete(key);
+        deleted += 1;
+      }
+    }
+
+    return { data: { deleted }, error: null };
   }
 }
 
@@ -641,6 +806,25 @@ function dailyKey(reading) {
     reading.reading_date,
     reading.prompt_version
   ].join("|");
+}
+
+function lockKey(lock) {
+  return [
+    lock.user_key,
+    lock.reading_date,
+    lock.prompt_version
+  ].join("|");
+}
+
+function matchesFilters(row, filters) {
+  for (const [column, expected] of Object.entries(filters)) {
+    if (expected && typeof expected === "object" && expected.operator === "lt") {
+      if (!(String(row[column] || "") < String(expected.value || ""))) return false;
+      continue;
+    }
+    if (row[column] !== expected) return false;
+  }
+  return true;
 }
 
 function clone(value) {
@@ -677,6 +861,7 @@ async function main() {
   await checkCacheReadFailureDoesNotCallOpenAI();
   await checkCachedReadingBypassesOpenAI();
   await checkCacheMissWritesAndSecondReadUsesCache();
+  await checkGenerationLockContentionDoesNotCallOpenAI();
   await checkSeedMismatchRepairsBeforeCaching();
   await checkMechanicalDirectAddressRepairsBeforeCaching();
   await checkAwkwardTemplateJoinRepairsBeforeCaching();

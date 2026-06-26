@@ -188,7 +188,7 @@ function compactOpeningLine(scene, preferredBucket = "", seed = 0) {
       `${subject} is carrying more pressure than the situation can justify.`,
       `${subject} shows where delay has started acting like proof.`,
       `${subject} needs a clear container before the mind turns it into a case file.`,
-      `${subject} belongs to today's schedule, not to the whole story of self-worth.`,
+      `${subject} belongs to today's schedule, not to a report card on your worth.`,
       `${subject} is asking for a practical repair before it becomes a mood.`
     ],
     imperative: [
@@ -255,10 +255,10 @@ function compactTimedTaskLine(context, seed = 0) {
     `A ${window} block gives ${area} a finish line the mind can actually verify.`,
     `The next ${window} block around ${area} should end with ${close}, not another private trial.`,
     `${capitalize(area)} gets easier when one timed block ends before the story expands.`,
-    `A named ${window} task gives the decision somewhere practical to land.`,
-    `One finished block around ${area} can lower the pressure without asking for certainty.`,
-    `The timer matters because ${area} needs an exit, not another private hearing.`,
-    `A closed ${window} effort around ${area} can hold more truth than another rehearsal.`,
+    `A named ${window} task gives the decision a visible place to land.`,
+    `One finished block around ${area} can lower the pressure without demanding certainty.`,
+    `The timer matters because ${area} needs an exit, not another inner hearing.`,
+    `A closed ${window} effort around ${area} can matter more than another rehearsal.`,
     `The next block should leave a visible result: ${close}.`
   ], seed, area, close, context.openingScene, context.bodySignal);
 }
@@ -277,7 +277,7 @@ function compactClosingLine(context, preferredBucket = "", seed = 0) {
     scene: [
       "The closed tab, paid bill, sent reply, or cleared corner can be enough for tonight.",
       "One handled detail can hold the place of certainty until tomorrow.",
-      "This practical finish deserves more respect than another careful explanation."
+      "This handled detail deserves more trust than another careful explanation."
     ],
     statement: [
       plainWorkClosingLine(seed, close),
@@ -317,7 +317,7 @@ function compactNeed(text, seed = 0) {
   return pickLine([
     "room to move slowly",
     "a cleaner inner rule",
-    "support that does not perform",
+    "clear support",
     "one choice with a visible stopping point"
   ], seed, normalized);
 }
@@ -339,7 +339,7 @@ function compactAvoid(text, seed = 0) {
       "checking every small change",
       "turning tiny shifts into evidence",
       "scanning ordinary details for proof",
-      "asking small changes to explain the whole day",
+      "reading small shifts as verdicts",
       "reading each shift as a verdict"
     ], seed, normalized);
   }
@@ -359,7 +359,7 @@ function avoidPhrase(text, seed = 0) {
       "checking every small change",
       "turning tiny shifts into proof",
       "scanning ordinary details for hidden signals",
-      "asking each small change to explain the whole day",
+      "reading each small shift as a verdict",
       "reading every shift as a verdict"
     ], seed, normalized);
   }
@@ -404,6 +404,15 @@ function needPhrase(text, seed = 0) {
       "support for ending the task before decorating it"
     ], seed, normalized);
   }
+  if (normalized.includes("respect") && normalized.includes("explain")) {
+    return pickLine([
+      "respect without a defense speech",
+      "a clear request for respect",
+      "respect that does not need extra evidence",
+      "one respectful answer with no performance",
+      "a cleaner way to ask for respect"
+    ], seed, normalized);
+  }
   if (normalized.includes("boundary") || normalized.includes("speech")) {
     return pickLine([
       "one boundary that does not need a speech",
@@ -423,7 +432,7 @@ function edgePhrase(text, seed = 0) {
       "protect peace without freezing your warmth",
       "keep peace available without turning distant",
       "hold peace with warmth still intact",
-      "protect quiet without making yourself unreachable",
+      "protect quiet without becoming unreachable",
       "let peace have a shape without becoming hard"
     ], seed, normalized);
   }
@@ -443,7 +452,7 @@ function actionPhrase(text, seed = 0) {
   const normalized = fragment(text).toLowerCase();
   if (normalized.includes("visible task") && normalized.includes("emotional debate")) {
     return pickLine([
-      "finish the visible task before the feeling asks for court",
+      "finish the visible task before the mood starts negotiating",
       "complete the task you can see before debating the mood",
       "move the visible task first and let the emotion answer later",
       "handle the task in front of you before the inner debate expands",
@@ -538,6 +547,13 @@ function sceneStatementSubject(scene, seed = 0) {
       "The postponed food cue"
     ], seed, scene);
   }
+  if (/\b(desk|workspace)\b/.test(normalized)) {
+    return pickLine([
+      "Desk corner pressure",
+      "The workspace edge",
+      "The visible desk reset"
+    ], seed, scene);
+  }
   const category = sceneCopyCategory(scene);
   const subjects = {
     water: ["Water before judgment", "The bedside glass", "First-sip discipline"],
@@ -561,7 +577,7 @@ function scenePressure(scene, seed = 0) {
     water: ["the body asking to decide after care", "the morning needing sequence before meaning"],
     calendar: ["the appointment needing a real slot", "the delayed commitment asking for a smaller promise"],
     notebook: ["the thought needing ink instead of rehearsal", "the unfinished line asking for a decision"],
-    kitchen: ["the routine asking to be fed before it is judged", "the first task needing a surface cleared"],
+    kitchen: ["the routine asking to be fed before it is judged", "the first task asking for a cleared surface"],
     money: ["the money question asking for numbers instead of worry", "the price, promise, or delay needing separation from self-worth"],
     room: [
       "the room asking for ten minutes of visible order",
@@ -570,7 +586,7 @@ function scenePressure(scene, seed = 0) {
       "the small room detail asking for hands",
       "the open corner needing one contained action"
     ],
-    door: ["movement before another inner meeting", "preparation instead of postponement"],
+    door: ["movement instead of another inner meeting", "preparation instead of postponement"],
     body: ["the body refusing a yes that arrives too quickly", "the pause asking to be respected before agreement"],
     conversation: ["timing instead of force", "a reply smaller than the fear"],
     task: ["the list needing a named first item", "the draft asking to become real before it becomes good"],
@@ -750,11 +766,11 @@ function openingConditionLine(lowerScene, pressure, window, seed = 0) {
 
 function openingTimingLine(lowerScene, pressure, window, seed = 0) {
   return pickLine([
-    `The next useful move begins at ${lowerScene}, where ${pressure} is asking for size.`,
-    `A ${window} block around ${lowerScene} will keep ${pressure} out of the whole day.`,
+    `The next useful move begins around ${lowerScene}, where ${pressure} is asking for size.`,
+    `A ${window} block around ${lowerScene} gives ${pressure} a practical limit.`,
     `The scene around ${lowerScene} is not the issue; the hidden cost sits in ${pressure}.`,
     `One decision near ${lowerScene} can make ${pressure} less expensive by evening.`,
-    `${capitalize(lowerScene)} gives ${pressure} a place to become practical.`
+    `${capitalize(lowerScene)} shows where ${pressure} can become practical.`
   ], seed, lowerScene, pressure, window);
 }
 
@@ -832,10 +848,10 @@ function areaCostLine(area, name, cost, seed = 0) {
 function attentionCostNameLine(name, area, cost, seed = 0) {
   return pickLine([
     `${name} is losing too much attention to ${cost}; give ${area} one hour, one edge, and no extra trial.`,
-    `The drain for ${name} is ${cost}; keep ${area} inside one timed choice today.`,
+    `The drain for ${name} is ${cost}; keep ${area} inside one timed choice.`,
     `Around ${area}, ${name} can stop feeding ${cost} by naming one finish line before answering.`,
     `${name} does not need to carry ${cost} through the whole day; put ${area} inside one visible block.`,
-    `For ${name}, ${area} gets lighter when ${cost} is answered with a time, not a debate.`,
+    `${capitalize(area)} gets lighter for ${name} when ${cost} is answered with a time, not a debate.`,
     `${name} can interrupt ${cost} by making ${area} small enough to finish before the next meal.`
   ], seed, name, area, cost);
 }
@@ -888,7 +904,7 @@ function workAndCloseLine(work, close, seed = 0) {
     `Let ${work} happen before the mood asks for a better explanation.`,
     `Use the next block for ${work}; ${close} can answer the rest later.`,
     `Give ${gerund} a real surface, then stop once ${close} is handled.`,
-    `${capitalize(work)} belongs before the next private debate begins.`
+    `${capitalize(gerund)} belongs before the next private debate begins.`
   ], seed, work, close, gerund);
 }
 
@@ -904,7 +920,7 @@ function bodyLine(context, seed, salt = "") {
     `The day becomes more useful when ${bodyPractice} comes before any final interpretation.`,
     `Keep the body in the room today: ${bodyMove}, then let the mind make a smaller claim.`,
     `Treat ${weather} as information, then let ${bodyPractice} set the timing.`,
-    `Before pressure starts narrating the whole day, make the body real through ${bodyPractice}.`,
+    bodyBeforeInterpretationLine(bodyPractice, seed),
     bodyFirstConsiderationLine(avoid, seed),
     bodyInterpretationLine(bodyPractice, seed),
     bodyCareDecisionLine(seed, context),
@@ -955,7 +971,7 @@ function relationLine(name, context, seed) {
     `Respond from proportion: kind, brief, and clear enough that resentment has less room.`,
     availabilityTimingLine(seed),
     timedAnswerLine(seed, name),
-    `Let the next reply be useful and short enough to remain true.`,
+    "Answer only the part you can still stand behind after dinner.",
     `Let the relationship stay simple here: ${lowerFirst(relation)}, while everything else waits its turn.`,
     relationshipLimitLine(avoid, seed),
     bodySizedAccessLine(context, seed),
@@ -1004,7 +1020,7 @@ function relationCloseLine(context, seed, salt = "", preferredBucket = "") {
   const close = closingEvidence(context, seed);
   const relationInstruction = lowerFirst(relation).replace(/^let\s+/i, "");
   const lines = [
-    `Let the next reply stay plain: ${relationInstruction}, then leave one finished detail behind you.`,
+    `Keep the next reply plain: ${relationInstruction}, then leave one finished detail behind you.`,
     `With other people, ${relation}; the day can still end with one useful detail finished.`,
     `Keep the answer simple enough to keep, and let ${close} count without decoration.`,
     `When the room asks for more explanation, ${relation}, and leave with one less loose end.`,
@@ -1053,7 +1069,7 @@ function realNeedLine(area, name, need, seed = 0) {
     `${name} can protect ${need} under ${area} by giving support a shape instead of a performance.`,
     `Under ${area}, ${name} needs ${need} to become practical enough for someone to meet.`,
     `The quieter need for ${name} is ${need}; place it inside one request, time, or task.`,
-    `${name} can give the need for ${need} one clear place instead of defending it all day.`
+    `${name} can make one clear place for ${need} instead of defending it all day.`
   ], seed, area, name, need);
 }
 
@@ -1075,6 +1091,22 @@ function bodyInterpretationLine(bodyPractice, seed = 0) {
     `${capitalize(bodyPractice)} gives the mind less room to invent a crisis.`,
     `A decision made after ${bodyPractice} is less likely to borrow urgency.`
   ], seed, bodyPractice);
+}
+
+function bodyBeforeInterpretationLine(bodyPractice, seed = 0) {
+  const lines = [
+    `${capitalize(bodyPractice)} belongs before the first interpretation gets dramatic.`,
+    `After ${bodyPractice}, the next answer has a slower spine.`,
+    `${capitalize(bodyPractice)} leaves less pressure for the next yes or no.`,
+    `The first reaction gets quieter after ${bodyPractice}.`,
+    `A less rushed answer becomes available after ${bodyPractice}.`,
+    `The choice returns to human size after ${bodyPractice}.`,
+    `After ${bodyPractice}, the reply does not need to arrive armed.`,
+    `${capitalize(bodyPractice)} removes one false instruction from the day.`,
+    `The pressure loses its shortcut after ${bodyPractice}.`,
+    `A practical pause appears after ${bodyPractice}.`
+  ];
+  return lines[mod(stableHash(`${seed}|${bodyPractice}`), lines.length)];
 }
 
 function relationshipLimitLine(avoid, seed = 0) {
@@ -1152,7 +1184,7 @@ function subjectPhysicalActionLine(subject, seed = 0) {
 
 function sharperWorkLine(name, edgeInstruction, seed = 0) {
   return pickLine([
-    `The sharper work for ${name} is to ${edgeInstruction} before the moment starts collecting extra meaning.`,
+    `The harder discipline for ${name} is to ${edgeInstruction} before the moment starts collecting extra meaning.`,
     `${name}'s harder task is to ${edgeInstruction} while the next move can still be measured.`,
     `For ${name}, the useful discipline is to ${edgeInstruction} before pressure starts rewriting the scene.`,
     pressureLoweringLine(name, edgeInstruction, seed),
@@ -1177,7 +1209,7 @@ function timedNameActionLine(name, edgeInstruction, seed = 0) {
     `The urge to ${edgeInstruction}, ${name}, needs a timer more than another inner argument.`,
     `${name}, put ${gerund} into the next available block before the mind reopens the debate.`,
     `For ${name}, ${gerund} works better as a scheduled move than as another private rehearsal.`,
-    `The useful answer for ${name} is ${gerund} with a time limit and no courtroom afterward.`,
+    `The answer gets clearer for ${name} when the urge to ${edgeInstruction} has a time limit, not another courtroom.`,
     `${name} can turn the urge around ${gerund} into one visible action before the story grows.`
   ], seed, name, edgeInstruction, gerund);
 }
@@ -1229,11 +1261,11 @@ function bodySequenceLine(bodyPractice, seed = 0) {
     `${capitalize(bodyPractice)} changes the timing before the decision gets oversized.`,
     `${capitalize(bodyPractice)} helps the next move arrive from care instead of pressure.`,
     `${capitalize(bodyPractice)} makes the decision easier to keep after the mood passes.`,
-    `${capitalize(bodyPractice)} gives the next answer a body that has been included.`,
-    `${capitalize(bodyPractice)} lets the next choice come from a body that has been included.`,
+    `${capitalize(bodyPractice)} gives the next answer a body that is no longer bracing.`,
+    `${capitalize(bodyPractice)} lets the next choice come from a less rushed body.`,
     `${capitalize(bodyPractice)} keeps the decision from borrowing urgency it has not earned.`,
     `Let ${bodyPractice} happen before the reply borrows panic.`,
-    `${capitalize(bodyPractice)} makes the next reply less dependent on pressure.`,
+    `${capitalize(bodyPractice)} gives the next reply a less braced starting point.`,
     `${capitalize(bodyPractice)} gives the mind fewer false signals to defend.`
   ], seed, bodyPractice);
 }
@@ -1446,7 +1478,7 @@ function actionInfinitive(text) {
   const value = lowerFirst(fragment(text));
   if (!value) return "finish one useful task";
   if (/^do not\b/i.test(value)) return value.replace(/^do not\b/i, "avoid");
-  if (/^(send|do|pay|let|take|make|finish|decline|name|put|repair|wait|answer|choose|protect|turn|remove|give|pause|close|complete|document|separate|use)\b/.test(value)) {
+  if (/^(send|do|pay|let|take|make|finish|decline|name|put|repair|wait|answer|choose|protect|turn|remove|give|pause|close|complete|document|separate|simplify|use)\b/.test(value)) {
     return value;
   }
   return `handle ${value}`;
@@ -1708,7 +1740,7 @@ function sceneVariants(raw) {
   }
   if (raw.includes("laundry") || raw.includes("drawer")) {
     return [
-      "folded laundry and an open drawer",
+      "the open drawer beside folded laundry",
       "the drawer left open",
       "a domestic drawer detail you keep passing"
     ];
@@ -1818,7 +1850,7 @@ function parseArchitectureConstraints(architecture) {
 function isUsableLocalWisdom(text, name, constraints) {
   const wordCount = words(text).length;
   return wordCount >= 72
-    && wordCount <= 100
+    && wordCount <= 98
     && matchesArchitectureConstraints(text, name, constraints)
     && !isLowQualityWisdom(text)
     && !hasInternalSentenceFamilyRepeat(text)
@@ -1849,6 +1881,7 @@ function sentenceFamily(sentence) {
   if (normalized.includes("next conversation") || normalized.includes("next exchange")) return "conversation-next";
   if (normalized.includes("body") && normalized.includes("before")) return "body-before";
   if (normalized.includes("reply") && (normalized.includes("short") || normalized.includes("brief"))) return "short-reply";
+  if (normalized.includes("a kept limit gives")) return "kept-limit-gives";
   const stop = new Set(["the", "and", "that", "this", "with", "your", "you", "before", "after", "when", "where", "needs", "need", "gets", "give", "make", "keep", "let", "one", "next", "today", "can"]);
   return normalized
     .split(/\s+/)
@@ -1863,7 +1896,14 @@ function hasAwkwardLocalPattern(text) {
     /\bthe day becomes more useful when\b/i,
     /\bthis part of life\b[^.!?]{0,80}\bthis part of life\b/i,
     /\bwith a visible next use\b/i,
-    /\bmore useful when\b[^.!?]{0,80}\bbefore any final interpretation\b/i
+    /\bmore useful when\b[^.!?]{0,80}\bbefore any final interpretation\b/i,
+    /\bhandle simplify\b/i,
+    /\bprotect [^.!?]{0,60} belongs before\b/i,
+    /\bcan give room to\b/i,
+    /\bneeds to protect [^.!?]{0,80} yourself\b/i,
+    /\bfolded laundry and an open drawer belongs\b/i,
+    /\ba kept limit gives\b[^.!?]+\ba kept limit gives\b/i,
+    /\bthe choice stops borrowing urgency after\b/i
   ].some((pattern) => pattern.test(String(text || "")));
 }
 
@@ -1924,7 +1964,7 @@ function words(text) {
 }
 
 function normalizeLocalWisdom(text) {
-  return cleanWisdomText(text, text, 100);
+  return cleanWisdomText(text, text, 98);
 }
 
 function fragment(text) {

@@ -15,11 +15,13 @@ const requiredMigrationFiles = [
   "010_schema_contract_rpc.sql",
   "011_schema_contract_constraints.sql",
   "012_shani_membership.sql",
-  "013_hashed_user_keys.sql"
+  "013_hashed_user_keys.sql",
+  "014_soul_wisdom_generation_locks.sql"
 ];
 
 const hashedUserKeyTables = [
   "daily_soul_readings",
+  "soul_wisdom_generation_locks",
   "more_guidance_subscriptions",
   "saved_guidance",
   "astro_solve_questions",
@@ -62,6 +64,18 @@ const schemaContract = [
       "reading",
       "model",
       "prompt_version",
+      "created_at"
+    ]
+  },
+  {
+    table: "soul_wisdom_generation_locks",
+    columns: [
+      "id",
+      "user_key",
+      "reading_date",
+      "prompt_version",
+      "lock_owner",
+      "expires_at",
       "created_at"
     ]
   },
@@ -190,6 +204,7 @@ const schemaContract = [
 
 const requiredIndexes = [
   "daily_soul_readings_user_date_idx",
+  "soul_wisdom_generation_locks_expiry_idx",
   "subscriptions_user_status_idx",
   "saved_guidance_user_created_idx",
   "astro_questions_user_created_idx",
@@ -276,6 +291,7 @@ function checkRlsContract() {
 function checkIndexesAndIdempotency() {
   pushCheck("Supabase migrations define required indexes", requiredIndexes.every((indexName) => contains(`index if not exists ${indexName}`)));
   pushCheck("Daily Soul Guru cache is unique per user/date/prompt", hasUniqueTuple("daily_soul_readings", ["user_key", "reading_date", "prompt_version"]));
+  pushCheck("Daily Soul Guru generation lock is unique per user/date/prompt", hasUniqueTuple("soul_wisdom_generation_locks", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("More Guidance cache is unique per user/date/prompt", hasUniqueTuple("more_guidance_readings", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("Razorpay payment activation is idempotent", [
     contains("create unique index if not exists subscriptions_provider_payment_unique_idx"),
@@ -329,11 +345,18 @@ function checkCriticalDefaults() {
 function hasHashedUserKeyConstraint(table) {
   const constraintName = `${table}_user_key_hashed_chk`;
   const valuesRow = new RegExp(`\\(\\s*'${escapeRegex(table)}'\\s*,\\s*'${escapeRegex(constraintName)}'\\s*\\)`, "i");
+  const directConstraint = new RegExp(
+    `constraint\\s+${escapeRegex(constraintName)}\\s+check\\s*\\(\\s*user_key\\s*~\\s*'\\^sgu_\\[a-f0-9\\]\\{32\\}\\$'\\s*\\)`,
+    "i"
+  );
   return contains(constraintName)
     && contains(table)
     && contains("^sgu_[a-f0-9]{32}$")
-    && valuesRow.test(combinedSql)
-    && /add\s+constraint\s+%I\s+check\s*\(\s*user_key\s*~\s*%L\s*\)/i.test(combinedSql);
+    && (
+      valuesRow.test(combinedSql)
+        ? /add\s+constraint\s+%I\s+check\s*\(\s*user_key\s*~\s*%L\s*\)/i.test(combinedSql)
+        : directConstraint.test(combinedSql)
+    );
 }
 
 function hasTable(table) {

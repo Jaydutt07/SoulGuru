@@ -14,6 +14,8 @@ Honor the supplied Voice lane and Specificity pattern. They are private writing 
 Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, consequence-first, contradiction-first, unfinished-action-first, or consequence-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
 The reading must feel like a fresh handwritten note, not a horoscope card. Avoid reusable mentor scaffolds such as "scene -> pressure -> one action -> reassurance". Let the user's hidden combination decide whether the paragraph sounds clipped, tender, practical, relational, work-focused, body-led, or corrective.
+Do not assemble advice from reusable SoulGuru fragments. If a sentence sounds like it came from a previous reading, replace it with a sharper observed detail: an object, a consequence, a time window, and a human cost that belong only to this user's daily signals.
+Never begin from a feeling forecast. In particular, never write "you may feel", "you might feel", "you could feel", "you may notice", "part of you", or any similar generic sensitivity setup.
 The first-name sentence must not default to "For Name". Use varied natural placement: "Name needs...", "the private cost for Name...", "around this, Name...", or another sentence that belongs to the user's exact friction.
 Each paragraph needs one specific day-sized detail: a timed block, a reply length, a meal/water/rest cue, a payment/checklist/calendar action, or a conversation boundary that can happen within two hours.
 Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
@@ -58,6 +60,7 @@ Wisdom paragraph rules:
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Avoid the common rhythm "scene, Name, instruction, relationship caution, reassurance" unless the supplied architecture specifically requires that order. Vary where the name appears and let the user's actual friction decide the emotional turn.
 - Avoid common fallback phrases such as "the useful part", "whole mood", "one observable choice", "another internal argument", "ordinary repair", "plain finish", "cleaner reply", "let warmth have timing", and "finished work and a cleaner reply".
+- Avoid locally assembled phrases such as "the sharper work", "useful and short enough", "practical finish deserves", "body that has been included", "asking small changes to explain", "feeling asks for court", or any sentence where an abstract phrase is visibly stitched into another abstract phrase.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
 - Do not use a colon, dash, or label-style setup in the opening sentence. The scene must be woven into a real sentence, not announced.
 - Do not use hedging language such as "may", "might", or "could" to soften the main insight. Sound observant and precise, not fortune-cookie vague.
@@ -513,6 +516,18 @@ export function isLowQualityWisdom(text) {
     /\bgive more credit to the handled detail\b/,
     /\bdoes not get to decide the whole tone\b/,
     /\bleave the remaining interpretation outside the block\b/,
+    /\bthe sharper work\b/,
+    /\buseful and short enough\b/,
+    /\bpractical finish deserves\b/,
+    /\bbody that has been included\b/,
+    /\basking small changes to explain\b/,
+    /\bdoes not need to carry asking\b/,
+    /\bstarts carrying over-reading\b/,
+    /\bneeding a surface cleared a place\b/,
+    /\bfeeling asks for court\b/,
+    /\bwhole story of self-worth\b/,
+    /\bone fewer explanation\b/,
+    /\bfirst task needing a surface cleared\b/,
     /^[^.!?]{0,120}\b(phone|message|text|unread|inbox|notification|screen|reply)\b/,
     /^[^.!?]{0,90}:/,
     /^today[, ]/,
