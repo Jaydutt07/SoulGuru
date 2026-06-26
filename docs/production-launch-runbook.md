@@ -153,3 +153,20 @@ npm run android:aab:release
 ```
 
 Keep release keystores and generated APK/AAB artifacts out of git.
+
+## Post-Launch Quality Loop
+
+After real users begin rating `Words of Wisdom`, use the feedback report before changing prompts:
+
+```bash
+npm run soul:feedback:report
+```
+
+Treat the report as the first triage pass. If miss rate rises or the top missed theme is generic/repeated wording, review the prompt and rerun:
+
+```bash
+npm run soul:quality
+npm run soul:quality:ai
+```
+
+If the top missed theme points to personal accuracy or daily timing, verify Supabase profile data, birth-place geocoder output, timezone, and daily cache boundaries before changing wording. The feedback report is designed to stay secret-safe: it prints prompt versions, ratings, bounded themes, and redacted optional samples only.

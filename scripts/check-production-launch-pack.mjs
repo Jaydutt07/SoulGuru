@@ -83,6 +83,7 @@ function checkArtifactContents() {
   pushCheck("Production launch pack includes usable operator artifacts", [
     readme.includes("# SoulGuru Production Launch Pack"),
     readme.includes("Operator Order"),
+    readme.includes("npm run soul:feedback:report"),
     envTemplate.includes("# SoulGuru Production Env Template"),
     envTemplate.includes("OPENAI_API_KEY="),
     checklist.includes("# SoulGuru Production Env Checklist"),
@@ -116,6 +117,7 @@ function checkManifestContract() {
     verification.includes("npm run android:artifact:check"),
     verification.includes("npm run production:actions"),
     verification.includes("npm run production:audit"),
+    verification.includes("npm run soul:feedback:report"),
     verification.includes("npm run production:check -- --strict"),
     verification.some((command) => command.includes("release:check"))
   ].every(Boolean), missing);
