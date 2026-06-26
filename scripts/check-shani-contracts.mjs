@@ -1,9 +1,11 @@
+import fs from "node:fs";
 import {
   buildShaniRemedyMap,
   createPanditGuidance,
   getShaniDashboard,
   isLocalShaniAccessAllowed,
-  SHANI_PANDIT_PROMPT_VERSION
+  SHANI_PANDIT_PROMPT_VERSION,
+  SHANI_PANDIT_SYSTEM_PROMPT
 } from "../src/backend/shaniService.js";
 
 const checks = [];
@@ -23,6 +25,41 @@ async function checkDashboardWorksWithoutMembershipBackend() {
     Array.isArray(result.panditHistory),
     typeof result.report?.phaseTitle === "string",
     typeof result.report?.summary === "string"
+  ].every(Boolean));
+}
+
+function checkPromptRequiresPhaseQuestionAndRemedySpecificity() {
+  pushCheck("Shani Pandit prompt requires phase, question cue, and seven-day remedy specificity", [
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("exact phase title"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("Outside Saade Sati"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("Moon and Saturn context"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("visible word from the user's question"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("For seven days"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("Saturday seva"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("duty completion")
+  ].every(Boolean));
+}
+
+function checkPromptRequiresQualifiedSupportForAnxietySleepAndLegalRisk() {
+  pushCheck("Shani Pandit prompt requires qualified support for sleep, anxiety, and legal risk", [
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("anxiety"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("weak sleep"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("safety-sensitive"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("qualified-support"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("doctor"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("therapist"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("mental-health professional"),
+    SHANI_PANDIT_SYSTEM_PROMPT.includes("lawyer")
+  ].every(Boolean));
+}
+
+function checkPromptRepairKeepsQualityFixesDirect() {
+  const source = fs.readFileSync("src/backend/shaniService.js", "utf8");
+  pushCheck("Shani Pandit repair prompt keeps phase, question, and professional-help fixes direct", [
+    source.includes("If the rejection mentions professional help"),
+    source.includes("direct qualified-support wording inside caution"),
+    source.includes("If the rejection mentions the question or phase"),
+    source.includes("report's exact phase title")
   ].every(Boolean));
 }
 
@@ -456,6 +493,9 @@ function printReport() {
 }
 
 async function main() {
+  checkPromptRequiresPhaseQuestionAndRemedySpecificity();
+  checkPromptRequiresQualifiedSupportForAnxietySleepAndLegalRisk();
+  checkPromptRepairKeepsQualityFixesDirect();
   await checkDashboardWorksWithoutMembershipBackend();
   await checkDashboardReturnsMemberRemedyMap();
   await checkLocalAccessRequiresExplicitFlag();
