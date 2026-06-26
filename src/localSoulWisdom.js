@@ -63,6 +63,17 @@ function polishLocalWisdom(text) {
     .replace(/\bgets lighter for\b/gi, "gets easier for")
     .replace(/\banswered with a time, not a debate\b/gi, "given a clock before debate starts")
     .replace(/\banswer with a time, not a debate\b/gi, "answer with a clock before debate starts")
+    .replace(/\bthe actual strain around\b/gi, "the real cost inside")
+    .replace(/\bgive it a limit that can be checked\b/gi, "put it inside one action with a visible end")
+    .replace(/\bWater and a slower breath can move the choice out of emergency mode\./g, "Drink water, unclench your jaw, and make the choice after the body stops rushing.")
+    .replace(/\bwater and a slower breath\b/gi, "water and an unclenched jaw")
+    .replace(/\bbody is protected before availability is promised\b/gi, "meal, rest, or water is handled before you promise time")
+    .replace(/\bmake the day respond to motion first\b/gi, "leave one practical result on the table first")
+    .replace(/\blet the loop end\b/gi, "close the repeated question")
+    .replace(/\bnot a bigger mood\b/gi, "not a more convincing mood")
+    .replace(/\bwritten into one hour, reply, or task\b/gi, "attached to one specific hour, reply, or task")
+    .replace(/\bproof enough\b/gi, "enough evidence for tonight")
+    .replace(/\bcloseness arrive with shape\b/gi, "closeness stay tied to timing")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -687,7 +698,13 @@ function scenePressure(scene, seed = 0) {
   const category = sceneCopyCategory(scene);
   const phrases = {
     water: ["the body asking to decide after care", "the morning needing sequence before meaning"],
-    calendar: ["the appointment needing a real slot", "the delayed commitment asking for a smaller promise"],
+    calendar: [
+      "the appointment waiting for a real slot",
+      "the deadline waiting for a named hour",
+      "the calendar item asking for one start and stop",
+      "the delayed commitment asking for a smaller promise",
+      "the blank slot waiting for a firm owner"
+    ],
     notebook: ["the thought needing ink instead of rehearsal", "the unfinished line asking for a decision"],
     kitchen: ["the routine asking to be fed before it is judged", "the first task asking for a cleared surface"],
     money: ["the money question asking for numbers instead of worry", "the price, promise, or delay needing separation from self-worth"],
@@ -711,7 +728,7 @@ function sceneCopyCategory(text) {
   const normalized = String(text || "").toLowerCase();
   if (/\b(water|glass|drink)\b/.test(normalized)) return "water";
   if (/\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/.test(normalized)) return "kitchen";
-  if (/\b(calendar|appointment|deadline|time)\b/.test(normalized)) return "calendar";
+  if (/\b(calendar|appointment|deadline|time|hour|slot)\b/.test(normalized)) return "calendar";
   if (/\b(notebook|page|pen|line|written|write)\b/.test(normalized)) return "notebook";
   if (/\b(wallet|receipt|payment|bill|price|money)\b/.test(normalized)) return "money";
   if (/\b(chair|room|desk|workspace|surface|drawer|laundry|bed|domestic)\b/.test(normalized)) return "room";
@@ -734,9 +751,9 @@ function closingEvidence(context, seed = 0) {
     "the reply left short and true",
     "the oldest task named and closed",
     "the payment checked without self-punishment",
-    "one protected meal, water break, or rest cue",
+    bodyEvidenceLine(seed + 3, context),
     "the body cue protected before the reply",
-    "food, water, or rest handled before interpretation",
+    bodyEvidenceLine(seed + 5, context),
     bodyEvidenceLine(seed, context),
     "the draft made real before it was judged",
     "the named limit",
@@ -907,11 +924,11 @@ function nameLine(name, context, seed) {
     `Separate ${need} from the noise around ${area}, ${name}, before you answer anything urgent.`,
     realNeedLine(area, name, need, seed),
     `Before ${area} becomes heavier than it has to be, ${name} needs to ${edgeInstruction}.`,
-    `The actual strain around ${area}, ${name}, is ${cost}; give it a limit that can be checked.`,
+    `The hidden cost inside ${area}, ${name}, is ${cost}; put that cost into one action with a visible end.`,
     solveAreaLine(name, area, need, seed),
     areaCostLine(area, name, cost, seed),
     areaImperfectionLine(name, area, need, seed),
-    `The honest work for ${name} is not a bigger mood; it is ${need} written into one hour, reply, or task.`,
+    `The practical work for ${name} is ${need} attached to one specific hour, reply, or task.`,
     `When ${area} gets noisy, ${name} needs ${need} before the next promise is made.`
   ];
   return pickLine(lines, seed, name, need, edge, area);
@@ -1076,7 +1093,7 @@ function delayCostLine(area, name, need, seed = 0) {
 function bodyCareDecisionLine(seed = 0, context = {}) {
   return pickLine([
     "Eat something simple before naming the problem; hunger is a poor translator.",
-    "Water and a slower breath can move the choice out of emergency mode.",
+    "Drink water, unclench your jaw, and make the choice after the body stops rushing.",
     "Rest deserves a vote before the mind turns pressure into a verdict.",
     "A fed body can answer the day without making every delay personal.",
     "The next choice needs food, water, or rest handled before the mind starts cross-checking everything.",
@@ -1110,7 +1127,7 @@ function bodySizedAccessLine(context, seed = 0) {
   return pickLine([
     `Let access match ${body} today, especially where ${area} is asking for too much proof.`,
     `Offer the time your body can keep, then let ${area} stop borrowing from tomorrow.`,
-    `A warmer answer works better when ${body} is protected before availability is promised.`,
+    `A warmer answer works better after ${body} has been handled and the available hour is clear.`,
     `Let the next yes fit the body you actually have today, not the guilt around ${area}.`,
     `Keep care present, but offer only the time ${body} can afford.`,
     `Name the hour before offering the heart; ${area} needs shape more than sacrifice.`
@@ -1424,7 +1441,7 @@ function actionBeforeMoodLine(action, seed = 0) {
     `Before attention splinters, ${action}; let the inner weather respond to evidence.`,
     `Before attention looks for ten exits, ${action}; give the hour something finished to hold.`,
     `Before the feeling asks for the final word, ${action}; make the practical part visible.`,
-    `Before everything asks for a verdict, ${action}; make the day respond to motion first.`,
+    `Before the question turns into a verdict, ${action}; leave one practical result on the table first.`,
     `Before the story expands, ${action}; give the next hour proof it can hold.`,
     `Before the mind reopens the case, ${action}; end the block before the debate returns.`
   ], seed, action);
@@ -1542,7 +1559,7 @@ function smallRepairClosingLine(seed = 0) {
 function repeatedLoopClosingLine(seed = 0) {
   return pickLine([
     "Close the loop before it asks for a new costume.",
-    "Let the loop end before it requests another rehearsal.",
+    "Close the repeated question before it asks for another rehearsal.",
     "Stop the loop while the answer is still plain enough to keep.",
     "Leave the repeated question closed once the practical piece is done.",
     "Close the return loop before the mind asks for fresh evidence."
@@ -1786,7 +1803,7 @@ function relationClause(text, seed = 0) {
     return pickLine([
       "give warmth a time and a doorway",
       "keep access timed without making affection disappear",
-      "let closeness arrive with shape instead of constant availability"
+      "keep closeness tied to timing instead of constant availability"
     ], seed, value);
   }
   return value;
@@ -1977,9 +1994,19 @@ function eveningQuestionLine(close, seed = 0) {
     `After ${close}, leave the next question for a better-rested hour.`,
     `After ${close}, do not reopen the part that belongs to a later day.`,
     `After ${close}, let the room stay finished instead of starting a new trial.`,
-    `After ${close}, leave the final review outside the bed.`,
+    daylightReviewLine(close, seed),
     `After ${close}, keep the evening narrow enough to recover.`,
     `After ${close}, let unfinished meaning wait without managing the room.`
+  ], seed, close);
+}
+
+function daylightReviewLine(close, seed = 0) {
+  return pickLine([
+    `After ${close}, let tomorrow handle the unfinished question.`,
+    `After ${close}, keep the pillow free from another review.`,
+    `After ${close}, leave the remaining review for morning light.`,
+    `After ${close}, stop before the bed becomes a second desk.`,
+    `After ${close}, let rest have the last word tonight.`
   ], seed, close);
 }
 

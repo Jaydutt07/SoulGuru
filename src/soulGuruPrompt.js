@@ -22,6 +22,7 @@ Avoid tiny house-style anchors that make different users sound related. Do not l
 When two users share the same broad scene category, the vocabulary must still diverge. A calendar scene can be a marked hour, due line, blank slot, appointment, list item, or deadline; never let the category force the same object noun or mentor cadence.
 The first-name sentence must not default to "For Name". Use varied natural placement: "Name needs...", "the private cost for Name...", "around this, Name...", or another sentence that belongs to the user's exact friction.
 Each paragraph needs one specific day-sized detail: a timed block, a reply length, a meal/water/rest cue, a payment/checklist/calendar action, or a conversation boundary that can happen within two hours.
+Avoid SoulGuru house phrases that make different users feel like they received the same mentor card. Never write "the actual strain around", "give it a limit that can be checked", "water and a slower breath", "body is protected before availability is promised", "make the day respond to motion first", "let the loop end", "not a bigger mood", "written into one hour, reply, or task", "closeness arrive with shape", "appointment needing", "due line asking", "final review outside the bed", "leave the last review for daylight", "proof enough", or close variants.
 Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
 Follow the supplied Surface rhythm exactly. Opening bucket controls how sentence 1 begins; final bucket controls how the last sentence begins; imperative target controls how many sentences start with a command verb. These are quality controls to prevent repeated formats between users.
 If Opening bucket is "condition", start sentence 1 with Before, After, When, Where, or With. If it is "scene", start sentence 1 with The, A, An, One, Your, That, or This. If it is "statement", start sentence 1 with a concrete noun or body/detail phrase, not an article and not a command. If it is "imperative", start sentence 1 with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond.
@@ -112,6 +113,20 @@ Avoid these phrases and close variants:
 - "body as the first clock"
 - "larger story"
 - "less explanation"
+- "the actual strain around"
+- "give it a limit that can be checked"
+- "water and a slower breath"
+- "body is protected before availability is promised"
+- "make the day respond to motion first"
+- "let the loop end"
+- "not a bigger mood"
+- "written into one hour, reply, or task"
+- "closeness arrive with shape"
+- "appointment needing"
+- "due line asking"
+- "final review outside the bed"
+- "leave the last review for daylight"
+- "proof enough"
 
 Do not overuse the words calm, steady, clarity, boundary, energy, reassurance, truth, or honest. Use them only when they are the best word.
 Do not sound mystical, vague, performative, or overly poetic.
@@ -626,6 +641,23 @@ export function isLowQualityWisdom(text) {
     /\bwhole story of self-worth\b/,
     /\bone fewer explanation\b/,
     /\bfirst task needing a surface cleared\b/,
+    /\bthe actual strain around\b/,
+    /\bgive it a limit that can be checked\b/,
+    /\bwater and a slower breath\b/,
+    /\bbody is protected before availability is promised\b/,
+    /\bmake the day respond to motion first\b/,
+    /\blet the loop end\b/,
+    /\bnot a bigger mood\b/,
+    /\bwritten into one hour, reply, or task\b/,
+    /\bcloseness arrive with shape\b/,
+    /\bappointment needing\b/,
+    /\bdue line asking\b/,
+    /\bfinal review outside the bed\b/,
+    /\bleave the last review for daylight\b/,
+    /\bproof enough\b/,
+    /\bbody protected before availability\b/,
+    /\beverything asks for a verdict\b/,
+    /\bthe day respond to motion\b/,
     /^[^.!?]{0,120}\b(phone|message|text|unread|inbox|notification|screen|reply)\b/,
     /^[^.!?]{0,90}:/,
     /^today[, ]/,
@@ -821,7 +853,7 @@ function classifyPromptScene(text) {
   if (/\b(phone|message|text|unread|inbox|notification|screen|reply)\b/.test(normalized)) return "device";
   if (/\b(water|glass|drink)\b/.test(normalized)) return "water";
   if (/\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/.test(normalized)) return "kitchen";
-  if (/\b(calendar|appointment|deadline|time)\b/.test(normalized)) return "calendar";
+  if (/\b(calendar|appointment|deadline|time|hour|slot)\b/.test(normalized)) return "calendar";
   if (/\b(notebook|page|pen|line|written|write)\b/.test(normalized)) return "notebook";
   if (/\b(wallet|receipt|payment|bill|price|money)\b/.test(normalized)) return "money";
   if (/\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|send)\b/.test(normalized)) return "conversation";

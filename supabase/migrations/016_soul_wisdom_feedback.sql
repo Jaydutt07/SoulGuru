@@ -4,7 +4,7 @@ create table if not exists public.soul_wisdom_feedback (
   user_key text not null,
   daily_reading_id uuid,
   reading_date date not null,
-  prompt_version text not null default 'soul-wisdom-v20',
+  prompt_version text not null default 'soul-wisdom-v21',
   reading_hash text not null,
   rating text not null,
   reason text,

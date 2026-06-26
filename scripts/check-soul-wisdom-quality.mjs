@@ -378,7 +378,7 @@ function classifyScene(text) {
     ["device", /\b(phone|message|text|unread|inbox|notification|screen|reply)\b/],
     ["water", /\b(water|glass|drink)\b/],
     ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
-    ["calendar", /\b(calendar|appointment|deadline|time)\b/],
+    ["calendar", /\b(calendar|appointment|deadline|time|hour|slot)\b/],
     ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
     ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|held-back|send)\b/],
