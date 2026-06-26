@@ -1,5 +1,6 @@
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { SOUL_WISDOM_PROMPT_VERSION } from "../src/soulWisdomVersion.js";
 
 const checks = [];
 
@@ -42,7 +43,7 @@ async function checkFixtureReportSummarizesPromptTuningSignals() {
     result.stdout.includes("SoulGuru feedback report: pass"),
     result.stdout.includes("rows=5"),
     result.stdout.includes("accurate=3; missed=2; missRate=40.0%"),
-    result.stdout.includes("soul-wisdom-v22"),
+    result.stdout.includes(SOUL_WISDOM_PROMPT_VERSION),
     result.stdout.includes("too generic or repeated: 1"),
     result.stdout.includes("not personally accurate: 1"),
     result.stdout.includes("Review missed readings before the next prompt version")
@@ -78,28 +79,28 @@ async function checkJsonSamplesAreRedacted() {
 function feedbackFixture() {
   return [
     {
-      prompt_version: "soul-wisdom-v22",
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
       rating: "accurate",
       reason: "felt accurate and specific",
       reading_date: "2026-06-26",
       created_at: "2026-06-26T00:00:00.000Z"
     },
     {
-      prompt_version: "soul-wisdom-v22",
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
       rating: "accurate",
       reason: "",
       reading_date: "2026-06-26",
       created_at: "2026-06-26T00:01:00.000Z"
     },
     {
-      prompt_version: "soul-wisdom-v22",
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
       rating: "accurate",
       reason: "the work cue matched",
       reading_date: "2026-06-26",
       created_at: "2026-06-26T00:02:00.000Z"
     },
     {
-      prompt_version: "soul-wisdom-v22",
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
       rating: "missed",
       reason: "too generic and repeated, contact asha@example.com",
       reading_date: "2026-06-26",
@@ -107,7 +108,7 @@ function feedbackFixture() {
       user_key: "sgu_11111111111111111111111111111111"
     },
     {
-      prompt_version: "soul-wisdom-v22",
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
       rating: "missed",
       reason: "not accurate for me, call +919000000001",
       reading_date: "2026-06-26",

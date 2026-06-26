@@ -1,5 +1,11 @@
 import { buildAstrologyContext, buildTransitDateForUser } from "./astrologyEngine.js";
-import { buildParagraphArchitecture, cleanWisdomText, firstName, isLowQualityWisdom } from "./soulGuruPrompt.js";
+import {
+  buildParagraphArchitecture,
+  cleanWisdomText,
+  firstName,
+  getSoulWisdomSpecificityIssues,
+  isLowQualityWisdom
+} from "./soulGuruPrompt.js";
 
 export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined), architectureKey = dateKey) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
@@ -665,7 +671,7 @@ function sceneStatementSubject(scene, seed = 0) {
   }
   if (/\b(meal|food|breakfast|lunch)\b/.test(normalized)) {
     return pickLine([
-      "The delayed first meal",
+      "Breakfast timing",
       "Meal timing",
       "The postponed food cue"
     ], seed, scene);
@@ -1216,11 +1222,21 @@ function costBesideAreaLine(area, name, seed = 0) {
 
 function relationshipTimingLine(seed = 0, area = "", avoid = "") {
   return pickLine([
-    "With other people, access works better when timing is named before tenderness gets stretched.",
+    relationshipClockLine(seed + 5, area, avoid),
     relationshipWarmthTimingLine(seed, area, avoid),
     "With other people, closeness stays kinder when the hour and the limit are both visible.",
     "With other people, name the available hour before the reply widens.",
     "With other people, affection stays cleaner when access has an ending."
+  ], seed, area, avoid);
+}
+
+function relationshipClockLine(seed = 0, area = "", avoid = "") {
+  return pickLine([
+    "With other people, set the hour before care turns into all-day access.",
+    "With other people, name the clock before tenderness starts doing extra labor.",
+    "With other people, let the reply carry one clear time instead of open availability.",
+    "With other people, care stays kinder when the available window is spoken early.",
+    "With other people, timing should hold the door before affection gets overworked."
   ], seed, area, avoid);
 }
 
@@ -1882,7 +1898,7 @@ function sceneVariants(raw) {
   }
   if (raw.includes("meal")) {
     return [
-      "the delayed first meal",
+      "breakfast waiting for a real pause",
       "breakfast sliding later",
       "the meal you keep postponing"
     ];
@@ -2054,6 +2070,7 @@ function isUsableLocalWisdom(text, name, constraints) {
     && wordCount <= 98
     && matchesArchitectureConstraints(text, name, constraints)
     && !isLowQualityWisdom(text)
+    && getSoulWisdomSpecificityIssues(text).length === 0
     && !hasInternalSentenceFamilyRepeat(text)
     && !hasAwkwardLocalPattern(text);
 }

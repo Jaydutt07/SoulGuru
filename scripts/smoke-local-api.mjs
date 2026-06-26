@@ -234,11 +234,12 @@ async function checkShaniDashboard() {
 }
 
 async function checkSoulWisdomFeedback() {
+  const { SOUL_WISDOM_PROMPT_VERSION } = await import("../src/soulWisdomVersion.js");
   const result = await requestJson("POST", "/api/soul-wisdom-feedback", {
     user: smokeUser(),
     rating: "accurate",
     readingDate: "2026-06-24",
-    promptVersion: "soul-wisdom-v22",
+    promptVersion: SOUL_WISDOM_PROMPT_VERSION,
     wisdom: "A smoke reading should be practical, specific, and easy to respond to without sending raw secrets anywhere."
   });
   const feedback = result.body?.feedback || {};

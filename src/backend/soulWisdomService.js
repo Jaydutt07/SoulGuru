@@ -5,6 +5,7 @@ import {
   buildSoulWisdomInput,
   buildSoulWisdomRepairInput,
   createFallbackReading,
+  getSoulWisdomSpecificityIssues,
   isLowQualityWisdom,
   normalizeWisdomPayload,
   SOUL_WISDOM_SYSTEM_PROMPT
@@ -428,6 +429,7 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
   if (hasAwkwardTemplateJoin(text)) {
     issues.push("used awkward assembled guidance phrasing");
   }
+  issues.push(...getSoulWisdomSpecificityIssues(text));
   const openingSeed = context.openingScene || context.dailyScene || "";
   if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
     issues.push(`opening did not use seeded scene "${openingSeed}"`);

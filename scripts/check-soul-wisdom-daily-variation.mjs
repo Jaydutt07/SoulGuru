@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
-import { firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { firstName, getSoulWisdomSpecificityIssues, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
 import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "../src/soulWisdomVersion.js";
 import { SOUL_WISDOM_BASE_CASES } from "./soul-wisdom-quality-cases.mjs";
 
@@ -158,6 +158,7 @@ function evaluateDailyReading({ user, date, result }) {
   if (isLowQualityWisdom(wisdom)) {
     failures.push("matched low-quality/repeated phrasing rules.");
   }
+  failures.push(...getSoulWisdomSpecificityIssues(wisdom).map((issue) => `${issue}.`));
   if (mentionsAstrology(wisdom)) {
     failures.push("mentioned astrology/planet terminology in Soul Guru wisdom.");
   }

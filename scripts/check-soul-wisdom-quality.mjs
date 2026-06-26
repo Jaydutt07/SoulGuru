@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
-import { buildParagraphArchitecture, firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { buildParagraphArchitecture, firstName, getSoulWisdomSpecificityIssues, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
 import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "../src/soulWisdomVersion.js";
 import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
@@ -139,6 +139,7 @@ function evaluateReading({ user, source, result }) {
   if (isLowQualityWisdom(wisdom)) {
     failures.push("matched low-quality/repeated phrasing rules.");
   }
+  failures.push(...getSoulWisdomSpecificityIssues(wisdom).map((issue) => `${issue}.`));
   if (nameCount !== 1) {
     failures.push(`expected first name exactly once, got ${nameCount}.`);
   }

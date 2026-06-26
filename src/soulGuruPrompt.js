@@ -28,6 +28,7 @@ Follow the supplied Surface rhythm exactly. Opening bucket controls how sentence
 If Opening bucket is "condition", start sentence 1 with Before, After, When, Where, or With. If it is "scene", start sentence 1 with The, A, An, One, Your, That, or This. If it is "statement", start sentence 1 with a concrete noun or body/detail phrase, not an article and not a command. If it is "imperative", start sentence 1 with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond.
 If Final bucket is "condition", start the final sentence with When, If, With, Before, After, or By evening. If it is "statement", start with a concrete noun, body detail, or earned conclusion, not an article and not a command. If it is "scene", start with The, A, One, Your, That, or This. If it is "imperative", start with a command verb from the same command list.
 Before returning, silently check: exact sentence count, exact first-name sentence, exact surface rhythm, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no "For Name" defaulting unless it is unmistakably the best sentence, no reusable "mentor advice" cadence, no assembled guidance phrases, and no vague emotional forecast. Rewrite if any check fails.
+Backend quality gate will reject the paragraph if it does not contain at least two different concrete life-detail categories and one measurable edge such as a time, count, amount, reply length, finished mark, paid/checklist action, or named deadline. Make those details natural, not label-like.
 Final private test: replace the user's name with another case and ask whether the paragraph still mostly works. If yes, rewrite it with a sharper object, friction, time window, and consequence from this user's hidden combination.
 
 Output valid JSON only:
@@ -234,7 +235,8 @@ function buildHardReadingContract({ user, context, paragraphArchitecture, surfac
     `- COMMAND COUNT: exactly ${Number.isFinite(contract.imperativeTarget) ? contract.imperativeTarget : "the Surface rhythm target"} imperative sentence opening(s).`,
     `- SURFACE RHYTHM SOURCE: ${surfaceRhythm}.`,
     "- DAILY ACTION: one action the user can finish in under two hours, with a measurable edge.",
-    "- UNIQUENESS: include one ordinary object, one exact friction, one body/routine or timing detail, and one practical consequence from this user's signals."
+    "- UNIQUENESS: include one ordinary object, one exact friction, one body/routine or timing detail, and one practical consequence from this user's signals.",
+    "- SPECIFICITY GATE: at least two concrete life-detail categories plus one measurable edge; vague mentor advice will be rejected."
   ].join("\n");
 }
 
@@ -731,6 +733,47 @@ export function isLowQualityWisdom(text) {
     .filter((word) => (normalized.match(new RegExp(`\\b${word}\\b`, "g")) || []).length > 1);
 
   return repeatedGenericWords.length > 1;
+}
+
+export function getSoulWisdomSpecificityIssues(text) {
+  const normalized = String(text || "").toLowerCase();
+  const issues = [];
+
+  if (!hasMeasurableSoulWisdomEdge(normalized)) {
+    issues.push("missing measurable edge such as a time, count, amount, reply length, deadline, or visible completion mark");
+  }
+
+  const concreteCategoryCount = countSoulWisdomConcreteCategories(normalized);
+  if (concreteCategoryCount < 2) {
+    issues.push(`expected at least 2 concrete life-detail categories, got ${concreteCategoryCount}`);
+  }
+
+  return issues;
+}
+
+function hasMeasurableSoulWisdomEdge(text) {
+  return [
+    /\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/,
+    /\b\d+\s?-?\s?(?:minute|minutes|min|hour|hours|word|words|line|lines|item|items|page|pages|rupee|rupees|reply|replies|block|blocks)\b/,
+    /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|forty|forty-five|sixty)\s+(?:minute|minutes|hour|hours|word|words|line|lines|item|items|page|pages|reply|replies|block|blocks|task|tasks)\b/,
+    /\b(?:named|marked|dated|available|fixed|final)\s+(?:hour|time|date|deadline|line|reply|task|block|slot)\b/,
+    /\b(?:before|after|by)\s+(?:breakfast|lunch|dinner|bedtime|daylight|evening|morning|the next meal|the next call|the next reply)\b/,
+    /\b(?:deadline|due line|calendar date|appointment|timer|checklist|receipt|payment|bill|finish line)\b/,
+    /\b(?:paid|checked|ticked|marked|submitted|sent|closed|finished|completed|recorded)\s+(?:bill|receipt|task|item|note|draft|reply|line|block|payment|deadline|finish)\b/,
+    /\b(?:brief|shorter|clean|cleaner)\s+(?:reply|answer|message)\b/
+  ].some((pattern) => pattern.test(text));
+}
+
+function countSoulWisdomConcreteCategories(text) {
+  const categories = [
+    /\b(?:calendar|appointment|deadline|due line|hour|time|timer|slot|morning|evening|bedtime|daylight)\b/,
+    /\b(?:reply|answer|sentence|call|conversation|word|message|unsent|silence)\b/,
+    /\b(?:water|food|meal|breakfast|lunch|dinner|rest|sleep|shoulder|jaw|body|breath)\b/,
+    /\b(?:desk|room|drawer|chair|counter|notebook|page|pen|door|keys|bag|shoes|kitchen|bed)\b/,
+    /\b(?:task|draft|work|finish|checklist|list|item|block|submitted|completed|promise)\b/,
+    /\b(?:receipt|payment|bill|wallet|amount|rupee|paid|invoice|money)\b/
+  ];
+  return categories.filter((pattern) => pattern.test(text)).length;
 }
 
 export function firstName(name) {

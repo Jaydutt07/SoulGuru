@@ -2,6 +2,7 @@ import {
   normalizeSoulWisdomFeedback,
   submitSoulWisdomFeedback
 } from "../src/backend/soulWisdomFeedbackService.js";
+import { SOUL_WISDOM_PROMPT_VERSION } from "../src/soulWisdomVersion.js";
 
 const checks = [];
 
@@ -51,7 +52,7 @@ async function checkStoredFeedback() {
     user: feedbackUser(),
     rating: "accurate",
     readingDate: "2026-06-26",
-    promptVersion: "soul-wisdom-v22",
+    promptVersion: SOUL_WISDOM_PROMPT_VERSION,
     dailyReadingId: "123e4567-e89b-42d3-a456-426614174000",
     wisdom: "Asha, answer the work message after breakfast and close the notebook before the old worry starts taking the room.",
     reason: longReason
