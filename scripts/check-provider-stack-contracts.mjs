@@ -14,6 +14,7 @@ checkProviderMappingsTargetRealReadinessChecks();
 checkProviderArtifactsExist();
 checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
+checkRazorpayProviderCoversEveryPaidAccessRoute();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
 checkProviderPayloadValidatorRequiresExactStack();
 checkProviderMatrixPassesWithFullProductionEnv();
@@ -106,6 +107,23 @@ function checkOpenAIProviderCoversEveryLiveQualityGate() {
   const missing = requiredCommands.filter((command) => !openai?.commands?.includes(command));
 
   pushCheck("OpenAI provider verifies every live AI reading surface", missing.length === 0, missing);
+}
+
+function checkRazorpayProviderCoversEveryPaidAccessRoute() {
+  const razorpay = PROVIDER_STACK.find((provider) => provider.id === "razorpay");
+  const requiredArtifacts = [
+    "src/backend/payments.js",
+    "api/create-razorpay-order.js",
+    "api/verify-razorpay-payment.js",
+    "api/create-shani-order.js",
+    "api/verify-shani-payment.js",
+    "api/razorpay-webhook.js",
+    "scripts/check-payment-contracts.mjs",
+    "scripts/check-client-payment-flow-contracts.mjs"
+  ];
+  const missing = requiredArtifacts.filter((artifact) => !razorpay?.artifacts?.includes(artifact));
+
+  pushCheck("Razorpay provider evidence covers More Guidance and Shani paid routes", missing.length === 0, missing);
 }
 
 function checkProviderMatrixReportsMissingEnvWithoutSecrets() {

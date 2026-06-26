@@ -108,7 +108,16 @@ export const PROVIDER_STACK = Object.freeze([
       "SHANI_PLAN_1Y_PRICE_PAISE",
       "SHANI_PLAN_FULL_PRICE_PAISE"
     ],
-    artifacts: ["api/create-razorpay-order.js", "api/verify-razorpay-payment.js", "api/razorpay-webhook.js"],
+    artifacts: [
+      "src/backend/payments.js",
+      "api/create-razorpay-order.js",
+      "api/verify-razorpay-payment.js",
+      "api/create-shani-order.js",
+      "api/verify-shani-payment.js",
+      "api/razorpay-webhook.js",
+      "scripts/check-payment-contracts.mjs",
+      "scripts/check-client-payment-flow-contracts.mjs"
+    ],
     commands: ["npm run payments:check"],
     notes: "Server owns prices, checkout orders, webhook secrets, and payment activation."
   },
