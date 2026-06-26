@@ -102,6 +102,7 @@ function checkOpenAIProviderCoversEveryAIRouteAndService() {
   const openai = PROVIDER_STACK.find((provider) => provider.id === "openai");
   const requiredArtifacts = [
     "src/backend/openaiClient.js",
+    "src/backend/userIdentity.js",
     "src/soulWisdomVersion.js",
     "src/backend/soulWisdomService.js",
     "src/backend/astroSolveService.js",
@@ -195,6 +196,7 @@ function checkRazorpayProviderCoversEveryPaidAccessRoute() {
   const razorpay = PROVIDER_STACK.find((provider) => provider.id === "razorpay");
   const requiredArtifacts = [
     "src/backend/payments.js",
+    "src/backend/userIdentity.js",
     "api/create-razorpay-order.js",
     "api/verify-razorpay-payment.js",
     "api/create-shani-order.js",

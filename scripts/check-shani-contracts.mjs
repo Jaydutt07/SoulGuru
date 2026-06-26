@@ -7,6 +7,7 @@ import {
   SHANI_PANDIT_PROMPT_VERSION,
   SHANI_PANDIT_SYSTEM_PROMPT
 } from "../src/backend/shaniService.js";
+import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
 
 const checks = [];
 
@@ -490,16 +491,17 @@ class FakeQuery {
 }
 
 function activeMembership(userKey, overrides = {}) {
+  const normalizedUserKey = isBackendUserKey(userKey) ? userKey : buildBackendUserKey({ id: userKey });
   return {
-    id: `shani-membership-${userKey}`,
-    user_key: userKey,
+    id: `shani-membership-${normalizedUserKey}`,
+    user_key: normalizedUserKey,
     plan_id: "3m",
     plan_name: "3 months",
     status: "active",
     starts_at: "2026-06-01T00:00:00.000Z",
     ends_at: "2099-06-01T00:00:00.000Z",
     provider: "razorpay",
-    provider_payment_id: `pay-shani-${userKey}`,
+    provider_payment_id: `pay-shani-${normalizedUserKey}`,
     provider_subscription_id: null,
     metadata: {},
     created_at: "2026-06-01T00:00:00.000Z",

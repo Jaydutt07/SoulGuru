@@ -9,6 +9,7 @@ import {
   verifyRazorpayPaymentSignature,
   verifyRazorpayWebhookSignature
 } from "../src/backend/payments.js";
+import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
 
 const checks = [];
 
@@ -59,13 +60,14 @@ async function checkOrderCreationContract() {
   };
 
   try {
+    const user = {
+      id: "user-contract",
+      name: "Contract User",
+      phone: "+15550000000",
+      email: "contract@soulguru.local"
+    };
     const order = await createRazorpayOrder({
-      user: {
-        id: "user-contract",
-        name: "Contract User",
-        phone: "+15550000000",
-        email: "contract@soulguru.local"
-      },
+      user,
       amount: 1,
       currency: "USD"
     }, {
@@ -75,7 +77,8 @@ async function checkOrderCreationContract() {
     });
 
     const expectedAuth = `Basic ${Buffer.from("rzp_test_contract:contract-secret").toString("base64")}`;
-    const expectedOrderToken = hmac("order_contract_123|user-contract|49900|INR", "contract-secret");
+    const expectedUserKey = buildBackendUserKey(user);
+    const expectedOrderToken = hmac(`order_contract_123|${expectedUserKey}|49900|INR`, "contract-secret");
     pushCheck("Razorpay order request", [
       seen.url === "https://api.razorpay.com/v1/orders",
       seen.method === "POST",
@@ -83,12 +86,15 @@ async function checkOrderCreationContract() {
       seen.body.amount === 49900,
       seen.body.currency === "INR",
       seen.body.notes?.soulguru_plan === "more_guidance_3m",
-      seen.body.notes?.user_key === "user-contract",
+      seen.body.notes?.user_key === expectedUserKey,
+      isBackendUserKey(seen.body.notes?.user_key),
+      seen.body.notes?.user_key !== user.id,
       order.provider === "razorpay",
       order.keyId === "rzp_test_contract",
       order.orderId === "order_contract_123",
       order.amount === 49900,
       order.currency === "INR",
+      order.userKey === expectedUserKey,
       order.orderToken === expectedOrderToken
     ].every(Boolean));
 
@@ -163,17 +169,18 @@ async function checkShaniOrderCreationContract() {
   };
 
   try {
+    const user = {
+      id: "shani-user-contract",
+      name: "Shani Contract User",
+      phone: "+15550000003",
+      email: "shani-contract@soulguru.local",
+      birthDate: "1995-02-11",
+      birthTime: "10:15",
+      birthPlace: "Jaipur"
+    };
     const order = await createShaniRazorpayOrder({
       planId: "6m",
-      user: {
-        id: "shani-user-contract",
-        name: "Shani Contract User",
-        phone: "+15550000003",
-        email: "shani-contract@soulguru.local",
-        birthDate: "1995-02-11",
-        birthTime: "10:15",
-        birthPlace: "Jaipur"
-      },
+      user,
       amount: 1,
       currency: "USD"
     }, {
@@ -183,7 +190,8 @@ async function checkShaniOrderCreationContract() {
     });
 
     const expectedAuth = `Basic ${Buffer.from("rzp_test_contract:contract-secret").toString("base64")}`;
-    const expectedOrderToken = hmac("order_shani_contract_123|shani-user-contract|54900|INR|shani_remedy_6m", "contract-secret");
+    const expectedUserKey = buildBackendUserKey(user);
+    const expectedOrderToken = hmac(`order_shani_contract_123|${expectedUserKey}|54900|INR|shani_remedy_6m`, "contract-secret");
     pushCheck("Shani Razorpay order request", [
       seen.url === "https://api.razorpay.com/v1/orders",
       seen.method === "POST",
@@ -193,7 +201,9 @@ async function checkShaniOrderCreationContract() {
       seen.body.notes?.soulguru_plan === "shani_remedy_6m",
       seen.body.notes?.soulguru_product === "shani_remedy",
       seen.body.notes?.shani_plan_id === "6m",
-      seen.body.notes?.user_key === "shani-user-contract",
+      seen.body.notes?.user_key === expectedUserKey,
+      isBackendUserKey(seen.body.notes?.user_key),
+      seen.body.notes?.user_key !== user.id,
       seen.body.notes?.birth_date === "1995-02-11",
       order.provider === "razorpay",
       order.orderId === "order_shani_contract_123",
@@ -201,6 +211,7 @@ async function checkShaniOrderCreationContract() {
       order.planName === "6 months",
       order.amount === 54900,
       order.currency === "INR",
+      order.userKey === expectedUserKey,
       order.orderToken === expectedOrderToken
     ].every(Boolean));
 
@@ -278,7 +289,12 @@ async function checkCheckoutVerificationContract() {
   const signature = hmac(`${orderId}|${paymentId}`, secret);
   const amount = 49900;
   const currency = "INR";
-  const orderToken = hmac(`${orderId}|user-contract|${amount}|${currency}`, secret);
+  const checkoutUser = {
+    id: "user-contract",
+    phone: "+15550000000"
+  };
+  const checkoutUserKey = buildBackendUserKey(checkoutUser);
+  const orderToken = hmac(`${orderId}|${checkoutUserKey}|${amount}|${currency}`, secret);
 
   await expectRejects(
     "Checkout verification rejects missing configured price",
@@ -298,10 +314,7 @@ async function checkCheckoutVerificationContract() {
   );
 
   const result = await verifyRazorpayCheckoutPayment({
-    user: {
-      id: "user-contract",
-      phone: "+15550000000"
-    },
+    user: checkoutUser,
     orderId,
     amount,
     currency,
@@ -324,6 +337,8 @@ async function checkCheckoutVerificationContract() {
     result.subscription?.provider === "razorpay",
     result.subscription?.providerPaymentId === paymentId,
     result.subscription?.metadata?.order_id === orderId,
+    result.subscription?.metadata?.user_key === checkoutUserKey,
+    isBackendUserKey(result.subscription?.metadata?.user_key),
     Date.parse(result.subscription?.startedAt),
     Date.parse(result.subscription?.endsAt)
   ].every(Boolean));
@@ -331,10 +346,7 @@ async function checkCheckoutVerificationContract() {
   await expectRejects(
     "Checkout verification requires persisted payment storage",
     () => verifyRazorpayCheckoutPayment({
-      user: {
-        id: "user-contract",
-        phone: "+15550000000"
-      },
+      user: checkoutUser,
       orderId,
       amount,
       currency,
@@ -408,7 +420,7 @@ async function checkCheckoutVerificationContract() {
       orderId,
       amount: 1,
       currency,
-      orderToken: hmac(`${orderId}|user-contract|1|${currency}`, secret),
+      orderToken: hmac(`${orderId}|${checkoutUserKey}|1|${currency}`, secret),
       paymentId,
       signature
     }, {
@@ -427,7 +439,7 @@ async function checkCheckoutVerificationContract() {
       orderId,
       amount,
       currency: "USD",
-      orderToken: hmac(`${orderId}|user-contract|${amount}|USD`, secret),
+      orderToken: hmac(`${orderId}|${checkoutUserKey}|${amount}|USD`, secret),
       paymentId,
       signature
     }, {
@@ -463,7 +475,15 @@ async function checkShaniCheckoutVerificationContract() {
   const signature = hmac(`${orderId}|${paymentId}`, secret);
   const amount = 29900;
   const currency = "INR";
-  const orderToken = hmac(`${orderId}|shani-checkout-user|${amount}|${currency}|shani_remedy_3m`, secret);
+  const checkoutUser = {
+    id: "shani-checkout-user",
+    phone: "+15550000004",
+    birthDate: "1995-02-11",
+    birthTime: "10:15",
+    birthPlace: "Jaipur"
+  };
+  const checkoutUserKey = buildBackendUserKey(checkoutUser);
+  const orderToken = hmac(`${orderId}|${checkoutUserKey}|${amount}|${currency}|shani_remedy_3m`, secret);
 
   await expectRejects(
     "Shani checkout verification rejects missing selected plan price",
@@ -484,13 +504,7 @@ async function checkShaniCheckoutVerificationContract() {
   );
 
   const result = await verifyShaniRazorpayCheckoutPayment({
-    user: {
-      id: "shani-checkout-user",
-      phone: "+15550000004",
-      birthDate: "1995-02-11",
-      birthTime: "10:15",
-      birthPlace: "Jaipur"
-    },
+    user: checkoutUser,
     planId: "3m",
     orderId,
     amount,
@@ -513,6 +527,8 @@ async function checkShaniCheckoutVerificationContract() {
     result.membership?.provider === "razorpay",
     result.membership?.providerPaymentId === paymentId,
     result.membership?.metadata?.order_id === orderId,
+    result.membership?.metadata?.user_key === checkoutUserKey,
+    isBackendUserKey(result.membership?.metadata?.user_key),
     Date.parse(result.membership?.startedAt),
     Date.parse(result.membership?.endsAt)
   ].every(Boolean));
@@ -563,7 +579,7 @@ async function checkShaniCheckoutVerificationContract() {
       orderId,
       amount: 1,
       currency,
-      orderToken: hmac(`${orderId}|shani-checkout-user|1|${currency}|shani_remedy_3m`, secret),
+      orderToken: hmac(`${orderId}|${checkoutUserKey}|1|${currency}|shani_remedy_3m`, secret),
       paymentId,
       signature
     }, {
@@ -583,14 +599,15 @@ async function checkCheckoutSubscriptionRaceContract() {
   const amount = 49900;
   const currency = "INR";
   const signature = hmac(`${orderId}|${paymentId}`, secret);
-  const orderToken = hmac(`${orderId}|race-user|${amount}|${currency}`, secret);
+  const raceUser = {
+    id: "race-user",
+    phone: "+15550000002"
+  };
+  const orderToken = hmac(`${orderId}|${buildBackendUserKey(raceUser)}|${amount}|${currency}`, secret);
   const supabase = createFakePaymentSupabase({ raceSubscriptionInsert: true });
 
   const result = await verifyRazorpayCheckoutPayment({
-    user: {
-      id: "race-user",
-      phone: "+15550000002"
-    },
+    user: raceUser,
     orderId,
     amount,
     currency,
@@ -621,14 +638,15 @@ async function checkShaniCheckoutMembershipRaceContract() {
   const amount = 29900;
   const currency = "INR";
   const signature = hmac(`${orderId}|${paymentId}`, secret);
-  const orderToken = hmac(`${orderId}|shani-race-user|${amount}|${currency}|shani_remedy_3m`, secret);
+  const raceUser = {
+    id: "shani-race-user",
+    phone: "+15550000005"
+  };
+  const orderToken = hmac(`${orderId}|${buildBackendUserKey(raceUser)}|${amount}|${currency}|shani_remedy_3m`, secret);
   const supabase = createFakePaymentSupabase({ raceShaniInsert: true });
 
   const result = await verifyShaniRazorpayCheckoutPayment({
-    user: {
-      id: "shani-race-user",
-      phone: "+15550000005"
-    },
+    user: raceUser,
     planId: "3m",
     orderId,
     amount,

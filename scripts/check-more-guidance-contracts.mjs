@@ -6,6 +6,7 @@ import {
   isLocalMoreGuidanceAllowed,
   saveGuidance
 } from "../src/backend/guidanceService.js";
+import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
 
 const checks = [];
 
@@ -183,6 +184,7 @@ async function checkDashboardReturnsThreeMonthTracking() {
 
 async function checkDashboardReturnsPaidGuidanceHistory() {
   const user = paidUser("dashboard-history-member");
+  const userKey = buildBackendUserKey(user);
   const guidance = paidGuidanceFixture({
     focus: "Review the saved pattern"
   });
@@ -190,7 +192,7 @@ async function checkDashboardReturnsPaidGuidanceHistory() {
     subscriptions: [activeSubscription(user.id)],
     moreGuidanceReadings: [{
       id: "paid-history-1",
-      user_key: user.id,
+      user_key: userKey,
       reading_date: "2026-06-26",
       prompt_version: DEEP_GUIDANCE_PROMPT_VERSION,
       created_at: "2026-06-26T05:00:00.000Z",
@@ -436,12 +438,13 @@ async function checkPaidSubscriptionReadFailureDoesNotCallOpenAI() {
 async function checkCachedPaidReadingBypassesOpenAI() {
   const date = "2026-06-24";
   const user = paidUser("cached-member");
+  const userKey = buildBackendUserKey(user);
   const cachedGuidance = paidGuidanceFixture();
   const supabase = createFakeSupabase({
     subscriptions: [activeSubscription(user.id)],
     moreGuidanceReadings: [{
       id: "paid-cached-1",
-      user_key: user.id,
+      user_key: userKey,
       reading_date: date,
       prompt_version: DEEP_GUIDANCE_PROMPT_VERSION,
       model: "gpt-paid",
@@ -591,7 +594,9 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
   ].every(Boolean));
   pushCheck("Paid cache miss writes one daily More Guidance reading", [
     paidWrites.length === 1,
-    storedReading.user_key === user.id,
+    storedReading.user_key === buildBackendUserKey(user),
+    isBackendUserKey(storedReading.user_key),
+    storedReading.user_key !== user.id,
     storedReading.reading_date === date,
     storedReading.prompt_version === DEEP_GUIDANCE_PROMPT_VERSION,
     storedReading.model === "gpt-paid-contract",
@@ -1026,16 +1031,17 @@ class FakeQuery {
 }
 
 function activeSubscription(userKey, overrides = {}) {
+  const normalizedUserKey = isBackendUserKey(userKey) ? userKey : buildBackendUserKey({ id: userKey });
   return {
-    id: `subscription-${userKey}`,
-    user_key: userKey,
+    id: `subscription-${normalizedUserKey}`,
+    user_key: normalizedUserKey,
     plan_name: "Soul Guru + Astro Solve",
     status: "active",
     starts_at: "2026-06-01T00:00:00.000Z",
     ends_at: "2099-06-01T00:00:00.000Z",
     astro_bonus_questions: 15,
     provider: "razorpay",
-    provider_payment_id: `pay-${userKey}`,
+    provider_payment_id: `pay-${normalizedUserKey}`,
     provider_subscription_id: null,
     metadata: {},
     created_at: "2026-06-01T00:00:00.000Z",

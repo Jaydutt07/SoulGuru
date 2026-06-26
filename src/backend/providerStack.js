@@ -18,6 +18,7 @@ export const PROVIDER_STACK = Object.freeze([
     envScope: ["OPENAI_API_KEY", "OPENAI_MODEL"],
     artifacts: [
       "src/backend/openaiClient.js",
+      "src/backend/userIdentity.js",
       "src/soulWisdomVersion.js",
       "src/backend/soulWisdomService.js",
       "src/backend/astroSolveService.js",
@@ -66,6 +67,7 @@ export const PROVIDER_STACK = Object.freeze([
       "supabase/migrations/010_schema_contract_rpc.sql",
       "supabase/migrations/011_schema_contract_constraints.sql",
       "supabase/migrations/012_shani_membership.sql",
+      "src/backend/userIdentity.js",
       "scripts/generate-supabase-schema-bundle.mjs",
       "scripts/check-supabase-schema-bundle.mjs",
       "scripts/check-supabase-migrations.mjs",
@@ -141,6 +143,7 @@ export const PROVIDER_STACK = Object.freeze([
     ],
     artifacts: [
       "src/backend/payments.js",
+      "src/backend/userIdentity.js",
       "api/create-razorpay-order.js",
       "api/verify-razorpay-payment.js",
       "api/create-shani-order.js",
@@ -150,7 +153,7 @@ export const PROVIDER_STACK = Object.freeze([
       "scripts/check-client-payment-flow-contracts.mjs"
     ],
     commands: ["npm run payments:check"],
-    notes: "Server owns prices, checkout orders, webhook secrets, and payment activation."
+    notes: "Server owns prices, checkout orders, webhook secrets, payment activation, and hashed paid user keys."
   },
   {
     id: "github",

@@ -4,6 +4,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import { buildBackendUserKey } from "./userIdentity.js";
 
 const DEFAULT_LIMIT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -45,7 +46,7 @@ Rules:
 
 export async function getMoreGuidanceDashboard(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
 
   if (!supabase) {
@@ -75,7 +76,7 @@ export async function getMoreGuidanceDashboard(payload, env = process.env, deps 
 export async function saveGuidance(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
   const savedPayload = normalizeSavedGuidancePayload(payload);
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
 
@@ -160,7 +161,7 @@ export async function saveGuidance(payload, env = process.env, deps = {}) {
 
 export async function createMoreGuidanceReading(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || user.birthTimezone || "Asia/Kolkata";
   const model = env.MORE_GUIDANCE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
@@ -906,11 +907,6 @@ function formatPlacement(placement = {}) {
   const house = Number.isFinite(placement.house) ? ` house ${placement.house}` : "";
   const degree = Number.isFinite(placement.degree) ? `${placement.degree}deg` : "unknown degree";
   return `${placement.sign} ${degree}${house}`;
-}
-
-function buildUserKey(user) {
-  const stableValue = user.authUserId || user.id || user.phone || user.email || `${user.name}-${user.birthDate}-${user.birthTime}`;
-  return String(stableValue || "anonymous").toLowerCase().trim();
 }
 
 function hasOwn(object, key) {

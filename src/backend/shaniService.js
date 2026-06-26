@@ -8,6 +8,7 @@ import { buildServerAstrologyContext } from "./astrologyContextService.js";
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import { buildBackendUserKey } from "./userIdentity.js";
 
 export const SHANI_PANDIT_PROMPT_VERSION = "shani-pandit-v2";
 
@@ -51,7 +52,7 @@ const SHANI_MEMBERSHIP_SELECT = [
 
 export async function getShaniDashboard(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const now = deps.now || new Date();
   if (!payload.report) {
     const serverContext = await buildServerAstrologyContext({
@@ -92,7 +93,7 @@ export async function getShaniDashboard(payload, env = process.env, deps = {}) {
 
 export async function createPanditGuidance(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const question = sanitizeQuestion(payload.question);
   const now = deps.now || new Date();
   if (!payload.report) {
@@ -607,11 +608,6 @@ function parseJson(raw) {
       return null;
     }
   }
-}
-
-function buildUserKey(user) {
-  const stableValue = user.authUserId || user.id || user.phone || user.email || `${user.name}-${user.birthDate}-${user.birthTime}`;
-  return String(stableValue || "anonymous").toLowerCase().trim();
 }
 
 function throwHttpError(message, statusCode) {

@@ -125,6 +125,7 @@ This project is being built toward the stack shown in the product planning image
 - Race-safe Razorpay subscription activation so unique database conflicts re-read the existing paid membership
 - Server-owned More Guidance price and currency checks for Razorpay orders and checkout verification
 - Stable paid identity checks so Razorpay orders, checkout activation, and webhooks cannot unlock anonymous subscriptions
+- Privacy-safe hashed backend user keys across Soul Guru cache, More Guidance history, Astro Solves quota, Shani memberships, and Razorpay order tokens
 - Server-owned Shani remedy plan prices and Razorpay checkout activation into `shani_remedy_memberships`
 - Razorpay webhook activation for Shani remedy memberships with provider-payment idempotency
 - Service-role Supabase schema contract RPC for live index verification

@@ -13,6 +13,7 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import { buildBackendUserKey } from "./userIdentity.js";
 import {
   SOUL_WISDOM_MAX_WORDS,
   SOUL_WISDOM_MIN_WORDS,
@@ -26,7 +27,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || "Asia/Kolkata";
   const model = env.OPENAI_MODEL || "gpt-5.5";
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
@@ -225,11 +226,6 @@ async function writeCachedReading(supabase, { user, userKey, date, timezone, rea
   }
 
   return { stored: true };
-}
-
-function buildUserKey(user) {
-  const stableValue = user.authUserId || user.id || user.phone || user.email || `${user.name}-${user.birthDate}-${user.birthTime}`;
-  return String(stableValue || "anonymous").toLowerCase().trim();
 }
 
 function hasOwn(object, key) {

@@ -7,6 +7,7 @@ import {
   createAstroSolve,
   isLocalAstroSolveQuotaAllowed
 } from "../src/backend/astroSolveService.js";
+import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
 
 const checks = [];
 
@@ -206,6 +207,7 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
   const inserts = supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert");
   const profileWrites = supabase.state.calls.filter((call) => call.table === "user_profiles" && call.operation === "upsert");
   const inserted = inserts[0]?.payload;
+  const userKey = buildBackendUserKey(user);
 
   pushCheck("Persisted member receives 18-question Astro Solves allowance", [
     result.allowed === true,
@@ -220,7 +222,9 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
   ].every(Boolean));
   pushCheck("Astro Solves answer is stored with profile and prompt metadata", [
     inserts.length === 1,
-    inserted.user_key === user.id,
+    inserted.user_key === userKey,
+    isBackendUserKey(inserted.user_key),
+    inserted.user_key !== user.id,
     inserted.source === "member",
     inserted.model === "gpt-astro-contract",
     inserted.prompt_version === ASTRO_SOLVE_PROMPT_VERSION,
@@ -564,9 +568,10 @@ class FakeQuery {
 }
 
 function activeSubscription(userKey) {
+  const normalizedUserKey = isBackendUserKey(userKey) ? userKey : buildBackendUserKey({ id: userKey });
   return {
-    id: `subscription-${userKey}`,
-    user_key: userKey,
+    id: `subscription-${normalizedUserKey}`,
+    user_key: normalizedUserKey,
     status: "active",
     ends_at: "2099-06-01T00:00:00.000Z",
     astro_bonus_questions: ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE
@@ -574,9 +579,10 @@ function activeSubscription(userKey) {
 }
 
 function makeQuestions(userKey, count) {
+  const normalizedUserKey = isBackendUserKey(userKey) ? userKey : buildBackendUserKey({ id: userKey });
   return Array.from({ length: count }, (_, index) => ({
-    id: `existing-${userKey}-${index + 1}`,
-    user_key: userKey,
+    id: `existing-${normalizedUserKey}-${index + 1}`,
+    user_key: normalizedUserKey,
     question: `Existing question ${index + 1}`,
     answer: {},
     created_at: "2026-06-01T00:00:00.000Z"

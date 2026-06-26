@@ -3,6 +3,7 @@ import {
   isUncachedSoulWisdomAllowed,
   SOUL_WISDOM_PROMPT_VERSION
 } from "../src/backend/soulWisdomService.js";
+import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
 
 const checks = [];
@@ -131,11 +132,13 @@ async function checkCacheReadFailureDoesNotCallOpenAI() {
 
 async function checkCachedReadingBypassesOpenAI() {
   const date = "2026-06-24";
+  const user = { id: "tara-cache", name: "Tara Sen", birthDate: "1992-04-12", birthTime: "08:20", birthPlace: "Pune" };
+  const userKey = buildBackendUserKey(user);
   const cachedWisdom = "The blue cup near your notes points to a day that wants fewer scattered promises. Tara, put the difficult message beside the practical task and finish the task first, because your mind is turning delay into a private accusation. The useful move is small: name the request, name the limit, and stop decorating the answer. Warmth will not disappear because you choose timing. Let one clean completion settle the room before you explain anything else.";
   const supabase = createFakeSupabase({
     dailyReadings: [{
       id: "daily-cached-1",
-      user_key: "tara-cache",
+      user_key: userKey,
       reading_date: date,
       prompt_version: SOUL_WISDOM_PROMPT_VERSION,
       model: "gpt-test",
@@ -154,7 +157,7 @@ async function checkCachedReadingBypassesOpenAI() {
   const openAiCalls = [];
 
   const result = await createDailySoulWisdom({
-    user: { id: "tara-cache", name: "Tara Sen", birthDate: "1992-04-12", birthTime: "08:20", birthPlace: "Pune" },
+    user,
     date
   }, {
     OPENAI_API_KEY: ""
@@ -170,6 +173,7 @@ async function checkCachedReadingBypassesOpenAI() {
     result.cached === true,
     result.source === "supabase",
     result.stored === true,
+    isBackendUserKey(userKey),
     result.wisdom === cachedWisdom,
     result.promptVersion === SOUL_WISDOM_PROMPT_VERSION,
     result.readingDate === date
@@ -240,6 +244,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   const dailyWrites = supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert");
   const profileWrites = supabase.state.calls.filter((call) => call.table === "user_profiles" && call.operation === "upsert");
   const storedReading = [...supabase.state.dailyReadings.values()][0];
+  const userKey = buildBackendUserKey(user);
 
   pushCheck("Cache miss calls backend OpenAI once", [
     openAiRequests.length === 1,
@@ -253,7 +258,11 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
   ].every(Boolean));
   pushCheck("Cache miss writes one daily reading", [
     dailyWrites.length === 1,
-    storedReading.user_key === "leela-cache",
+    storedReading.user_key === userKey,
+    isBackendUserKey(storedReading.user_key),
+    storedReading.user_key !== user.id,
+    storedReading.user_key !== user.phone,
+    storedReading.user_key !== user.email,
     storedReading.reading_date === date,
     storedReading.prompt_version === SOUL_WISDOM_PROMPT_VERSION,
     storedReading.model === "gpt-contract",

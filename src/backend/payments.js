@@ -3,6 +3,11 @@ import { buildMembershipEmail, sendEmail } from "./emailService.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { buildShaniReport } from "./shaniService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import {
+  buildBackendUserKey,
+  getBackendUserIdentity,
+  normalizeBackendUserKey
+} from "./userIdentity.js";
 
 const RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
 const MEMBERSHIP_PLAN_NAME = "Soul Guru + Astro Solve";
@@ -857,19 +862,18 @@ async function sendMembershipConfirmation(to, details, env) {
 }
 
 function buildPaymentUserKey(user) {
-  return normalizeUserKey(user.authUserId || user.id || user.phone || user.email);
+  return buildBackendUserKey(user);
 }
 
 function requirePaymentUserKey(user, message = "Payment user identity is required") {
-  const userKey = buildPaymentUserKey(user);
-  if (!userKey || userKey === "anonymous") {
+  if (!getBackendUserIdentity(user)) {
     throwHttpError(message, 400);
   }
-  return userKey;
+  return buildPaymentUserKey(user);
 }
 
 function normalizeUserKey(value) {
-  return String(value || "").toLowerCase().trim();
+  return normalizeBackendUserKey(value);
 }
 
 function isLocalPaymentActivationAllowed(env) {

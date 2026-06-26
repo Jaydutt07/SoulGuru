@@ -8,6 +8,7 @@ import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertGuidanceMemory } from "./memoryService.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import { buildBackendUserKey } from "./userIdentity.js";
 
 export const ASTRO_SOLVE_PROMPT_VERSION = "astro-solve-v2";
 export const ASTRO_SOLVE_FREE_ALLOWANCE = 3;
@@ -44,7 +45,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   const question = String(payload.question || "").trim();
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const model = env.ASTRO_SOLVE_MODEL || env.OPENAI_MODEL || "gpt-5.5";
-  const userKey = buildUserKey(user);
+  const userKey = buildBackendUserKey(user);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   const makeOpenAIClient = deps.createOpenAIClient || createOpenAIClient;
   const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
@@ -376,11 +377,6 @@ function limitWords(text, maxWords) {
   const words = String(text || "").split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return String(text || "");
   return `${words.slice(0, maxWords).join(" ").replace(/[,:;]+$/, "")}.`;
-}
-
-function buildUserKey(user) {
-  const stableValue = user.authUserId || user.id || user.phone || user.email || `${user.name}-${user.birthDate}-${user.birthTime}`;
-  return String(stableValue || "anonymous").toLowerCase().trim();
 }
 
 function hasOwn(object, key) {
