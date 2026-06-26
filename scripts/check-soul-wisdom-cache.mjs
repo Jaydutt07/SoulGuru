@@ -293,7 +293,7 @@ async function checkSeedMismatchRepairsBeforeCaching() {
     birthPlace: "Mumbai"
   };
   const mismatchedWisdomJson = JSON.stringify({
-    wisdom: "The cup near the sink keeps asking for a decision before the morning gets noisy. Asha, the useful pressure is not about doing everything; it is about giving one promise a visible edge before the day scatters. Write the smallest task clearly, keep the reply shorter than the worry, and let the practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    wisdom: "The calendar square keeps asking for a decision before the morning gets noisy. Asha, the useful pressure is not about doing everything; it is about giving one promise a visible edge before the day scatters. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
     innerWeather: "Pressure becoming practical",
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
@@ -342,7 +342,7 @@ async function checkSeedMismatchRepairsBeforeCaching() {
     result.quality?.passed === true,
     result.wisdom === repairedWisdom.wisdom,
     storedReading.reading?.wisdom === repairedWisdom.wisdom,
-    !storedReading.reading?.wisdom.includes("cup near the sink"),
+    !storedReading.reading?.wisdom.includes("calendar square keeps asking"),
     memoryUpserts.length === 1
   ].every(Boolean));
 }

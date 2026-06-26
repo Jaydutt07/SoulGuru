@@ -476,7 +476,7 @@ function sceneStatementSubject(scene, seed = 0) {
     kitchen: ["Kitchen-counter evidence", "The delayed meal", "Cooling-cup patience"],
     money: ["Wallet arithmetic", "Receipt pressure", "The payment pause"],
     room: ["Desk-corner pressure", "The open drawer", "Room-level disorder"],
-    door: ["Doorway delay", "Keys gathered late", "The errand threshold"],
+    door: ["Door delay", "Keys gathered late", "The errand threshold"],
     body: ["Mirror honesty", "Shoulder-level resistance", "Jaw-tight timing"],
     conversation: ["Unsent-sentence pressure", "Conversation timing", "Held-back wording"],
     task: ["List pressure", "Draft resistance", "The unnamed task"],
@@ -630,7 +630,7 @@ function openingLine(scene, context, seed, salt = "", preferredBucket = "") {
     `Give ${lowerScene} a real use before worry turns it into a symbol.`,
     subjectPhysicalActionLine(subject, seed),
     returningSubjectLine(subject, seed),
-    `${subject} is smaller than the verdict forming around it.`
+    subjectVerdictLine(subject, seed)
   ];
   return pickLine(linesForBucket(lines, preferredBucket), seed, salt, scene, context.dailyArea, context.coreNeed, context.personalEdge);
 }
@@ -643,7 +643,7 @@ function nameLine(name, context, seed) {
   const cost = compactAvoid(context.avoid || context.emotionalKnot);
   const lines = [
     `${name} needs to ${edgeInstruction}; let ${area} stay smaller than a test nobody assigned.`,
-    `Before ${area} turns delay into extra rent, ${name} needs ${need}.`,
+    delayCostLine(area, name, need, seed),
     containerAskLine(area, name, seed),
     `Give today's need a specific shape, ${name}, before the same problem changes costume again.`,
     sharperWorkLine(name, edgeInstruction, seed),
@@ -657,7 +657,7 @@ function nameLine(name, context, seed) {
     `The real pressure around ${area}, ${name}, is ${cost}; give it a limit that can be checked.`,
     solveAreaLine(name, area, need, seed),
     `Under ${area}, ${name} is paying for ${cost}; put the cost where it can be seen.`,
-    `${name} can let ${area} stay imperfect while ${need} gets a practical place to land.`,
+    areaImperfectionLine(name, area, need, seed),
     `The honest work for ${name} is not a bigger mood; it is ${need} with a visible next use.`,
     `When ${area} gets noisy, ${name} needs ${need} before the next promise is made.`
   ];
@@ -709,7 +709,7 @@ function bodyLine(context, seed, salt = "") {
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const cue = bodyCueClause(body);
   const bodyMove = bodyMoveClause(body);
-  const bodyPractice = bodyPracticeClause(body, seed);
+  const bodyPractice = bodyPracticeClause(body, stableHash([seed, context.openingScene, context.dailyArea, context.bodySignal].filter(Boolean).join("|")));
   const weather = innerWeatherClause(context.innerWeather || "the mood is asking for less noise");
   const avoid = avoidPhrase(context.avoid || "over-explaining", seed);
   const lines = [
@@ -720,10 +720,41 @@ function bodyLine(context, seed, salt = "") {
     `Before the pressure gets a story, make the body real through ${bodyPractice}.`,
     bodyFirstConsiderationLine(avoid, seed),
     bodyInterpretationLine(bodyPractice, seed),
-    `Food, water, or rest lowers the volume on a braced decision.`,
+    bodyCareDecisionLine(seed, context),
     bodySequenceLine(bodyPractice, seed)
   ];
   return pickLine(lines, seed, salt, body, cue, weather, avoid, context.openingScene, context.dailyArea);
+}
+
+function areaImperfectionLine(name, area, need, seed = 0) {
+  return pickLine([
+    `${name} can leave ${area} unfinished long enough for ${need} to get a practical place to land.`,
+    `${name} does not need to perfect ${area}; ${need} needs a visible next use first.`,
+    `Let ${area} stay workable for ${name} while ${need} receives a clear task.`,
+    `${name} can stop polishing ${area} and give ${need} somewhere useful to land.`,
+    `${name} needs ${area} to become smaller before ${need} turns into another performance.`
+  ], seed, name, area, need);
+}
+
+function delayCostLine(area, name, need, seed = 0) {
+  return pickLine([
+    `Before delay starts charging attention around ${area}, ${name} needs ${need}.`,
+    `Before ${area} makes waiting feel like a bill, ${name} needs ${need}.`,
+    `Before delay grows teeth around ${area}, ${name} needs ${need}.`,
+    `Before waiting becomes the whole story around ${area}, ${name} needs ${need}.`,
+    `Before ${area} turns one pause into a private cost, ${name} needs ${need}.`
+  ], seed, area, name, need);
+}
+
+function bodyCareDecisionLine(seed = 0, context = {}) {
+  return pickLine([
+    "Food first, then the decision; hunger should not get to argue as instinct.",
+    "Water and a slower breath can move the choice out of emergency mode.",
+    "Rest deserves a vote before the mind turns pressure into a verdict.",
+    "A fed body can answer the day without making every delay personal.",
+    "The next decision needs a cared-for body more than another private hearing.",
+    "A short walk or meal can make the useful answer easier to hear."
+  ], seed, context.openingScene, context.dailyArea, context.bodySignal);
 }
 
 function relationLine(name, context, seed) {
@@ -866,6 +897,16 @@ function sceneExplanationLine(scene, seed = 0) {
   ], seed, scene);
 }
 
+function subjectVerdictLine(subject, seed = 0) {
+  return pickLine([
+    `${subject} is carrying less weight than the story gathering around it.`,
+    `${subject} deserves a practical answer before it becomes a private judgment.`,
+    `${subject} is smaller than the meaning the mind keeps adding to it.`,
+    `${subject} needs one ordinary use, not a larger case against the day.`,
+    `${subject} should become a handle before it turns into evidence.`
+  ], seed, subject);
+}
+
 function subjectPhysicalActionLine(subject, seed = 0) {
   const lowerSubject = lowerFirst(subject);
   return pickLine([
@@ -930,7 +971,9 @@ function solveAreaLine(name, area, need, seed = 0) {
 function actionBeforeMoodLine(action, seed = 0) {
   return pickLine([
     `Before the day scatters, ${action}; let the mood catch up to something already shaped.`,
-    `Before attention splinters, ${action}; the feeling can answer afterward.`,
+    `Before attention splinters, ${action}; let the inner weather respond to evidence.`,
+    `Before attention looks for ten exits, ${action}; give the hour something finished to hold.`,
+    `Before the feeling asks for the final word, ${action}; make the practical part visible.`,
     `Before everything asks for a verdict, ${action}; make the day respond to motion first.`,
     `Before the story expands, ${action}; give the next hour proof it can hold.`,
     `Before the mind reopens the case, ${action}; let the practical part speak first.`
@@ -939,11 +982,15 @@ function actionBeforeMoodLine(action, seed = 0) {
 
 function bodySequenceLine(bodyPractice, seed = 0) {
   return pickLine([
-    `${capitalize(bodyPractice)} gives the next choice a steadier floor.`,
     `${capitalize(bodyPractice)} changes the timing before the decision gets oversized.`,
     `${capitalize(bodyPractice)} helps the next move arrive from care instead of pressure.`,
     `${capitalize(bodyPractice)} makes the decision easier to keep after the mood passes.`,
-    `${capitalize(bodyPractice)} gives the practical answer somewhere firm to land.`
+    `${capitalize(bodyPractice)} gives the practical answer somewhere firm to land.`,
+    `${capitalize(bodyPractice)} lets the next choice come from a body that has been included.`,
+    `${capitalize(bodyPractice)} keeps the decision from borrowing urgency it has not earned.`,
+    `${capitalize(bodyPractice)} moves the answer out of the body's alarm system.`,
+    `${capitalize(bodyPractice)} makes the next reply less dependent on pressure.`,
+    `${capitalize(bodyPractice)} gives the mind fewer false signals to defend.`
   ], seed, bodyPractice);
 }
 
@@ -1000,7 +1047,10 @@ function conversationPullLine(seed = 0, relation = "", avoid = "") {
 function nextExchangeLine(seed = 0) {
   return pickLine([
     "The next exchange gets easier when the answer stops trying to manage every reaction.",
-    "The next conversation can stay smaller if the reply serves the request, not the atmosphere.",
+    "The next conversation can stay brief when the answer handles only what was asked.",
+    "The next reply can respect the request without managing the whole atmosphere.",
+    "The next exchange needs the useful answer, not a performance around everyone's reaction.",
+    "The next conversation becomes lighter when the reply stops doing extra emotional work.",
     "Leave the extra explanation outside the room; the exchange will have more air.",
     "Keep warmth in the reply; leave performance out.",
     "The exchange will hold better when the answer stays brief and true."
@@ -1156,7 +1206,14 @@ function bodyPracticeClause(text, seed = 0) {
       "letting water come before the meaning-making",
       "using water as the first answer before naming a signal",
       "drinking first so the body gets a vote before the story",
-      "pausing for water before treating the feeling as guidance"
+      "pausing for water before treating the feeling as guidance",
+      "taking the glass seriously before the mind names the pressure",
+      "letting one drink interrupt the rush to interpret",
+      "putting water between the first reaction and the answer",
+      "giving thirst a practical answer before calling the mood wise",
+      "using the next sip to slow the verdict down",
+      "letting the body be hydrated before the thought becomes instruction",
+      "answering thirst before letting instinct run the meeting"
     ], seed, value);
   }
   const replacements = [

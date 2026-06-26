@@ -97,12 +97,12 @@ This project is being built toward the stack shown in the product planning image
 - Shared OpenAI backend timeout/retry policy for Responses and Embeddings requests
 - Shared backend fetch timeout policy for external REST vendors and smoke-safe contract coverage
 - Astronomy-based birth/transit context replacing hash-only astrology
-- Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, daily transits, and Saade Sati windows
+- Offline astrology engine contract checker for place resolution, timezone handling, sidereal placements, lunar mansion/tithi timing, daily transits, and Saade Sati windows
 - Server-side birth place geocoding enrichment for uncatalogued profile locations
 - Runtime birth-place geocoder validation for HTTPS provider config, real user agents, valid coordinate ranges, and usable place labels
 - Operator birth-place geocoder smoke test for configured provider resolution, coordinate validation, timezone derivation, and secret-safe output
 - Runtime transactional email validation for safe recipients, subjects, and normalized Resend tags
-- Soul Guru v13 daily wisdom prompt with private reading fingerprints, surface-rhythm repair checks, whole-sentence cache refreshes, and structure-similarity gates
+- Soul Guru v15 daily wisdom prompt with private reading fingerprints, surface-rhythm repair checks, whole-sentence cache refreshes, structure-similarity gates, and real lunar mansion/tithi timing
 - More Guidance v3 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
 - Five-profile More Guidance paid-reading quality gate for word counts, concrete cues, generic-phrase bans, and overview diversity
 - Extended twenty-profile More Guidance paid-reading diversity gate in release readiness

@@ -1,6 +1,8 @@
 import {
   buildAstrologyContext,
   buildTransitDateForUser,
+  getLunarDayFromLongitudes,
+  getLunarMansionFromLongitude,
   getSaadeSatiFromChart,
   getSaturnSignWindow
 } from "../src/astrologyEngine.js";
@@ -12,6 +14,7 @@ checkPlaceResolutionContract();
 checkTimezoneAwareTransitDates();
 checkSiderealChartAndTransitContract();
 checkDailyTransitSensitivity();
+checkLunarMansionAndTithiHelpers();
 checkSaadeSatiContract();
 
 const failed = checks.filter((check) => !check.passed);
@@ -84,21 +87,32 @@ function checkSiderealChartAndTransitContract() {
     approx(context.birthChart.sun.degree, 0.14, 0.08),
     context.birthChart.moon.sign === "Sagittarius",
     approx(context.birthChart.moon.degree, 6.67, 0.08),
+    context.birthMoonMansion.name === "Mula",
+    context.birthMoonMansion.pada === 3,
+    context.birthChart.moon.lunarMansion.name === "Mula",
+    context.birthChart.moon.lunarMansion.pada === 3,
     context.birthChart.saturn.sign === "Aquarius",
     approx(context.birthChart.saturn.degree, 16.4, 0.08)
   ].every(Boolean));
 
-  pushCheck("Astrology context contains real daily transit placements", [
+  pushCheck("Astrology context contains real daily transit placements and lunar timing", [
     context.transits.sun.sign === "Gemini",
     approx(context.transits.sun.degree, 8.57, 0.12),
     context.transits.moon.sign === "Libra",
     approx(context.transits.moon.degree, 5.66, 0.12),
+    context.dailyLunarMansion.name === "Chitra",
+    context.dailyLunarMansion.pada === 4,
+    context.transits.moon.lunarMansion.name === "Chitra",
+    context.dailyLunarDay.name === "Dashami",
+    context.dailyLunarDay.paksha === "Shukla",
+    context.dailyLunarDay.phase === "waxing",
+    approx(context.dailyLunarDay.angle, 117.09, 0.16),
     context.transits.saturn.sign === "Pisces",
     approx(context.transits.saturn.degree, 19.63, 0.12),
     context.transits.moonFromNatalMoon === 11,
     context.transits.saturnFromNatalMoon === 4,
     context.transits.sunFromNatalSun === 11,
-    context.openingScene === "the quiet room after a sentence you did not send"
+    context.openingScene === "the old tab in your mind that keeps reopening"
   ].every(Boolean));
 }
 
@@ -118,9 +132,36 @@ function checkDailyTransitSensitivity() {
   pushCheck("Astrology context changes with daily transits", [
     first.transits.moon.sign === next.transits.moon.sign,
     Math.abs(next.transits.moon.longitude - first.transits.moon.longitude) > 5,
-    first.innerWeather !== next.innerWeather,
+    first.dailyLunarMansion.name !== next.dailyLunarMansion.name,
+    first.dailyLunarDay.name !== next.dailyLunarDay.name,
     first.attentionAnchor !== next.attentionAnchor,
     first.openingScene !== next.openingScene
+  ].every(Boolean));
+}
+
+function checkLunarMansionAndTithiHelpers() {
+  const firstMansion = getLunarMansionFromLongitude(0);
+  const secondMansion = getLunarMansionFromLongitude(13.34);
+  const waxingFirst = getLunarDayFromLongitudes(100, 90);
+  const darkMoon = getLunarDayFromLongitudes(179, 180);
+
+  pushCheck("Lunar mansion helper returns nakshatra, pada, and progress", [
+    firstMansion.name === "Ashwini",
+    firstMansion.pada === 1,
+    firstMansion.progress === 0,
+    secondMansion.name === "Bharani",
+    secondMansion.pada === 1
+  ].every(Boolean));
+
+  pushCheck("Lunar day helper returns tithi, paksha, phase, and angle", [
+    waxingFirst.name === "Pratipada",
+    waxingFirst.paksha === "Shukla",
+    waxingFirst.phase === "waxing",
+    approx(waxingFirst.angle, 10, 0.01),
+    darkMoon.name === "Amavasya",
+    darkMoon.paksha === "Krishna",
+    darkMoon.phase === "waning",
+    approx(darkMoon.angle, 359, 0.01)
   ].every(Boolean));
 }
 

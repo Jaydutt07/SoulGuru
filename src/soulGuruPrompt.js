@@ -108,6 +108,11 @@ User:
 Silent astrology-derived signals:
 - Solar temperament: ${context.sign} / ${context.element}
 - Emotional rhythm: ${context.moonSign}
+- Birth lunar temperament layer: ${formatLunarMansion(context.birthMoonMansion)}
+- Today's lunar mansion layer: ${formatLunarMansion(context.dailyLunarMansion)}
+- Today's lunar day layer: ${formatLunarDay(context.dailyLunarDay)}
+- Lunar movement tone: ${context.lunarTone || "unknown"}
+- Lunar day tone: ${context.tithiTone || "unknown"}
 - Life path pressure: ${context.lifePath}
 - Daily area: ${context.dailyArea}
 - Timing tone: ${context.timingTone}
@@ -174,6 +179,10 @@ function buildReadingFingerprint(user, context, today) {
     user.birthPlace,
     today,
     context.openingScene,
+    context.dailyLunarMansion?.name,
+    context.dailyLunarMansion?.pada,
+    context.dailyLunarDay?.name,
+    context.dailyLunarDay?.paksha,
     context.dailyArea,
     context.emotionalKnot,
     context.decisionGate,
@@ -185,11 +194,23 @@ function buildReadingFingerprint(user, context, today) {
   return [
     route,
     `scene=${context.openingScene || context.dailyScene}`,
+    `lunarLayer=${formatLunarMansion(context.dailyLunarMansion)}`,
+    `lunarDay=${formatLunarDay(context.dailyLunarDay)}`,
     `tension=${context.emotionalKnot}`,
     `movement=${context.decisionGate || context.mentorMove}`,
     `body=${context.bodySignal}`,
     `consequence=${context.relationalCaution || context.relationshipMirror || context.workSignal}`
   ].filter(Boolean).join("; ");
+}
+
+function formatLunarMansion(mansion = {}) {
+  if (!mansion?.name) return "unknown";
+  return `${mansion.name} pada ${mansion.pada || "unknown"}; tone=${mansion.tone || "unknown"}`;
+}
+
+function formatLunarDay(lunarDay = {}) {
+  if (!lunarDay?.name) return "unknown";
+  return `${lunarDay.paksha || "unknown"} ${lunarDay.name}; phase=${lunarDay.phase || "unknown"}; tone=${lunarDay.tone || "unknown"}`;
 }
 
 export function normalizeWisdomPayload(raw, fallback = createFallbackReading()) {

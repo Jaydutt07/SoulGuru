@@ -31,6 +31,105 @@ const ELEMENTS = {
   Pisces: "water"
 };
 
+const NAKSHATRA_SPAN = 360 / 27;
+const PADA_SPAN = NAKSHATRA_SPAN / 4;
+
+const NAKSHATRAS = [
+  "Ashwini",
+  "Bharani",
+  "Krittika",
+  "Rohini",
+  "Mrigashira",
+  "Ardra",
+  "Punarvasu",
+  "Pushya",
+  "Ashlesha",
+  "Magha",
+  "Purva Phalguni",
+  "Uttara Phalguni",
+  "Hasta",
+  "Chitra",
+  "Swati",
+  "Vishakha",
+  "Anuradha",
+  "Jyeshtha",
+  "Mula",
+  "Purva Ashadha",
+  "Uttara Ashadha",
+  "Shravana",
+  "Dhanishta",
+  "Shatabhisha",
+  "Purva Bhadrapada",
+  "Uttara Bhadrapada",
+  "Revati"
+];
+
+const NAKSHATRA_TONES = [
+  "quick repair through direct movement",
+  "holding pressure until a cleaner choice appears",
+  "cutting through excess to protect the useful part",
+  "building safety through one tangible comfort",
+  "following curiosity without scattering the promise",
+  "naming the storm before it names the day",
+  "returning to what still deserves protection",
+  "letting care become disciplined and specific",
+  "keeping sharp perception away from suspicion",
+  "standing with dignity without demanding applause",
+  "allowing pleasure without losing the agreement",
+  "making generosity measurable enough to last",
+  "using skillful hands before adding more words",
+  "turning refinement into one visible correction",
+  "choosing space before the mind chases proof",
+  "staying loyal to the repair, not the drama",
+  "building trust through quiet, repeated presence",
+  "protecting depth from needless exposure",
+  "removing the false root so effort can breathe",
+  "letting conviction become practice, not pressure",
+  "finishing the old duty before seeking recognition",
+  "listening for the simple rhythm underneath noise",
+  "moving ambition into disciplined timing",
+  "treating distance as medicine, not punishment",
+  "holding two truths without forcing a verdict",
+  "softening responsibility without abandoning it",
+  "closing gently before beginning again"
+];
+
+const TITHI_NAMES = [
+  "Pratipada",
+  "Dwitiya",
+  "Tritiya",
+  "Chaturthi",
+  "Panchami",
+  "Shashthi",
+  "Saptami",
+  "Ashtami",
+  "Navami",
+  "Dashami",
+  "Ekadashi",
+  "Dwadashi",
+  "Trayodashi",
+  "Chaturdashi",
+  "Purnima"
+];
+
+const TITHI_TONES = [
+  "beginning with one clean first step",
+  "pairing action with patient adjustment",
+  "building momentum through a small skill",
+  "removing the obstacle before forcing progress",
+  "restoring rhythm through care and repetition",
+  "protecting effort with discipline and timing",
+  "choosing visibility without rushing proof",
+  "meeting intensity with a contained response",
+  "turning courage into practical repair",
+  "letting completion decide the next promise",
+  "simplifying appetite, speech, and attention",
+  "sharing responsibility without becoming available to everything",
+  "finishing the delicate part before widening the plan",
+  "releasing what has become heavier than useful",
+  "letting fullness close the cycle with respect"
+];
+
 const DAILY_AREAS = [
   "unfinished work and personal authority",
   "relationship tone and unspoken expectations",
@@ -279,6 +378,9 @@ export function buildAstrologyContext(user, date = new Date()) {
   const transitMoon = siderealBody("Moon", today);
   const transitSun = siderealBody("Sun", today);
   const transitSaturn = siderealBody("Saturn", today);
+  const birthMoonMansion = getLunarMansionFromLongitude(birthMoon.longitude);
+  const transitMoonMansion = getLunarMansionFromLongitude(transitMoon.longitude);
+  const lunarDay = getLunarDayFromLongitudes(transitMoon.longitude, transitSun.longitude);
   const lifePath = reduceDigits(user.birthDate);
   const moonDistance = signDistance(birthMoon.sign, transitMoon.sign);
   const saturnDistance = signDistance(birthMoon.sign, transitSaturn.sign);
@@ -295,13 +397,18 @@ export function buildAstrologyContext(user, date = new Date()) {
     birthPlace.timezone,
     today.toISOString().slice(0, 10),
     transitMoon.sign,
-    transitSaturn.sign
+    transitSaturn.sign,
+    transitMoonMansion.name,
+    transitMoonMansion.pada,
+    lunarDay.name,
+    lunarDay.paksha
   ].join("|"));
 
   return {
     sign: birthSun.sign,
     element: ELEMENTS[birthSun.sign],
     moonSign: birthMoon.sign,
+    birthMoonMansion: serializeLunarMansion(birthMoonMansion),
     lifePath,
     birthLocation: {
       label: birthPlace.label,
@@ -313,45 +420,58 @@ export function buildAstrologyContext(user, date = new Date()) {
     },
     birthChart: {
       sun: serializePlacement(birthSun),
-      moon: serializePlacement(birthMoon),
+      moon: {
+        ...serializePlacement(birthMoon),
+        lunarMansion: serializeLunarMansion(birthMoonMansion)
+      },
       saturn: serializePlacement(birthSaturn)
     },
     transits: {
       sun: serializePlacement(transitSun),
-      moon: serializePlacement(transitMoon),
+      moon: {
+        ...serializePlacement(transitMoon),
+        lunarMansion: serializeLunarMansion(transitMoonMansion)
+      },
       saturn: serializePlacement(transitSaturn),
       moonFromNatalMoon: moonDistance,
       saturnFromNatalMoon: saturnDistance,
-      sunFromNatalSun: solarDistance
+      sunFromNatalSun: solarDistance,
+      lunarDay: serializeLunarDay(lunarDay)
     },
-    dailyArea: DAILY_AREAS[mod(moonDistance + solarDistance + lifePath, DAILY_AREAS.length)],
-    timingTone: TIMING_TONES[mod(transitMoon.signIndex + lifePath, TIMING_TONES.length)],
-    innerWeather: INNER_WEATHERS[mod(moonDistance + seed, INNER_WEATHERS.length)],
-    emotionalKnot: EMOTIONAL_KNOTS[mod(saturnDistance + lifePath + seed, EMOTIONAL_KNOTS.length)],
-    decisionGate: DECISION_GATES[mod(transitSaturn.signIndex + solarDistance + seed, DECISION_GATES.length)],
-    relationshipMirror: RELATIONSHIP_MIRRORS[mod(transitMoon.signIndex + birthMoon.signIndex, RELATIONSHIP_MIRRORS.length)],
-    bodySignal: BODY_SIGNALS[mod(moonDistance + transitSun.signIndex, BODY_SIGNALS.length)],
-    workSignal: WORK_SIGNALS[mod(saturnDistance + transitSaturn.signIndex, WORK_SIGNALS.length)],
-    attentionAnchor: ATTENTION_ANCHORS[mod(seed + moonDistance + solarDistance, ATTENTION_ANCHORS.length)],
-    mentorMove: MENTOR_MOVES[mod(seed + saturnDistance + transitMoon.signIndex, MENTOR_MOVES.length)],
-    relationalCaution: RELATIONAL_CAUTIONS[mod(seed + birthMoon.signIndex + transitSaturn.signIndex, RELATIONAL_CAUTIONS.length)],
-    closingPermission: CLOSING_PERMISSIONS[mod(seed + lifePath + transitSun.signIndex, CLOSING_PERMISSIONS.length)],
-    dailyScene: DAILY_SCENES[mod(seed + transitMoon.signIndex + solarDistance, DAILY_SCENES.length)],
+    dailyLunarMansion: serializeLunarMansion(transitMoonMansion),
+    dailyLunarDay: serializeLunarDay(lunarDay),
+    lunarTone: transitMoonMansion.tone,
+    tithiTone: lunarDay.tone,
+    dailyArea: DAILY_AREAS[mod(moonDistance + solarDistance + lifePath + transitMoonMansion.index, DAILY_AREAS.length)],
+    timingTone: TIMING_TONES[mod(transitMoon.signIndex + lifePath + lunarDay.index, TIMING_TONES.length)],
+    innerWeather: INNER_WEATHERS[mod(moonDistance + seed + lunarDay.number, INNER_WEATHERS.length)],
+    emotionalKnot: EMOTIONAL_KNOTS[mod(saturnDistance + lifePath + seed + transitMoonMansion.pada, EMOTIONAL_KNOTS.length)],
+    decisionGate: DECISION_GATES[mod(transitSaturn.signIndex + solarDistance + seed + lunarDay.index, DECISION_GATES.length)],
+    relationshipMirror: RELATIONSHIP_MIRRORS[mod(transitMoon.signIndex + birthMoon.signIndex + transitMoonMansion.pada, RELATIONSHIP_MIRRORS.length)],
+    bodySignal: BODY_SIGNALS[mod(moonDistance + transitSun.signIndex + lunarDay.number, BODY_SIGNALS.length)],
+    workSignal: WORK_SIGNALS[mod(saturnDistance + transitSaturn.signIndex + transitMoonMansion.index, WORK_SIGNALS.length)],
+    attentionAnchor: ATTENTION_ANCHORS[mod(seed + moonDistance + solarDistance + lunarDay.number, ATTENTION_ANCHORS.length)],
+    mentorMove: MENTOR_MOVES[mod(seed + saturnDistance + transitMoon.signIndex + transitMoonMansion.index, MENTOR_MOVES.length)],
+    relationalCaution: RELATIONAL_CAUTIONS[mod(seed + birthMoon.signIndex + transitSaturn.signIndex + lunarDay.index, RELATIONAL_CAUTIONS.length)],
+    closingPermission: CLOSING_PERMISSIONS[mod(seed + lifePath + transitSun.signIndex + transitMoonMansion.pada, CLOSING_PERMISSIONS.length)],
+    dailyScene: DAILY_SCENES[mod(seed + transitMoon.signIndex + solarDistance + lunarDay.number, DAILY_SCENES.length)],
     openingScene: OPENING_SCENES[mod(
       seed
       + lifePath * 11
       + birthMoon.signIndex * 7
       + birthSun.signIndex * 5
       + moonDistance * 3
-      + saturnDistance * 13,
+      + saturnDistance * 13
+      + transitMoonMansion.index * 17
+      + lunarDay.number * 19,
       OPENING_SCENES.length
     )],
-    coreNeed: CORE_NEEDS[mod(seed + saturnDistance + lifePath, CORE_NEEDS.length)],
-    personalEdge: PERSONAL_EDGES[mod(seed + moonDistance + transitSaturn.signIndex, PERSONAL_EDGES.length)],
-    stabilizer: pickStabilizer(moonDistance, saturnDistance, seed),
-    avoid: pickAvoidPattern(saturnDistance, solarDistance, seed),
-    blueprint: BLUEPRINTS[mod(seed + moonDistance + lifePath, BLUEPRINTS.length)],
-    voiceTexture: VOICE_TEXTURES[mod(seed + saturnDistance + lifePath, VOICE_TEXTURES.length)]
+    coreNeed: CORE_NEEDS[mod(seed + saturnDistance + lifePath + lunarDay.index, CORE_NEEDS.length)],
+    personalEdge: PERSONAL_EDGES[mod(seed + moonDistance + transitSaturn.signIndex + transitMoonMansion.index, PERSONAL_EDGES.length)],
+    stabilizer: pickStabilizer(moonDistance, saturnDistance, seed + lunarDay.number),
+    avoid: pickAvoidPattern(saturnDistance, solarDistance, seed + transitMoonMansion.index),
+    blueprint: BLUEPRINTS[mod(seed + moonDistance + lifePath + transitMoonMansion.pada, BLUEPRINTS.length)],
+    voiceTexture: VOICE_TEXTURES[mod(seed + saturnDistance + lifePath + lunarDay.number, VOICE_TEXTURES.length)]
   };
 }
 
@@ -413,6 +533,41 @@ function siderealBody(bodyName, date) {
     sign: SIDEREAL_SIGNS[signIndex],
     signIndex,
     degree: round(sidereal % 30)
+  };
+}
+
+export function getLunarMansionFromLongitude(longitude) {
+  const value = mod(Number(longitude) || 0, 360);
+  const index = Math.min(NAKSHATRAS.length - 1, Math.floor(value / NAKSHATRA_SPAN));
+  const degreeInMansion = value - index * NAKSHATRA_SPAN;
+  const pada = Math.min(4, Math.floor(degreeInMansion / PADA_SPAN) + 1);
+
+  return {
+    name: NAKSHATRAS[index],
+    index,
+    pada,
+    tone: NAKSHATRA_TONES[index],
+    degree: round(degreeInMansion),
+    progress: round((degreeInMansion / NAKSHATRA_SPAN) * 100)
+  };
+}
+
+export function getLunarDayFromLongitudes(moonLongitude, sunLongitude) {
+  const angle = mod((Number(moonLongitude) || 0) - (Number(sunLongitude) || 0), 360);
+  const index = Math.min(29, Math.floor(angle / 12));
+  const number = (index % 15) + 1;
+  const paksha = index < 15 ? "Shukla" : "Krishna";
+  const name = number === 15 && paksha === "Krishna" ? "Amavasya" : TITHI_NAMES[number - 1];
+
+  return {
+    name,
+    number,
+    index,
+    paksha,
+    phase: paksha === "Shukla" ? "waxing" : "waning",
+    angle: round(angle),
+    progress: round(((angle % 12) / 12) * 100),
+    tone: TITHI_TONES[number - 1]
   };
 }
 
@@ -619,6 +774,28 @@ function serializePlacement(placement) {
     sign: placement.sign,
     degree: placement.degree,
     longitude: placement.longitude
+  };
+}
+
+function serializeLunarMansion(mansion) {
+  return {
+    name: mansion.name,
+    pada: mansion.pada,
+    tone: mansion.tone,
+    degree: mansion.degree,
+    progress: mansion.progress
+  };
+}
+
+function serializeLunarDay(lunarDay) {
+  return {
+    name: lunarDay.name,
+    number: lunarDay.number,
+    paksha: lunarDay.paksha,
+    phase: lunarDay.phase,
+    tone: lunarDay.tone,
+    angle: lunarDay.angle,
+    progress: lunarDay.progress
   };
 }
 

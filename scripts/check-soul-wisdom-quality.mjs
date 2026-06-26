@@ -295,7 +295,7 @@ function classifyScene(text) {
     ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
     ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|held-back|send)\b/],
-    ["room", /\b(chair|room|desk|drawer|laundry|bed|domestic)\b/],
+    ["room", /\b(chair|room|desk|workspace|drawer|laundry|bed|domestic)\b/],
     ["door", /\b(shoes|door|keys|bag|charger|errand)\b/],
     ["body", /\b(mirror|shoulder|shoulders|jaw|body|breath)\b/],
     ["task", /\b(list|task|item|draft|work|promise)\b/],

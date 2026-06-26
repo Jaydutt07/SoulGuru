@@ -9,7 +9,7 @@ SoulGuru is a mobile-first astrology mentorship app with daily Soul Guru guidanc
 - Backend API: Vercel serverless functions in `api/`
 - Database/cache: Supabase
 - AI: OpenAI Responses API
-- Astrology engine: `astronomy-engine` with sidereal sign context
+- Astrology engine: `astronomy-engine` with sidereal sign, lunar mansion, tithi, and transit context
 
 ## Local Setup
 
@@ -136,6 +136,8 @@ Check chart/transit calculation, place resolution, timezone handling, and Saade 
 ```bash
 npm run astrology:check
 ```
+
+The astrology contract verifies sidereal birth/transit placements, birth and daily lunar mansion/pada, lunar tithi/paksha, timezone-safe local dates, and Saade Sati Saturn windows.
 
 Check Harmony compatibility against sidereal birth-chart placements:
 
