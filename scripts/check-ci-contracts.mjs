@@ -8,12 +8,19 @@ const workflow = readFile(workflowPath);
 const template = readFile(templatePath);
 
 pushCheck("Documented GitHub Actions CI template exists", Boolean(template));
+pushCheck(
+  workflow
+    ? "Active GitHub Actions workflow exists"
+    : "Active GitHub Actions workflow install is pending workflow-scope credentials",
+  true
+);
 
 if (template) {
   checkRequiredCommands(template);
 }
 
 if (workflow) {
+  checkRequiredCommands(workflow, "workflow");
   pushCheck("Active workflow matches documented CI template", normalize(workflow) === normalize(template));
 }
 
@@ -24,7 +31,7 @@ if (failed.length > 0) {
   process.exit(1);
 }
 
-function checkRequiredCommands(workflowText) {
+function checkRequiredCommands(workflowText, source = "template") {
   const requiredCommands = [
     "npm run ci:check",
     "npm run soul:quality",
@@ -71,12 +78,16 @@ function checkRequiredCommands(workflowText) {
     "npm run android:apk",
     "npm run android:artifact:check",
     "npm run soul:quality:ai",
+    "npm run soul:daily:ai",
     "npm run astro:quality:ai",
     "npm run more-guidance:quality:ai",
     "npm run shani:quality:ai"
   ];
   const missing = requiredCommands.filter((command) => !workflowText.includes(command));
-  pushCheck("CI template runs the required release and mobile gates", missing.length === 0, missing);
+  const label = source === "workflow"
+    ? "Active CI workflow runs the required release and mobile gates"
+    : "CI template runs the required release and mobile gates";
+  pushCheck(label, missing.length === 0, missing);
 }
 
 function readFile(file) {

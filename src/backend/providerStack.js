@@ -40,6 +40,7 @@ export const PROVIDER_STACK = Object.freeze([
     commands: [
       "npm run openai:check",
       "npm run soul:quality:ai",
+      "npm run soul:daily:ai",
       "npm run astro:quality:ai",
       "npm run more-guidance:quality:ai",
       "npm run shani:quality:ai"

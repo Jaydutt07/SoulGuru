@@ -138,6 +138,7 @@ function checkOpenAIProviderCoversEveryLiveQualityGate() {
   const openai = PROVIDER_STACK.find((provider) => provider.id === "openai");
   const requiredCommands = [
     "npm run soul:quality:ai",
+    "npm run soul:daily:ai",
     "npm run astro:quality:ai",
     "npm run more-guidance:quality:ai",
     "npm run shani:quality:ai"
