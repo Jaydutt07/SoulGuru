@@ -48,6 +48,7 @@ for (const group of groups) {
   const repeatedScenes = buildSceneRepeats(group.results).filter((item) => item.category !== "general" && item.count > maxSceneRepeats);
   const repeatedStructures = buildStructureRepeats(group.results).filter((item) => item.count > maxStructureRepeats);
   const deviceOpenings = group.results.filter((item) => item.openingSceneCategory === "device");
+  const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results, group.results.length <= 5 ? 2 : 3);
   if (repeatedScenes.length) {
     failures.push(`${group.source}: repeated opening scene category ${repeatedScenes.map((item) => `${item.category}=${item.count}`).join(", ")}.`);
   }
@@ -56,6 +57,9 @@ for (const group of groups) {
   }
   if (deviceOpenings.length > 1) {
     failures.push(`${group.source}: device/message imagery opened ${deviceOpenings.length} readings.`);
+  }
+  if (repeatedDistinctivePhrases.length) {
+    failures.push(`${group.source}: repeated distinctive phrase(s): ${repeatedDistinctivePhrases.slice(0, 3).map((item) => `"${item.phrase}" in ${item.names.join(" / ")}`).join("; ")}.`);
   }
 
   for (const item of group.results) {
@@ -210,6 +214,51 @@ function buildSimilarity(results) {
     }
   }
   return pairs;
+}
+
+function buildRepeatedDistinctivePhrases(results, minOwners = 2) {
+  const phraseOwners = new Map();
+  for (const item of results) {
+    const seen = new Set();
+    for (const phrase of buildDistinctivePhrases(item.wisdom)) {
+      seen.add(phrase);
+    }
+    for (const phrase of seen) {
+      const names = phraseOwners.get(phrase) || [];
+      names.push(item.name);
+      phraseOwners.set(phrase, names);
+    }
+  }
+  return [...phraseOwners]
+    .filter(([, names]) => names.length >= minOwners)
+    .map(([phrase, names]) => ({ phrase, names }))
+    .sort((first, second) => second.names.length - first.names.length || second.phrase.length - first.phrase.length);
+}
+
+function buildDistinctivePhrases(text) {
+  const tokens = normalizedPhraseTokens(text);
+  const phrases = [];
+  for (const size of [7, 6, 5]) {
+    for (let index = 0; index <= tokens.length - size; index += 1) {
+      const phraseTokens = tokens.slice(index, index + size);
+      if (isDistinctivePhrase(phraseTokens)) {
+        phrases.push(phraseTokens.join(" "));
+      }
+    }
+  }
+  return phrases;
+}
+
+function normalizedPhraseTokens(text) {
+  return words(text.toLowerCase())
+    .map((word) => word.replace(/[^a-z0-9']/g, ""))
+    .filter(Boolean);
+}
+
+function isDistinctivePhrase(tokens) {
+  const stop = new Set(["a", "an", "and", "are", "as", "at", "be", "been", "before", "by", "can", "do", "for", "from", "has", "have", "in", "is", "it", "its", "not", "of", "on", "or", "that", "the", "then", "this", "to", "when", "where", "with", "without", "you", "your"]);
+  const distinctive = tokens.filter((token) => token.length >= 5 && !stop.has(token));
+  return distinctive.length >= 3;
 }
 
 function jaccard(first, second) {

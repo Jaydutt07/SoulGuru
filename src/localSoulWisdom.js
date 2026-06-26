@@ -26,7 +26,7 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
     wisdom: normalizeLocalWisdom(wisdom),
     innerWeather: toCue(context.innerWeather),
     todayMove: toCue(context.decisionGate),
-    release: toCue(context.avoid)
+    release: toCue(avoidPhrase(context.avoid, seed + 31))
   };
 }
 
@@ -227,16 +227,16 @@ function compactFillerLine(context, seed, imperative, usedLines = new Set()) {
     "Name the limit once, in plain words, before approval turns into a second job."
   ];
   const statementLines = [
-    `The body gives better timing when ${body} comes before interpretation.`,
+    bodyTimingLine(body, seed),
     "A shorter reply can keep affection present without making every feeling your assignment.",
     `A finished ${window} task will carry the decision better than another private courtroom.`,
     `The habit of ${avoid} weakens when the next choice has a visible edge.`,
-    "With other people, access needs timing before tenderness turns into resentment.",
+    relationshipTimingLine(seed),
     `${capitalize(area)} becomes easier to handle when the body is fed, watered, or rested first.`,
     `A kept limit gives ${area} shape before effort starts arguing for permission.`,
     `${capitalize(area)} needs a container that can be seen from the outside.`,
     compactAreaLine(context),
-    "Plain timing can protect closeness without turning silence into punishment."
+    silenceTimingLine(seed)
   ];
   return pickDistinctLine(imperative ? imperativeLines : statementLines, seed, usedLines, area, body, avoid);
 }
@@ -258,7 +258,7 @@ function compactClosingLine(context, preferredBucket = "", seed = 0) {
       "This practical finish deserves more respect than another perfect explanation."
     ],
     statement: [
-      `${capitalize(close)} will carry more truth tonight than another perfect explanation.`,
+      plainWorkClosingLine(seed, close),
       "A kept time, closed task, and rested body are enough to carry into evening.",
       "Completion deserves more respect than the doubt still asking questions."
     ],
@@ -314,6 +314,107 @@ function compactAvoid(text) {
   return "over-reading the moment";
 }
 
+function avoidPhrase(text, seed = 0) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("checking") || normalized.includes("signs")) {
+    return pickLine([
+      "checking every small change",
+      "turning tiny shifts into proof",
+      "scanning ordinary details for hidden signals",
+      "asking each small change to explain the whole day",
+      "reading every shift as a verdict"
+    ], seed, normalized);
+  }
+  if (normalized.includes("delay") && normalized.includes("verdict")) {
+    return pickLine([
+      "turning delay into a verdict",
+      "letting a slow reply judge the whole day",
+      "making delay sound larger than it is",
+      "treating waiting as proof",
+      "using delay as a private scorecard"
+    ], seed, normalized);
+  }
+  if (normalized.includes("explain")) {
+    return pickLine([
+      "over-explaining",
+      "using extra words to manage the room",
+      "explaining past the useful point",
+      "turning explanation into control",
+      "answering the atmosphere instead of the request"
+    ], seed, normalized);
+  }
+  return fragment(text);
+}
+
+function needPhrase(text, seed = 0) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("permission") && normalized.includes("finish")) {
+    return pickLine([
+      "permission to finish before polishing",
+      "room to close the first version",
+      "freedom to complete before improving",
+      "a finish line that does not demand perfection",
+      "support for ending the task before decorating it"
+    ], seed, normalized);
+  }
+  if (normalized.includes("boundary") || normalized.includes("speech")) {
+    return pickLine([
+      "one boundary that does not need a speech",
+      "a limit that can stand without performance",
+      "a clear edge around what you can offer",
+      "a simple no that still leaves warmth intact",
+      "a boundary small enough to keep"
+    ], seed, normalized);
+  }
+  return fragment(text);
+}
+
+function edgePhrase(text, seed = 0) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("protect peace") && normalized.includes("cold")) {
+    return pickLine([
+      "protect peace without freezing your warmth",
+      "keep peace available without turning distant",
+      "hold peace with warmth still intact",
+      "protect quiet without making yourself unreachable",
+      "let peace have a shape without becoming hard"
+    ], seed, normalized);
+  }
+  if (normalized.includes("smallest action")) {
+    return pickLine([
+      "make one action visible enough to respect",
+      "give the smallest action a visible edge",
+      "let the first action become clear enough to trust",
+      "make the next action concrete enough to count",
+      "turn the smallest action into something visible"
+    ], seed, normalized);
+  }
+  return fragment(text);
+}
+
+function actionPhrase(text, seed = 0) {
+  const normalized = fragment(text).toLowerCase();
+  if (normalized.includes("visible task") && normalized.includes("emotional debate")) {
+    return pickLine([
+      "finish the visible task before the feeling asks for court",
+      "complete the task you can see before debating the mood",
+      "move the visible task first and let the emotion answer later",
+      "handle the task in front of you before the inner debate expands",
+      "close the visible task before the feeling starts negotiating"
+    ], seed, normalized);
+  }
+  if (normalized.includes("message") && normalized.includes("simplifying")) {
+    return pickLine([
+      "send the message after cutting it to the useful part",
+      "simplify the message before sending it",
+      "make the reply shorter before it leaves your hands",
+      "send only the answer that can stay true",
+      "trim the message before the mood edits it"
+    ], seed, normalized);
+  }
+  return fragment(text);
+}
+
 function compactAreaLine(context) {
   const area = String(context.dailyArea || "").toLowerCase();
   if (area.includes("learning") || area.includes("scattered")) {
@@ -351,6 +452,20 @@ function sceneStatementSubject(scene, seed = 0) {
       "Keys gathered late",
       "The bag and charger delay",
       "The late key-and-charger detail"
+    ], seed, scene);
+  }
+  if (/\b(pen|decision|written|line)\b/.test(normalized)) {
+    return pickLine([
+      "The pen beside the decision",
+      "The unwritten line",
+      "Decision pressure beside the page"
+    ], seed, scene);
+  }
+  if (/\b(meal|food|breakfast|lunch)\b/.test(normalized)) {
+    return pickLine([
+      "The delayed first meal",
+      "Meal timing",
+      "The postponed food cue"
     ], seed, scene);
   }
   const category = sceneCopyCategory(scene);
@@ -506,41 +621,41 @@ function openingLine(scene, context, seed, salt = "", preferredBucket = "") {
     `When your attention lands on ${lowerScene}, let ${pressure} become the work.`,
     `Keep ${lowerScene} in view until the problem fits inside the next timed action.`,
     `Notice ${lowerScene} before the mind hires it as evidence against you.`,
-    `${scene} can pull the day back into reach when it is treated as a concrete instruction.`,
+    openingInstructionLine(scene, seed),
     `Use ${lowerScene} to begin with facts before the feeling starts editing them.`,
-    `Stay with ${lowerScene} until the day narrows to the action that can actually close.`,
+    stayWithSceneLine(lowerScene, seed),
     `Let ${lowerScene} mark the work that belongs to this hour, then leave the larger story outside.`,
     `Treat ${lowerScene} as a handle for the next decision, not a private courtroom.`,
-    `${scene} belongs to the part of the day that needs less explaining and more handling.`,
+    sceneExplanationLine(scene, seed),
     `Give ${lowerScene} a real use before worry turns it into a symbol.`,
-    `${subject} loses force when the next action becomes physical.`,
-    `${subject} keeps returning because a real-world answer is overdue.`,
+    subjectPhysicalActionLine(subject, seed),
+    returningSubjectLine(subject, seed),
     `${subject} is smaller than the verdict forming around it.`
   ];
   return pickLine(linesForBucket(lines, preferredBucket), seed, salt, scene, context.dailyArea, context.coreNeed, context.personalEdge);
 }
 
 function nameLine(name, context, seed) {
-  const edge = fragment(context.personalEdge || context.emotionalKnot || "turning a workable moment into a verdict");
-  const need = fragment(context.coreNeed || context.innerWeather || "room to move slowly");
+  const edge = edgePhrase(context.personalEdge || context.emotionalKnot || "turning a workable moment into a verdict", seed);
+  const need = needPhrase(context.coreNeed || context.innerWeather || "room to move slowly", seed);
   const area = dailyAreaLabel(context.dailyArea);
   const edgeInstruction = lowerFirst(edge);
   const cost = compactAvoid(context.avoid || context.emotionalKnot);
   const lines = [
-    `${name} needs to ${edgeInstruction} before ${area} starts sounding like a test nobody assigned.`,
+    `${name} needs to ${edgeInstruction}; let ${area} stay smaller than a test nobody assigned.`,
     `Before ${area} turns delay into extra rent, ${name} needs ${need}.`,
-    `Around ${area}, ${name} is being asked for a container, not a flawless mood.`,
+    containerAskLine(area, name, seed),
     `Give today's need a specific shape, ${name}, before the same problem changes costume again.`,
-    `The sharper work for ${name} is to ${edgeInstruction} without making the moment a measure of worth.`,
-    `A delay around ${area} can be handled without letting it score the whole day for ${name}.`,
+    sharperWorkLine(name, edgeInstruction, seed),
+    delayHandledLine(area, name, seed),
     `Give ${area} a practical container, ${name}, while ${cost} is still small enough to interrupt.`,
-    `${name} protects the real need by making the choice visible before the argument grows.`,
-    `The urge to ${edgeInstruction}, ${name}, needs a timed action instead of another private debate.`,
+    visibleChoiceLine(name, seed),
+    timedNameActionLine(name, edgeInstruction, seed),
     `Separate ${need} from the noise around ${area}, ${name}, before you answer anything urgent.`,
-    `The real need under ${area}, ${name}, is ${need}; make support visible and simple.`,
+    realNeedLine(area, name, need, seed),
     `Before ${area} becomes heavier than it has to be, ${name} needs to ${edgeInstruction}.`,
     `The real pressure around ${area}, ${name}, is ${cost}; give it a limit that can be checked.`,
-    `${name} does not need to solve ${area} by feeling ready; ${need} needs a time and place.`,
+    solveAreaLine(name, area, need, seed),
     `Under ${area}, ${name} is paying for ${cost}; put the cost where it can be seen.`,
     `${name} can let ${area} stay imperfect while ${need} gets a practical place to land.`,
     `The honest work for ${name} is not a bigger mood; it is ${need} with a visible next use.`,
@@ -566,11 +681,11 @@ function dailyAreaLabel(area) {
 }
 
 function actionLine(context, seed, salt = "") {
-  const action = fragment(context.decisionGate || context.mentorMove || context.stabilizer || "complete the nearest useful task");
+  const action = actionPhrase(context.decisionGate || context.mentorMove || context.stabilizer || "complete the nearest useful task", seed);
   const work = fragment(context.workSignal || "finish one practical detail");
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const bodyAction = bodyInfinitiveClause(body);
-  const avoid = fragment(context.avoid || "over-explaining");
+  const avoid = avoidPhrase(context.avoid || "over-explaining", seed);
   const window = timeBox(seed);
   const close = closingEvidence(context, seed);
   const lines = [
@@ -579,12 +694,12 @@ function actionLine(context, seed, salt = "") {
     `Check the body first through this rule: ${body}, with ${avoid} kept out of the room.`,
     `Give the next ${window} block a clear edge: ${action}, then stop auditioning the choice for applause.`,
     `Give the work a place by choosing to ${work}, while the extra possibilities stay unopened for now.`,
-    `Before the day scatters, ${action}; let the feeling respond after the action has form.`,
+    actionBeforeMoodLine(action, seed),
     `Shrink the decision until it has today's size: ${action}.`,
     `Treat the body's vote as useful data by choosing to ${bodyAction}, then complete the nearest piece of work without dramatizing it.`,
     `Turn the insight into motion: ${work}, then let ${close} be enough for this block.`,
     `Give the action a time and place by choosing to ${action}.`,
-    `Let the body lead the timing through this move: ${body}, then handle the practical part after that.`,
+    bodyLeadActionLine(body, seed),
     `Reduce the work to a visible movement: ${work}, and let the rest wait its turn.`
   ];
   return pickLine(lines, seed, salt, action, work, body, avoid, context.dailyArea, context.openingScene, context.coreNeed);
@@ -594,39 +709,39 @@ function bodyLine(context, seed, salt = "") {
   const body = fragment(context.bodySignal || "let the body settle before choosing words");
   const cue = bodyCueClause(body);
   const bodyMove = bodyMoveClause(body);
-  const bodyPractice = bodyPracticeClause(body);
+  const bodyPractice = bodyPracticeClause(body, seed);
   const weather = innerWeatherClause(context.innerWeather || "the mood is asking for less noise");
-  const avoid = fragment(context.avoid || "over-explaining");
+  const avoid = avoidPhrase(context.avoid || "over-explaining", seed);
   const lines = [
     `Let ${cue} set the sequence before ${avoid} begins making the day louder.`,
     `The day becomes more useful when ${bodyPractice} comes before any final interpretation.`,
     `Keep the body in the room today: ${bodyMove}, then let the mind make a smaller claim.`,
-    `Treat ${weather} as information, but choose timing through ${bodyPractice}.`,
+    `Treat ${weather} as information, then let ${bodyPractice} set the timing.`,
     `Before the pressure gets a story, make the body real through ${bodyPractice}.`,
-    `The body deserves first consideration here because ${avoid} will make the day sound larger than it is.`,
-    `${capitalize(bodyPractice)} before interpretation gives the decision a cleaner floor.`,
+    bodyFirstConsiderationLine(avoid, seed),
+    bodyInterpretationLine(bodyPractice, seed),
     `Food, water, or rest lowers the volume on a braced decision.`,
-    `${capitalize(bodyPractice)} turns the next choice from a reaction into a handled sequence.`
+    bodySequenceLine(bodyPractice, seed)
   ];
   return pickLine(lines, seed, salt, body, cue, weather, avoid, context.openingScene, context.dailyArea);
 }
 
 function relationLine(name, context, seed) {
   const relation = relationClause(context.relationalCaution || context.relationshipMirror || "wait for behavior to confirm what words are promising", seed);
-  const avoid = fragment(context.avoid || "over-explaining");
+  const avoid = avoidPhrase(context.avoid || "over-explaining", seed);
   const lines = [
     `With other people, ${relation}; affection does not require unlimited access.`,
-    `If a conversation pulls for more, keep the answer shorter than the worry around it.`,
+    conversationPullLine(seed, relation, avoid),
     `In the next conversation, ${lowerFirst(relation)}, so your pace softens without erasing your position.`,
-    `The next exchange gets cleaner when extra words stop being used to calm the air.`,
+    nextExchangeLine(seed),
     `Respond from proportion: kind, brief, and clear enough that resentment has less room.`,
     `Do not confuse care with staying open to every demand that arrives without timing.`,
     `If someone needs an answer, give one that respects both warmth and timing.`,
     `Let the next reply be useful and short enough to remain true.`,
     `Let the relationship stay simple here: ${lowerFirst(relation)}, while everything else waits its turn.`,
-    `Where ${avoid} usually takes over, answer with a clean time, a clean no, or a clean yes.`,
+    relationshipLimitLine(avoid, seed),
     `Keep the door open only as far as your body can honestly support.`,
-    `The kinder answer is the one you can keep without quietly punishing yourself later.`
+    kinderAnswerLine(seed)
   ];
   return pickLine(lines, seed, name, relation, avoid, context.dailyArea);
 }
@@ -647,6 +762,350 @@ function relationCloseLine(context, seed, salt = "", preferredBucket = "") {
     `Work closed and the reply shortened are enough to carry into evening.`
   ];
   return pickLine(linesForBucket(lines, preferredBucket), seed, salt, relation, permission, context.dailyArea);
+}
+
+function bodyTimingLine(body, seed = 0) {
+  const anchor = compactBodyAnchor(body);
+  return pickLine([
+    `The body gives better timing when ${anchor} gets handled before the story grows.`,
+    `The next choice lands cleaner after ${anchor} has been treated as real information.`,
+    `${capitalize(anchor)} belongs early in the choice; pressure should not get the first microphone.`,
+    `The decision gets less dramatic when ${anchor} is cared for first.`,
+    `A practical body cue around ${anchor} can make the next answer easier to keep.`
+  ], seed, body, anchor);
+}
+
+function relationshipTimingLine(seed = 0) {
+  return pickLine([
+    "With other people, access works better when timing is named before tenderness gets stretched.",
+    "With other people, warmth needs a doorway before availability turns into resentment.",
+    "With other people, closeness stays kinder when the hour and the limit are both visible.",
+    "With other people, care holds better when the reply has a shape instead of an open tab.",
+    "With other people, affection can stay present without making access endless."
+  ], seed);
+}
+
+function silenceTimingLine(seed = 0) {
+  return pickLine([
+    "Plain timing can keep closeness warm without making silence do the wrong job.",
+    "A timed answer protects affection better than leaving silence to explain everything.",
+    "Closeness stays cleaner when silence is allowed to rest instead of punish.",
+    "Good timing can keep warmth present without turning quiet into a test.",
+    "A visible hour and a brief reply keep care from becoming constant access."
+  ], seed);
+}
+
+function realNeedLine(area, name, need, seed = 0) {
+  return pickLine([
+    `The real need under ${area}, ${name}, is ${need}; give it one visible request.`,
+    `${name} can protect ${need} under ${area} by giving support a shape instead of a performance.`,
+    `Under ${area}, ${name} needs ${need} to become practical enough for someone to meet.`,
+    `The quieter need for ${name} is ${need}; place it inside one request, time, or task.`,
+    `${name} does not need to defend ${need}; it needs a form the day can actually hold.`
+  ], seed, area, name, need);
+}
+
+function visibleChoiceLine(name, seed = 0) {
+  return pickLine([
+    `${name} protects the real need by giving the choice a visible edge before the argument grows.`,
+    `${name} can make the choice visible early, while the argument is still small.`,
+    `The real need gets safer when a visible choice gives ${name} a handle.`,
+    `${name} protects the useful part by moving the choice out of the private debate.`,
+    `A visible choice gives ${name} less to defend and more to complete.`
+  ], seed, name);
+}
+
+function bodyInterpretationLine(bodyPractice, seed = 0) {
+  return pickLine([
+    `After ${bodyPractice}, the decision has a cleaner floor.`,
+    `Let ${bodyPractice} happen before the decision gets oversized.`,
+    `The next answer gets easier to trust once ${bodyPractice} is no longer postponed.`,
+    `${capitalize(bodyPractice)} gives the mind less room to invent a crisis.`,
+    `A decision made after ${bodyPractice} is less likely to borrow urgency.`
+  ], seed, bodyPractice);
+}
+
+function relationshipLimitLine(avoid, seed = 0) {
+  return pickLine([
+    `When ${avoid} starts steering, answer only the piece that has a time and a real request.`,
+    `If ${avoid} reaches for the wheel, ${relationshipLimitAction(seed)}.`,
+    `Let ${avoid} lose authority by naming when you are available and what is actually being asked.`,
+    `Where ${avoid} gets loud, make the answer smaller: one time, one limit, no extra defense.`,
+    `Once ${avoid} tries to manage the room, keep the reply brief and survivable.`,
+    `Give ${avoid} less room by answering the request instead of the atmosphere around it.`
+  ], seed, avoid);
+}
+
+function relationshipLimitAction(seed = 0) {
+  return pickLine([
+    "name one available time and leave the reply unpolished",
+    "choose the limit you can keep after the mood changes",
+    "answer the request before you start managing the whole room",
+    "make the reply shorter and let the boundary do its job",
+    "put one edge around access before the explanation grows"
+  ], seed);
+}
+
+function openingInstructionLine(scene, seed = 0) {
+  return pickLine([
+    `${scene} can return the day to the next thing that can be handled.`,
+    `${scene} turns useful when it points to one action instead of another interpretation.`,
+    `${scene} gives the pressure a handle if you let it stay ordinary.`,
+    `${scene} is enough of a starting point; make it practical before it becomes symbolic.`,
+    `${scene} moves the day toward a timed action instead of a larger story.`
+  ], seed, scene);
+}
+
+function sceneExplanationLine(scene, seed = 0) {
+  return pickLine([
+    `${scene} shows where explanation has stopped doing useful work.`,
+    `${scene} points to the place where fewer words would help more.`,
+    `${scene} makes the pressure easier to handle when it stays practical.`,
+    `${scene} belongs to the moment where action needs to replace rehearsal.`,
+    `${scene} names the spot where the day wants a smaller answer.`
+  ], seed, scene);
+}
+
+function subjectPhysicalActionLine(subject, seed = 0) {
+  const lowerSubject = lowerFirst(subject);
+  return pickLine([
+    `${subject} loses force once the next action has a visible edge.`,
+    `A visible move gives ${lowerSubject} less room to grow.`,
+    `${subject} softens when the practical step can be touched, sent, finished, or cleared.`,
+    `The next action takes authority away from ${lowerSubject}.`,
+    `${subject} stops growing when the next move is made physical.`
+  ], seed, subject, lowerSubject);
+}
+
+function sharperWorkLine(name, edgeInstruction, seed = 0) {
+  return pickLine([
+    `The sharper work for ${name} is to ${edgeInstruction} before the moment starts collecting extra meaning.`,
+    `${name}'s harder task is to ${edgeInstruction} while the next move still has a clear edge.`,
+    `For ${name}, the useful discipline is to ${edgeInstruction} before pressure starts rewriting the scene.`,
+    `${name} gets more freedom by choosing to ${edgeInstruction} while the choice is still practical.`,
+    `The private work for ${name} is to ${edgeInstruction}; keep the moment from becoming a trial.`
+  ], seed, name, edgeInstruction);
+}
+
+function timedNameActionLine(name, edgeInstruction, seed = 0) {
+  return pickLine([
+    `The urge to ${edgeInstruction}, ${name}, needs a timer more than another inner argument.`,
+    `${name}, put ${edgeInstruction} into the next available block before the mind reopens the debate.`,
+    `For ${name}, ${edgeInstruction} works better as a scheduled move than as another private rehearsal.`,
+    `The useful answer for ${name} is to ${edgeInstruction} with a time limit and no courtroom afterward.`,
+    `${name} can turn the urge to ${edgeInstruction} into one visible action before the story grows.`
+  ], seed, name, edgeInstruction);
+}
+
+function delayHandledLine(area, name, seed = 0) {
+  return pickLine([
+    `A delay around ${area} can be handled without giving it authority over the whole day for ${name}.`,
+    `${name} can meet the delay around ${area} without letting it become a personal verdict.`,
+    `The delay inside ${area} needs a response from ${name}, not a scorecard for the day.`,
+    `A slower turn around ${area} does not get to measure the whole day for ${name}.`,
+    `${name} can answer the delay in ${area} with one practical move instead of a private trial.`
+  ], seed, area, name);
+}
+
+function containerAskLine(area, name, seed = 0) {
+  return pickLine([
+    `${name} can give ${area} shape; let ${area} move before mood approval.`,
+    `${area} is asking ${name} for shape, not a flawless inner state.`,
+    `The useful request around ${area}, ${name}, is structure rather than a perfect mood.`,
+    `${name} can give ${area} a container without proving readiness first.`,
+    `Around ${area}, the work for ${name} is a visible container, not emotional polish.`
+  ], seed, area, name);
+}
+
+function solveAreaLine(name, area, need, seed = 0) {
+  return pickLine([
+    `${name} does not have to solve ${area} by feeling ready; ${need} only needs a usable place to land.`,
+    `${area} needs a time and place from ${name}, not a mood that feels complete.`,
+    `${name} can give ${area} one practical holder while ${need} catches up.`,
+    `Feeling ready is not required here; ${name} can give ${area} a time, place, and edge.`,
+    `${name} can stop trying to solve ${area} internally and give ${need} a visible slot.`
+  ], seed, name, area, need);
+}
+
+function actionBeforeMoodLine(action, seed = 0) {
+  return pickLine([
+    `Before the day scatters, ${action}; let the mood catch up to something already shaped.`,
+    `Before attention splinters, ${action}; the feeling can answer afterward.`,
+    `Before everything asks for a verdict, ${action}; make the day respond to motion first.`,
+    `Before the story expands, ${action}; give the next hour proof it can hold.`,
+    `Before the mind reopens the case, ${action}; let the practical part speak first.`
+  ], seed, action);
+}
+
+function bodySequenceLine(bodyPractice, seed = 0) {
+  return pickLine([
+    `${capitalize(bodyPractice)} gives the next choice a steadier floor.`,
+    `${capitalize(bodyPractice)} changes the timing before the decision gets oversized.`,
+    `${capitalize(bodyPractice)} helps the next move arrive from care instead of pressure.`,
+    `${capitalize(bodyPractice)} makes the decision easier to keep after the mood passes.`,
+    `${capitalize(bodyPractice)} gives the practical answer somewhere firm to land.`
+  ], seed, bodyPractice);
+}
+
+function bodyFirstConsiderationLine(avoid, seed = 0) {
+  return pickLine([
+    `Consider the body first; ${avoid} can make the day sound larger than it is.`,
+    `Give the body an early vote before ${avoid} starts enlarging the problem.`,
+    `The practical body cue matters because ${avoid} can turn a small moment into weather.`,
+    `Care for the body first so ${avoid} has less room to narrate the day.`,
+    `The day shrinks to its real size when the body is considered before ${avoid}.`
+  ], seed, avoid);
+}
+
+function bodyLeadActionLine(body, seed = 0) {
+  return pickLine([
+    `Let the body lead the timing through this move: ${body}, then choose the practical part with less noise.`,
+    `Use the body as the first clock: ${body}, then handle only the piece that is actually ready.`,
+    `Let ${body} set the order before the practical answer gets oversized.`,
+    `Give the body its vote through this move: ${body}, then make the next action plain.`,
+    `Start with the body cue, ${body}, and let the practical piece follow without a speech.`
+  ], seed, body);
+}
+
+function stayWithSceneLine(lowerScene, seed = 0) {
+  return pickLine([
+    `Stay with ${lowerScene} until the next useful action has edges.`,
+    `Stay near ${lowerScene} long enough to choose what can close before the next meal.`,
+    `Let ${lowerScene} reduce the problem to one thing your hands can finish.`,
+    `Keep ${lowerScene} ordinary until it points to the nearest workable move.`,
+    `Use ${lowerScene} as the limit: handle one part, then stop widening the question.`
+  ], seed, lowerScene);
+}
+
+function returningSubjectLine(subject, seed = 0) {
+  return pickLine([
+    `${subject} keeps returning because the practical answer has not been given a slot.`,
+    `${subject} is back because attention needs somewhere smaller to land.`,
+    `${subject} keeps showing up where a decision has been left without a handle.`,
+    `${subject} has less to say once the next move gets a time and place.`,
+    `${subject} is asking for action before it becomes another private argument.`
+  ], seed, subject);
+}
+
+function conversationPullLine(seed = 0, relation = "", avoid = "") {
+  return pickLine([
+    "If a conversation asks for more, answer the real request before the fear adds extra pages.",
+    "When a conversation keeps widening, let the reply stay useful, brief, and warm.",
+    conversationExplanationLine(seed, relation, avoid),
+    "When the exchange gets hungry for detail, return to the sentence that actually helps.",
+    "If more words are requested, give the answer that can still feel true after evening."
+  ], seed, relation, avoid);
+}
+
+function nextExchangeLine(seed = 0) {
+  return pickLine([
+    "The next exchange gets easier when the answer stops trying to manage every reaction.",
+    "The next conversation can stay smaller if the reply serves the request, not the atmosphere.",
+    "Leave the extra explanation outside the room; the exchange will have more air.",
+    "Keep warmth in the reply; leave performance out.",
+    "The exchange will hold better when the answer stays brief and true."
+  ], seed);
+}
+
+function kinderAnswerLine(seed = 0) {
+  return pickLine([
+    "The kinder answer is short enough to keep after the mood changes.",
+    "A kind answer should not leave resentment doing the cleanup later.",
+    "The answer that can be kept without self-punishment is the one to trust.",
+    "Kindness works better when the reply does not secretly invoice you later.",
+    "The useful answer protects care without making you pay for it afterward."
+  ], seed);
+}
+
+function conversationExplanationLine(seed = 0, relation = "", avoid = "") {
+  const pressure = compactAvoid(avoid || relation);
+  return pickLine([
+    `If more explanation is requested, answer the part that belongs to ${pressure}.`,
+    "If someone keeps asking for detail, give the sentence that can be kept without resentment.",
+    "When more explanation is pulled from you, offer the useful part and stop decorating it.",
+    "If the room wants another version, return to the request that is actually present.",
+    "When the reply starts expanding, keep the human part warm and the extra defense out."
+  ], seed, relation, avoid, pressure);
+}
+
+function smallRepairClosingLine(seed = 0) {
+  return pickLine([
+    "Protect the repair you can finish, then let the quiet afterward count.",
+    "Keep the repair small enough to complete, and leave the remaining noise outside it.",
+    "Let one repair stay plain; the day does not need a dramatic ending to improve.",
+    "Finish the repair that is in reach, then let the unfinished story lose volume.",
+    "Give the small repair a clean ending before another explanation takes its place."
+  ], seed);
+}
+
+function repeatedLoopClosingLine(seed = 0) {
+  return pickLine([
+    "Close the loop before it asks for a new costume.",
+    "Let the loop end before it requests another rehearsal.",
+    "Stop the loop while the answer is still plain enough to keep.",
+    "Leave the repeated question closed once the practical piece is done.",
+    "End the return trip before the mind asks for fresh evidence."
+  ], seed);
+}
+
+function plainWorkableClosingLine(seed = 0) {
+  return pickLine([
+    "A plain, workable finish can carry this evening.",
+    "Let workable beat impressive where the day actually needs relief.",
+    "A plain finish can serve better than a performance of control.",
+    "Workable deserves the first chair; impressive can wait outside.",
+    "Let the useful thing stay plain enough to repeat."
+  ], seed);
+}
+
+function bodyBelievesClosingLine(seed = 0) {
+  return pickLine([
+    "The body trusts what stays finished more than what gets explained perfectly.",
+    "A finished thing reaches the body faster than another polished explanation.",
+    "The body can rest around completion before it rests around perfect wording.",
+    "What stays finished will speak to the body more clearly than another explanation.",
+    "The body believes repetition, closure, and care before it believes a perfect speech."
+  ], seed);
+}
+
+function concreteEvidenceClosingLine(seed = 0) {
+  return pickLine([
+    "Let the evidence stay practical: one limit, one closed task, one less braced body.",
+    "Keep the proof concrete enough to see, finish, or feel in the body.",
+    "A kept limit, closed task, or softer body can be enough evidence for tonight.",
+    "Let practical proof count before the mind asks for another argument.",
+    "The evidence can stay modest: something closed, something kept, something less tense."
+  ], seed);
+}
+
+function plainWorkClosingLine(seed = 0, close = "") {
+  return pickLine([
+    `Plain work around ${close} can carry enough truth for tonight.`,
+    `${capitalize(close)} can hold more weight than another polished explanation.`,
+    "Let the practical finish count before the mind asks for prettier evidence.",
+    "The plain finish deserves trust before another explanation gets invited in.",
+    "Work that is closed, visible, and modest can carry the evening."
+  ], seed, close);
+}
+
+function keptPromiseClosingLine(seed = 0) {
+  return pickLine([
+    "Let the quiet after a kept promise count without asking it to perform.",
+    "A promise kept quietly can be enough evidence for the evening.",
+    "Once the promise is kept, do not make the silence prove anything extra.",
+    "The space after follow-through deserves to stay undecorated.",
+    "Let the completed promise lower the volume without another speech."
+  ], seed);
+}
+
+function keptPromiseTrustLine(seed = 0) {
+  return pickLine([
+    "Finish it; explanation can wait.",
+    "A kept promise gives the mind less room to request perfect wording.",
+    "Follow-through can earn trust without asking the mood to approve it first.",
+    "You can let the completed promise matter more than the perfect explanation.",
+    "The promise you keep will do more than another explanation rehearsed alone."
+  ], seed);
 }
 
 function bodyCueClause(text) {
@@ -688,9 +1147,18 @@ function bodyInfinitiveClause(text) {
   return `honor ${lowerFirst(value)}`;
 }
 
-function bodyPracticeClause(text) {
+function bodyPracticeClause(text, seed = 0) {
   const value = fragment(text);
   if (!value) return "letting the body settle before choosing words";
+  if (/^drink water before calling it intuition\b/i.test(value)) {
+    return pickLine([
+      "drinking water before trusting the first interpretation",
+      "letting water come before the meaning-making",
+      "using water as the first answer before naming a signal",
+      "drinking first so the body gets a vote before the story",
+      "pausing for water before treating the feeling as guidance"
+    ], seed, value);
+  }
   const replacements = [
     [/^do not negotiate\b/i, "not negotiating"],
     [/^eat\b/i, "eating"],
@@ -900,26 +1368,35 @@ function closingLine(context, seed, salt = "", preferredBucket = "") {
     "A closed loop can stand in for the certainty the mind keeps requesting.",
     `By evening, let ${close} carry more weight than the mood you refused to obey.`,
     `The useful evidence today is ${close}, not another explanation with better lighting.`,
-    closingPermissionLine(context.closingPermission),
+    closingPermissionLine(context.closingPermission, seed),
     "A specific finish will do more for your confidence than another hour of private negotiation.",
-    "The body will believe what stays finished before it believes another perfect explanation.",
+    bodyBelievesClosingLine(seed),
     "Leave the day with one less loose end and one fewer explanation than usual.",
-    "Plain and workable will serve you better than impressive.",
-    "Protect the small repair, then let silence do some of the healing.",
-    "You will trust yourself more after a kept promise than after a perfect explanation.",
+    plainWorkableClosingLine(seed),
+    smallRepairClosingLine(seed),
+    keptPromiseTrustLine(seed),
     "One handled detail is enough to remind the day that you are participating.",
     "Let the finish be modest; the nervous system believes repetition more than intensity.",
-    "Let the evidence stay concrete: a limit kept, a task closed, a body less braced.",
-    "End the loop before it asks for another version of the same answer.",
-    "Plain work will carry more truth than another perfect explanation.",
-    "Silence after a kept promise can be allowed to count."
+    concreteEvidenceClosingLine(seed),
+    repeatedLoopClosingLine(seed),
+    plainWorkClosingLine(seed, close),
+    keptPromiseClosingLine(seed)
   ];
   return pickLine(linesForBucket(lines, preferredBucket), seed, salt, context.dailyArea, context.closingPermission, context.innerWeather, context.personalEdge);
 }
 
-function closingPermissionLine(permission) {
+function closingPermissionLine(permission, seed = 0) {
   const phrase = fragment(permission || "one small finish can be enough");
   if (!phrase) return "Let the larger question wait until one small finish has had time to count.";
+  if (/self-respect can be quiet/i.test(phrase)) {
+    return pickLine([
+      "Self-respect does not need to raise its voice to be final.",
+      "A quiet self-respecting answer can still close the matter.",
+      "Self-respect can stay gentle and still refuse to reopen the door.",
+      "The final answer can be quiet without becoming weak.",
+      "A quiet limit is still a limit when it is kept."
+    ], seed, phrase);
+  }
   if (/^(one|a)\b/i.test(phrase)) {
     return `${capitalize(phrase)}; let that stand before you reopen the larger question.`;
   }
