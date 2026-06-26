@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { loadEnv } from "vite";
@@ -88,9 +89,9 @@ function buildReport() {
     }),
     requirement("github", "Push code and SoulGuru details to the GitHub repo", {
       status: activeWorkflowNeedsCredentials() ? "pushed_except_workflow_activation" : "complete",
-      evidence: ["`git log --oneline origin/main -5`", "`docs/github-actions-ci.yml`", "`npm run ci:check`"],
+      evidence: ["`git log --oneline origin/main -5`", "`docs/github-actions-ci.yml`", "`npm run ci:install-workflow`", "`npm run ci:check`"],
       remaining: activeWorkflowNeedsCredentials()
-        ? ["Activate `.github/workflows/ci.yml` after GitHub credentials include `workflow` scope or SSH workflow-write permission."]
+        ? ["Run `npm run ci:install-workflow` and push `.github/workflows/ci.yml` after GitHub credentials include `workflow` scope or SSH workflow-write permission."]
         : []
     }),
     requirement("mobile", "Create a local mobile app artifact for phone testing", {
@@ -210,7 +211,12 @@ function gitignoreContainsEnv() {
 function apkEvidence() {
   if (!fs.existsSync(apkPath)) return "`SoulGuru-debug.apk` not found";
   const stats = fs.statSync(apkPath);
-  return `\`${apkPath}\` (${Math.ceil(stats.size / 1024 / 1024)} MB)`;
+  const hash = crypto.createHash("sha256").update(fs.readFileSync(apkPath)).digest("hex");
+  return `\`${apkPath}\` (${formatApkSize(stats.size)}, SHA-256 \`${hash}\`)`;
+}
+
+function formatApkSize(bytes) {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function normalizeRemaining(remaining) {

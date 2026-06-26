@@ -392,12 +392,19 @@ The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, More 
 
 ## Continuous Integration
 
-The documented GitHub Actions workflow lives at `docs/github-actions-ci.yml`. Copy it to `.github/workflows/ci.yml` when pushing with a GitHub token that has `workflow` scope, then `npm run ci:check` also verifies the active workflow matches the documented copy and keeps the required web/API, Soul Guru quality, readiness, payment, More Guidance, Shani, local smoke, and Android APK gates.
+The documented GitHub Actions workflow lives at `docs/github-actions-ci.yml`. Install it with `npm run ci:install-workflow` when pushing with a GitHub token that has `workflow` scope, then `npm run ci:check` also verifies the active workflow matches the documented copy and keeps the required web/API, Soul Guru quality, readiness, payment, More Guidance, Shani, local smoke, and Android APK gates.
 
-Check the CI template includes the release and mobile gates:
+Check the CI template and workflow installer include the release and mobile gates:
 
 ```bash
 npm run ci:check
+```
+
+After a workflow-capable GitHub credential is available, install and verify the active workflow:
+
+```bash
+npm run ci:install-workflow
+npm run ci:install-workflow -- --check
 ```
 
 The CI template checks:
@@ -452,7 +459,7 @@ If the repository secret `OPENAI_API_KEY` is configured, the workflow can also r
 
 If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app table, column, index, and uniqueness-constraint contract.
 
-Current credential note: publishing `.github/workflows/ci.yml` requires GitHub `workflow` scope. If the push is rejected, keep using `docs/github-actions-ci.yml` as the source of truth until the token or SSH key is updated.
+Current credential note: publishing `.github/workflows/ci.yml` requires GitHub `workflow` scope. If the push is rejected, keep using `docs/github-actions-ci.yml` as the source of truth and run `npm run ci:install-workflow` after the token or SSH key is updated.
 
 ## Supabase Setup
 

@@ -46,8 +46,8 @@ Latest local results:
 | Settings with user details and backend status | Implemented and runtime verified | Runtime QA confirms profile, phone/email, birth details, entitlement, and backend connection status. |
 | Backend-only OpenAI key for mobile/API readings | Implemented locally | `openai:check` passed; strict readiness reports OpenAI AI routes pass. `public-env:check` scans `VITE_` exposure and passes. |
 | No OpenAI key pushed to GitHub | Verified by scans | `security:check` passed with release secret scan and public env scan. `.env` remains ignored. |
-| Local mobile APK for phone testing | Built and audited | `/Users/jkv6333/Desktop/SoulGuru/SoulGuru-debug.apk`, 6.7M, SHA-256 `1aa2ee0b1ef9b8cf9c672e34467affbd0a516eb6a133c32bb6c5a4a0f546c5e4`; `android:artifact:check` passed. |
-| Push code to `git@github.com:Jaydutt07/SoulGuru.git` | Complete for pushable code/docs | GitHub main is kept current for pushable code/docs. Local `prod-polish` has one workflow-related commit that is not pushed to main because workflow-file updates require a GitHub token with `workflow` scope. |
+| Local mobile APK for phone testing | Built and audited | `/Users/jkv6333/Desktop/SoulGuru/SoulGuru-debug.apk`, 6.7M, SHA-256 `8ca632c2f6c2b8161213e93b424ee251740c6a80ddffc0d6fb334a92a1618cdc`; `android:artifact:check` passed. |
+| Push code to `git@github.com:Jaydutt07/SoulGuru.git` | Complete for pushable code/docs | GitHub main is kept current for pushable code/docs. Local `prod-polish` has one workflow-related commit that is not pushed to main because workflow-file updates require a GitHub token with `workflow` scope. `npm run ci:install-workflow` installs the documented workflow when that credential is available. |
 
 ## Remaining Production Blockers
 

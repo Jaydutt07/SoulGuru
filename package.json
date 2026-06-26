@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ci:check": "node scripts/check-ci-contracts.mjs",
+    "ci:check": "node scripts/check-ci-contracts.mjs && node scripts/check-ci-workflow-installer.mjs",
+    "ci:install-workflow": "node scripts/install-github-actions-workflow.mjs",
     "dev": "vite --host 127.0.0.1",
     "dev:lan": "vite --host 0.0.0.0",
     "env:check": "node scripts/check-env-contracts.mjs && node scripts/check-production-env-checklist.mjs && node scripts/check-production-env-template.mjs && node scripts/check-provider-stack-contracts.mjs",
