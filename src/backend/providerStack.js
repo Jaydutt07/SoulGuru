@@ -16,7 +16,17 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Server-side guidance generation and embeddings",
     readinessChecks: ["openai"],
     envScope: ["OPENAI_API_KEY", "OPENAI_MODEL"],
-    artifacts: ["src/backend/openaiClient.js", "api/soul-wisdom.js", "api/astro-solve.js"],
+    artifacts: [
+      "src/backend/openaiClient.js",
+      "src/backend/soulWisdomService.js",
+      "src/backend/astroSolveService.js",
+      "src/backend/guidanceService.js",
+      "src/backend/shaniService.js",
+      "api/soul-wisdom.js",
+      "api/astro-solve.js",
+      "api/more-guidance.js",
+      "api/shani-guidance.js"
+    ],
     commands: [
       "npm run openai:check",
       "npm run soul:quality:ai",

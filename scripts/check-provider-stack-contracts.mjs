@@ -12,6 +12,7 @@ const checks = [];
 checkProviderStackCoversPlannedProviders();
 checkProviderMappingsTargetRealReadinessChecks();
 checkProviderArtifactsExist();
+checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
 checkProviderPayloadValidatorRequiresExactStack();
@@ -74,6 +75,24 @@ function checkProviderArtifactsExist() {
   );
 
   pushCheck("Every provider evidence artifact exists in the repository", missing.length === 0, missing);
+}
+
+function checkOpenAIProviderCoversEveryAIRouteAndService() {
+  const openai = PROVIDER_STACK.find((provider) => provider.id === "openai");
+  const requiredArtifacts = [
+    "src/backend/openaiClient.js",
+    "src/backend/soulWisdomService.js",
+    "src/backend/astroSolveService.js",
+    "src/backend/guidanceService.js",
+    "src/backend/shaniService.js",
+    "api/soul-wisdom.js",
+    "api/astro-solve.js",
+    "api/more-guidance.js",
+    "api/shani-guidance.js"
+  ];
+  const missing = requiredArtifacts.filter((artifact) => !openai?.artifacts?.includes(artifact));
+
+  pushCheck("OpenAI provider evidence covers every AI route and generation service", missing.length === 0, missing);
 }
 
 function checkOpenAIProviderCoversEveryLiveQualityGate() {
