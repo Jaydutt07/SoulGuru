@@ -336,6 +336,8 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     isBackendUserKey(lockInserts[0].payload.user_key),
     lockInserts[0].payload.reading_date === date,
     lockInserts[0].payload.prompt_version === SOUL_WISDOM_PROMPT_VERSION,
+    lockTtlRemainingMs(lockInserts[0].payload.expires_at) >= 240000,
+    lockTtlRemainingMs(lockInserts[0].payload.expires_at) <= 310000,
     lockDeletes.length >= 2,
     supabase.state.generationLocks.size === 0
   ].every(Boolean));
@@ -859,6 +861,10 @@ function lockKey(lock) {
     lock.reading_date,
     lock.prompt_version
   ].join("|");
+}
+
+function lockTtlRemainingMs(expiresAt) {
+  return new Date(expiresAt).getTime() - Date.now();
 }
 
 function matchesFilters(row, filters) {

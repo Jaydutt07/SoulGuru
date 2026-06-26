@@ -505,7 +505,7 @@ async function readCachedDeepGuidance(supabase, userKey, date) {
 async function acquirePaidGuidanceLock(supabase, { userKey, date, env }) {
   const now = new Date();
   const lockOwner = buildLockOwner();
-  const ttlMs = parseBoundedInteger(env.MORE_GUIDANCE_LOCK_TTL_MS, 90000, 15000, 600000);
+  const ttlMs = parseBoundedInteger(env.MORE_GUIDANCE_LOCK_TTL_MS, 300000, 15000, 600000);
   const expiresAt = new Date(now.getTime() + ttlMs).toISOString();
 
   const { error: cleanupError } = await supabase

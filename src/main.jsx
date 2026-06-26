@@ -48,10 +48,10 @@ const SESSION_KEY = "soulguru.session.v1";
 const SOUL_READING_CACHE_VERSION = SOUL_WISDOM_PROMPT_VERSION;
 const SOUL_READING_CACHE_PREFIX = `soulguru.dailySoulReading.${SOUL_READING_CACHE_VERSION}`;
 const SOUL_READING_HISTORY_PREFIX = `soulguru.dailySoulReadingHistory.${SOUL_READING_CACHE_VERSION}`;
-const SOUL_WISDOM_PENDING_RETRY_LIMIT = 4;
-const SOUL_WISDOM_PENDING_RETRY_MS = 3500;
-const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 4;
-const MORE_GUIDANCE_PENDING_RETRY_MS = 3500;
+const SOUL_WISDOM_PENDING_RETRY_LIMIT = 60;
+const SOUL_WISDOM_PENDING_RETRY_MS = 5000;
+const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 60;
+const MORE_GUIDANCE_PENDING_RETRY_MS = 5000;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
@@ -581,13 +581,13 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
             }
             if (attempt < SOUL_WISDOM_PENDING_RETRY_LIMIT) {
               setReading(null);
-              setReadingStatus("Soul Guru is finishing today's guidance...");
+              setReadingStatus("Soul Guru is finishing today's guidance. This can take a few minutes the first time, then it will be saved for today.");
               trackEvent("soul_wisdom_pending", { attempt });
               retryTimer = window.setTimeout(() => requestDailyReading(attempt + 1), SOUL_WISDOM_PENDING_RETRY_MS);
               return;
             }
             setReading(null);
-            setReadingStatus("Soul Guru is still preparing today's guidance. Please reopen this tab in a moment.");
+            setReadingStatus("Soul Guru is still preparing today's guidance. Keep this tab open or check again shortly.");
             trackEvent("soul_wisdom_failed", { reason: "pending_timeout" });
             return;
           }
@@ -1033,13 +1033,13 @@ function SubscriptionPage({ user, updateUser, onBack }) {
             }
             if (attempt < MORE_GUIDANCE_PENDING_RETRY_LIMIT) {
               setDeepGuidance(null);
-              setDeepGuidanceStatus("Soul Guru is finishing your deeper guidance...");
+              setDeepGuidanceStatus("Soul Guru is finishing your deeper guidance. This can take a few minutes the first time, then it will be saved.");
               trackEvent("more_guidance_pending", { attempt });
               retryTimer = window.setTimeout(() => requestDeepGuidance(attempt + 1), MORE_GUIDANCE_PENDING_RETRY_MS);
               return;
             }
             setDeepGuidance(null);
-            setDeepGuidanceStatus("Soul Guru is still preparing your deeper guidance. Please reopen this page in a moment.");
+            setDeepGuidanceStatus("Soul Guru is still preparing your deeper guidance. Keep this page open or check again shortly.");
             trackEvent("more_guidance_failed", { reason: "pending_timeout" });
             return;
           }

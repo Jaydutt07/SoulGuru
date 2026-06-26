@@ -33,5 +33,5 @@ OPENAI_TIMEOUT_MS=120000 OPENAI_MAX_RETRIES=2 npm run shani:quality:ai
 
 1. Reduce first-generation latency for Soul Guru and More Guidance. The quality repair loop is working, but two daily wisdom cases needed three attempts and two paid guidance cases needed two attempts.
 2. Keep daily Supabase caching and generation locks enabled in production so successful readings are reused for the day and concurrent reloads do not multiply OpenAI calls.
-3. Use async pre-generation or a visible pending state for first reads, especially on mobile, because live daily wisdom and paid guidance can take more than two minutes in worst-case quality-repair runs.
+3. Keep the five-minute client pending window and five-minute backend generation lock defaults for first reads, especially on mobile, because live daily wisdom and paid guidance can take more than two minutes in worst-case quality-repair runs.
 4. Keep the live AI gates out of every quick local loop. Run them intentionally before releases, after prompt changes, and after model/provider configuration changes.

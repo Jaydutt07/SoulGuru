@@ -616,6 +616,8 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
     lockInserts[0].payload.user_key === buildBackendUserKey(user),
     lockInserts[0].payload.reading_date === date,
     lockInserts[0].payload.prompt_version === DEEP_GUIDANCE_PROMPT_VERSION,
+    lockTtlRemainingMs(lockInserts[0].payload.expires_at) >= 240000,
+    lockTtlRemainingMs(lockInserts[0].payload.expires_at) <= 310000,
     lockDeletes.some((call) => (
       call.filters.user_key === buildBackendUserKey(user)
       && call.filters.reading_date === date
@@ -1230,6 +1232,10 @@ function lockKey(lock) {
     lock.reading_date,
     lock.prompt_version
   ].join("|");
+}
+
+function lockTtlRemainingMs(expiresAt) {
+  return new Date(expiresAt).getTime() - Date.now();
 }
 
 function matchesFilters(row, filters) {

@@ -73,17 +73,21 @@ function checkDeepGuidanceSync() {
 }
 
 function checkDeepGuidancePendingRetry() {
+  const retryLimit = numericConstant("MORE_GUIDANCE_PENDING_RETRY_LIMIT");
+  const retryIntervalMs = numericConstant("MORE_GUIDANCE_PENDING_RETRY_MS");
+
   pushCheck("Production More Guidance retries in-progress paid backend readings", [
-    source.includes("const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 4;"),
-    source.includes("const MORE_GUIDANCE_PENDING_RETRY_MS = 3500;"),
+    retryLimit >= 60,
+    retryIntervalMs >= 5000,
+    retryLimit * retryIntervalMs >= 300000,
     source.includes("let retryTimer = null;"),
     source.includes("const requestDeepGuidance = (attempt = 0) => {"),
     source.includes("status === 409 && /already being prepared/.test(data?.error || \"\")"),
-    source.includes("setDeepGuidanceStatus(\"Soul Guru is finishing your deeper guidance...\");"),
+    source.includes("setDeepGuidanceStatus(\"Soul Guru is finishing your deeper guidance. This can take a few minutes the first time, then it will be saved.\");"),
     source.includes("trackEvent(\"more_guidance_pending\", { attempt });"),
     source.includes("retryTimer = window.setTimeout(() => requestDeepGuidance(attempt + 1), MORE_GUIDANCE_PENDING_RETRY_MS);"),
     source.includes("if (retryTimer) window.clearTimeout(retryTimer);"),
-    source.includes("setDeepGuidanceStatus(\"Soul Guru is still preparing your deeper guidance. Please reopen this page in a moment.\");"),
+    source.includes("setDeepGuidanceStatus(\"Soul Guru is still preparing your deeper guidance. Keep this page open or check again shortly.\");"),
     source.includes("trackEvent(\"more_guidance_failed\", { reason: \"pending_timeout\" });")
   ].every(Boolean));
 }
@@ -189,6 +193,11 @@ function checkSaveAdviceBackendFlow() {
 
 function pushCheck(label, passed) {
   checks.push({ label, passed });
+}
+
+function numericConstant(name) {
+  const match = source.match(new RegExp(`const ${name} = (\\d+);`));
+  return match ? Number(match[1]) : 0;
 }
 
 function printReport() {

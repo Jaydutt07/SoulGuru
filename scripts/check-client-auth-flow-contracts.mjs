@@ -102,16 +102,20 @@ function checkProductionSoulGuruRequiresStoredBackendReading() {
 }
 
 function checkProductionSoulGuruRetriesPendingBackendReading() {
+  const retryLimit = numericConstant("SOUL_WISDOM_PENDING_RETRY_LIMIT");
+  const retryIntervalMs = numericConstant("SOUL_WISDOM_PENDING_RETRY_MS");
+
   pushCheck("Production Soul Guru retries in-progress backend readings without local fallback", [
-    source.includes("const SOUL_WISDOM_PENDING_RETRY_LIMIT = 4;"),
-    source.includes("const SOUL_WISDOM_PENDING_RETRY_MS = 3500;"),
+    retryLimit >= 60,
+    retryIntervalMs >= 5000,
+    retryLimit * retryIntervalMs >= 300000,
     source.includes("return { ok: response.ok, status: response.status, data };"),
     source.includes("status === 409 && /already being prepared/.test(data?.error || \"\")"),
-    source.includes("setReadingStatus(\"Soul Guru is finishing today's guidance...\");"),
+    source.includes("setReadingStatus(\"Soul Guru is finishing today's guidance. This can take a few minutes the first time, then it will be saved for today.\");"),
     source.includes("trackEvent(\"soul_wisdom_pending\", { attempt });"),
     source.includes("retryTimer = window.setTimeout(() => requestDailyReading(attempt + 1), SOUL_WISDOM_PENDING_RETRY_MS);"),
     source.includes("if (retryTimer) window.clearTimeout(retryTimer);"),
-    source.includes("setReadingStatus(\"Soul Guru is still preparing today's guidance. Please reopen this tab in a moment.\");"),
+    source.includes("setReadingStatus(\"Soul Guru is still preparing today's guidance. Keep this tab open or check again shortly.\");"),
     source.includes("trackEvent(\"soul_wisdom_failed\", { reason: \"pending_timeout\" });")
   ].every(Boolean));
 }
@@ -169,6 +173,11 @@ function checkProductionShaniDoesNotTrustLocalMemberPlan() {
 
 function pushCheck(label, passed) {
   checks.push({ label, passed });
+}
+
+function numericConstant(name) {
+  const match = source.match(new RegExp(`const ${name} = (\\d+);`));
+  return match ? Number(match[1]) : 0;
 }
 
 function printReport() {
