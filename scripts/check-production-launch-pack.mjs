@@ -33,6 +33,7 @@ const expectedFiles = [
   "production-env-checklist.md",
   "provider-launch-plan.md",
   "current-readiness-action-report.md",
+  "production-completion-audit.md",
   "soulguru-supabase-schema.sql",
   "manifest.json"
 ];
@@ -76,6 +77,7 @@ function checkArtifactContents() {
   const checklist = readPackFile("production-env-checklist.md");
   const launchPlan = readPackFile("provider-launch-plan.md");
   const actionReport = readPackFile("current-readiness-action-report.md");
+  const completionAudit = readPackFile("production-completion-audit.md");
   const supabaseSql = readPackFile("soulguru-supabase-schema.sql");
 
   pushCheck("Production launch pack includes usable operator artifacts", [
@@ -89,6 +91,9 @@ function checkArtifactContents() {
     actionReport.includes("Immediate Critical Actions"),
     actionReport.includes("Provider Setup Table"),
     actionReport.includes("Final Launch Verification"),
+    completionAudit.includes("# SoulGuru Production Completion Audit"),
+    completionAudit.includes("Requirement Audit"),
+    completionAudit.includes("Final Completion Criteria"),
     supabaseSql.includes("-- SoulGuru Supabase production schema bundle"),
     supabaseSql.includes("001_initial_schema.sql"),
     supabaseSql.includes("012_shani_membership.sql"),
@@ -109,6 +114,7 @@ function checkManifestContract() {
     verification.includes("npm run android:security:check"),
     verification.includes("npm run android:artifact:check"),
     verification.includes("npm run production:actions"),
+    verification.includes("npm run production:audit"),
     verification.includes("npm run production:check -- --strict"),
     verification.some((command) => command.includes("release:check"))
   ].every(Boolean), missing);

@@ -17,12 +17,14 @@ Authoritative current checks:
 ```bash
 npm run release:check:local
 npm run production:check -- --strict --allow-fail
+npm run production:audit
 ```
 
 Latest local results:
 
 - `release:check:local`: passed with 0 failures; deployed backend and mobile backend URL checks skipped because no production API URL is configured yet.
 - `production:check -- --strict --allow-fail`: `needs_configuration`; 4/15 readiness checks passing; 3/14 providers ready; 11 providers need configuration.
+- `production:audit`: generates the current objective-to-evidence audit and final completion gates without printing secret values.
 
 ## Requirement Audit
 

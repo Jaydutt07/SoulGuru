@@ -32,6 +32,10 @@ const files = [
     contents: runGenerator("scripts/generate-production-action-report.mjs")
   },
   {
+    path: "production-completion-audit.md",
+    contents: runGenerator("scripts/generate-production-completion-audit.mjs")
+  },
+  {
     path: "soulguru-supabase-schema.sql",
     contents: runGenerator("scripts/generate-supabase-schema-bundle.mjs")
   },
@@ -45,6 +49,7 @@ const files = [
         "src/backend/providerStack.js",
         "src/backend/readinessService.js",
         "scripts/generate-production-action-report.mjs",
+        "scripts/generate-production-completion-audit.mjs",
         "supabase/migrations/*.sql"
       ],
       files: [
@@ -53,12 +58,14 @@ const files = [
         "production-env-checklist.md",
         "provider-launch-plan.md",
         "current-readiness-action-report.md",
+        "production-completion-audit.md",
         "soulguru-supabase-schema.sql",
         "manifest.json"
       ],
       verification: [
         "npm run providers:check",
         "npm run production:actions",
+        "npm run production:audit",
         "npm run env:check",
         "npm run supabase:migrations:check",
         "npm run android:security:check",
@@ -110,6 +117,7 @@ function buildReadme() {
     "- `production-env-checklist.md`: readiness-derived checklist for every critical and warning env item.",
     "- `provider-launch-plan.md`: provider-by-provider setup order for the planning-image stack.",
     "- `current-readiness-action-report.md`: generated from the current private env state with secret-safe missing provider actions.",
+    "- `production-completion-audit.md`: generated objective-to-evidence audit that separates local implementation from production blockers.",
     "- `soulguru-supabase-schema.sql`: ordered Supabase migration bundle for a new production project.",
     "- `manifest.json`: generated file list and final verification commands.",
     "",
@@ -118,11 +126,12 @@ function buildReadme() {
     "1. Create the Supabase project and apply `soulguru-supabase-schema.sql` in order.",
     "2. Fill private production values from `env.production.template` in Vercel/provider dashboards, never in committed files.",
     "3. Use `production-env-checklist.md` and `provider-launch-plan.md` to configure Supabase, OTP/SMS, Razorpay, Clerk, Cloudflare/domain, Resend, Upstash, Pinecone, Sentry, and PostHog.",
-    "4. Run `npm run production:check` with production env loaded.",
-    "5. Run `npm run android:security:check` before mobile release output.",
-    "6. Run `npm run android:artifact:check -- --expect-url=https://your-production-domain.app` after building the APK.",
-    "7. Run `npm run production:domain:smoke -- --expect-ready` after DNS and Vercel custom-domain setup are live.",
-    "8. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
+    "4. Run `npm run production:actions` and `npm run production:audit` with production env loaded.",
+    "5. Run `npm run production:check` with production env loaded.",
+    "6. Run `npm run android:security:check` before mobile release output.",
+    "7. Run `npm run android:artifact:check -- --expect-url=https://your-production-domain.app` after building the APK.",
+    "8. Run `npm run production:domain:smoke -- --expect-ready` after DNS and Vercel custom-domain setup are live.",
+    "9. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
     "",
     "## Safety",
     "",
