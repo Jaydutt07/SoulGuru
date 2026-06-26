@@ -13,6 +13,7 @@ checkProductionCreateRequiresProfilePersistence();
 checkProductionDoesNotPersistLocalSessions();
 checkLoginAnalyticsDistinguishesOtpSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
+checkProductionSoulGuruRetriesPendingBackendReading();
 checkSoulGuruCacheUsesCurrentPromptVersion();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
@@ -97,6 +98,21 @@ function checkProductionSoulGuruRequiresStoredBackendReading() {
     source.includes("if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {"),
     source.includes("cached.stored === false || cached.source === \"local-fallback\""),
     source.includes("disabled={isSavingAdvice || !reading}")
+  ].every(Boolean));
+}
+
+function checkProductionSoulGuruRetriesPendingBackendReading() {
+  pushCheck("Production Soul Guru retries in-progress backend readings without local fallback", [
+    source.includes("const SOUL_WISDOM_PENDING_RETRY_LIMIT = 4;"),
+    source.includes("const SOUL_WISDOM_PENDING_RETRY_MS = 3500;"),
+    source.includes("return { ok: response.ok, status: response.status, data };"),
+    source.includes("status === 409 && /already being prepared/.test(data?.error || \"\")"),
+    source.includes("setReadingStatus(\"Soul Guru is finishing today's guidance...\");"),
+    source.includes("trackEvent(\"soul_wisdom_pending\", { attempt });"),
+    source.includes("retryTimer = window.setTimeout(() => requestDailyReading(attempt + 1), SOUL_WISDOM_PENDING_RETRY_MS);"),
+    source.includes("if (retryTimer) window.clearTimeout(retryTimer);"),
+    source.includes("setReadingStatus(\"Soul Guru is still preparing today's guidance. Please reopen this tab in a moment.\");"),
+    source.includes("trackEvent(\"soul_wisdom_failed\", { reason: \"pending_timeout\" });")
   ].every(Boolean));
 }
 

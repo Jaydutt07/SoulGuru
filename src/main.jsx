@@ -48,6 +48,8 @@ const SESSION_KEY = "soulguru.session.v1";
 const SOUL_READING_CACHE_VERSION = SOUL_WISDOM_PROMPT_VERSION;
 const SOUL_READING_CACHE_PREFIX = `soulguru.dailySoulReading.${SOUL_READING_CACHE_VERSION}`;
 const SOUL_READING_HISTORY_PREFIX = `soulguru.dailySoulReadingHistory.${SOUL_READING_CACHE_VERSION}`;
+const SOUL_WISDOM_PENDING_RETRY_LIMIT = 4;
+const SOUL_WISDOM_PENDING_RETRY_MS = 3500;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
@@ -478,6 +480,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer = null;
     const todayDate = buildDateFromKey(todayKey, user);
     const context = buildAstrologyContext(user, todayDate);
     const cached = readDailyReadingCache(user, todayKey);
@@ -498,91 +501,124 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       setReadingStatus("Preparing today's guidance...");
     }
 
-    authFetch(getApiUrl("/api/soul-wisdom"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user: {
-          id: user.id,
-          name: user.name,
-          phone: user.phone,
-          email: user.email,
-          birthDate: user.birthDate,
-          birthTime: user.birthTime,
-          birthPlace: user.birthPlace,
-          birthLatitude: user.birthLatitude,
-          birthLongitude: user.birthLongitude,
-          birthTimezone: user.birthTimezone,
-          birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
-          birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-          birthPlaceResolutionSource: user.birthPlaceResolutionSource
-        },
-        date: todayKey,
-        timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
-        context,
-        today: todayDate.toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          year: "numeric"
-        }),
-        fallback: fallbackReading
-      })
-    })
-      .then(async (response) => {
-        const data = await response.json().catch(() => null);
-        return { ok: response.ok, data };
-      })
-      .then(({ ok, data }) => {
-        if (cancelled) return;
+    const payload = {
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        birthDate: user.birthDate,
+        birthTime: user.birthTime,
+        birthPlace: user.birthPlace,
+        birthLatitude: user.birthLatitude,
+        birthLongitude: user.birthLongitude,
+        birthTimezone: user.birthTimezone,
+        birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+        birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+        birthPlaceResolutionSource: user.birthPlaceResolutionSource
+      },
+      date: todayKey,
+      timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
+      context,
+      today: todayDate.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      }),
+      fallback: fallbackReading
+    };
 
-        if (ok && (data?.reading || data?.wisdom)) {
-          if (data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {
-            setReading(null);
-            setReadingStatus("Today's guidance could not be saved. Please try again shortly.");
-            trackEvent("soul_wisdom_failed", { reason: "not_stored" });
+    const requestDailyReading = (attempt = 0) => {
+      const freshCached = readDailyReadingCache(user, todayKey);
+      if (freshCached?.reading) {
+        setReading(freshCached.reading);
+        setReadingStatus("");
+        return;
+      }
+
+      authFetch(getApiUrl("/api/soul-wisdom"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+        .then(async (response) => {
+          const data = await response.json().catch(() => null);
+          return { ok: response.ok, status: response.status, data };
+        })
+        .then(({ ok, status, data }) => {
+          if (cancelled) return;
+
+          if (ok && (data?.reading || data?.wisdom)) {
+            if (data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {
+              setReading(null);
+              setReadingStatus("Today's guidance could not be saved. Please try again shortly.");
+              trackEvent("soul_wisdom_failed", { reason: "not_stored" });
+              return;
+            }
+
+            const nextReading = normalizeWisdomPayload(data.reading || data.wisdom, fallbackReading);
+            setReading(nextReading);
+            setReadingStatus("");
+            if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {
+              writeDailyReadingCache(user, todayKey, nextReading, {
+                cached: Boolean(data.cached),
+                model: data.model,
+                source: data.source || "api",
+                stored: data.stored !== false
+              });
+            }
             return;
           }
 
-          const nextReading = normalizeWisdomPayload(data.reading || data.wisdom, fallbackReading);
-          setReading(nextReading);
-          setReadingStatus("");
-          if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {
-            writeDailyReadingCache(user, todayKey, nextReading, {
-              cached: Boolean(data.cached),
-              model: data.model,
-              source: data.source || "api",
-              stored: data.stored !== false
-            });
+          if (status === 409 && /already being prepared/.test(data?.error || "")) {
+            if (LOCAL_AUTH_FALLBACK_ENABLED) {
+              setReading(fallbackReading);
+              setReadingStatus("Using local guidance while today's backend reading finishes.");
+              return;
+            }
+            if (attempt < SOUL_WISDOM_PENDING_RETRY_LIMIT) {
+              setReading(null);
+              setReadingStatus("Soul Guru is finishing today's guidance...");
+              trackEvent("soul_wisdom_pending", { attempt });
+              retryTimer = window.setTimeout(() => requestDailyReading(attempt + 1), SOUL_WISDOM_PENDING_RETRY_MS);
+              return;
+            }
+            setReading(null);
+            setReadingStatus("Soul Guru is still preparing today's guidance. Please reopen this tab in a moment.");
+            trackEvent("soul_wisdom_failed", { reason: "pending_timeout" });
+            return;
           }
-          return;
-        }
 
-        if (LOCAL_AUTH_FALLBACK_ENABLED) {
-          setReading(fallbackReading);
-          setReadingStatus("Using local guidance until the backend is connected.");
-          return;
-        }
-
-        setReading(null);
-        setReadingStatus("Soul Guru is unavailable. Please try again shortly.");
-        trackEvent("soul_wisdom_failed", { reason: "unavailable" });
-      })
-      .catch(() => {
-        if (!cancelled) {
           if (LOCAL_AUTH_FALLBACK_ENABLED) {
             setReading(fallbackReading);
             setReadingStatus("Using local guidance until the backend is connected.");
             return;
           }
+
           setReading(null);
           setReadingStatus("Soul Guru is unavailable. Please try again shortly.");
-          trackEvent("soul_wisdom_failed", { reason: "network" });
-        }
-      });
+          trackEvent("soul_wisdom_failed", { reason: "unavailable", status });
+        })
+        .catch(() => {
+          if (!cancelled) {
+            if (LOCAL_AUTH_FALLBACK_ENABLED) {
+              setReading(fallbackReading);
+              setReadingStatus("Using local guidance until the backend is connected.");
+              return;
+            }
+            setReading(null);
+            setReadingStatus("Soul Guru is unavailable. Please try again shortly.");
+            trackEvent("soul_wisdom_failed", { reason: "network" });
+          }
+        });
+    };
+
+    requestDailyReading();
 
     return () => {
       cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
     };
   }, [fallbackReading, todayKey, user]);
 
