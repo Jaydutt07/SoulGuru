@@ -849,7 +849,9 @@ function SubscriptionPage({ user, updateUser, onBack }) {
   const [dashboardStatus, setDashboardStatus] = useState("");
   const [deepGuidanceStatus, setDeepGuidanceStatus] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState("");
+  const [deepSaveStatus, setDeepSaveStatus] = useState("");
   const [isActivating, setIsActivating] = useState(false);
+  const [isSavingDeepGuidance, setIsSavingDeepGuidance] = useState(false);
   const serverSubscription = serverDashboard?.subscription?.active ? serverDashboard.subscription : null;
   const localSubscription = LOCAL_PAID_FALLBACK_ENABLED ? user.soulGuruSubscription : null;
   const subscription = serverSubscription || localSubscription;
@@ -959,6 +961,19 @@ function SubscriptionPage({ user, updateUser, onBack }) {
         if (cancelled) return;
         if (ok && data?.guidance && (data.stored !== false || LOCAL_PAID_FALLBACK_ENABLED)) {
           setDeepGuidance(data.guidance);
+          setServerDashboard((current) => current ? {
+            ...current,
+            guidanceHistory: mergeGuidanceItems([
+              {
+                id: data.id || `more-guidance-${data.readingDate || dateKey}`,
+                date: data.createdAt || new Date().toISOString(),
+                dateKey: data.readingDate || dateKey,
+                promptVersion: data.promptVersion,
+                guidance: data.guidance,
+                wisdom: data.guidance.overview
+              }
+            ], current.guidanceHistory || [])
+          } : current);
           setDeepGuidanceStatus(data.cached ? "Deeper guidance synced." : "Deeper guidance ready.");
           return;
         }
@@ -1083,6 +1098,53 @@ function SubscriptionPage({ user, updateUser, onBack }) {
     }
   }
 
+  async function saveDeepGuidanceAdvice() {
+    if (isSavingDeepGuidance || !activeDeepGuidance) return;
+
+    const savedItem = {
+      id: `saved-more-guidance-${Date.now()}`,
+      date: new Date().toISOString(),
+      guidance: activeDeepGuidance,
+      wisdom: activeDeepGuidance.overview
+    };
+
+    setIsSavingDeepGuidance(true);
+    setDeepSaveStatus("Saving deeper advice...");
+
+    try {
+      const result = await saveGuidanceToServer(user, {
+        type: "more-guidance",
+        wisdom: activeDeepGuidance.overview,
+        guidance: activeDeepGuidance
+      }, savedItem.id);
+      const storedItem = result.item || savedItem;
+      setServerDashboard((current) => current ? {
+        ...current,
+        savedGuidance: mergeGuidanceItems([storedItem], current.savedGuidance || [])
+      } : current);
+      updateUser((current) => ({
+        ...current,
+        savedGuidance: [storedItem, ...(current.savedGuidance || [])].slice(0, 30)
+      }));
+      setDeepSaveStatus(result.saved ? "Deeper advice saved." : "Saved locally until the backend is connected.");
+      trackEvent("more_guidance_saved", { source: result.saved ? "server" : "local-fallback" });
+    } catch {
+      if (LOCAL_PAID_FALLBACK_ENABLED) {
+        updateUser((current) => ({
+          ...current,
+          savedGuidance: [savedItem, ...(current.savedGuidance || [])].slice(0, 30)
+        }));
+        setDeepSaveStatus("Saved locally until the backend is connected.");
+        trackEvent("more_guidance_saved", { source: "local-fallback" });
+      } else {
+        setDeepSaveStatus("Deeper advice could not sync. Please try again shortly.");
+        trackEvent("more_guidance_save_failed");
+      }
+    } finally {
+      setIsSavingDeepGuidance(false);
+    }
+  }
+
   return (
     <section className="tab-section subscription-section">
       <button className="back-action" type="button" onClick={onBack}>
@@ -1168,6 +1230,13 @@ function SubscriptionPage({ user, updateUser, onBack }) {
                 <p><strong>This week:</strong> {activeDeepGuidance.thisWeek}</p>
                 <p><strong>This month:</strong> {activeDeepGuidance.thisMonth}</p>
                 <p><strong>Practice:</strong> {activeDeepGuidance.practice}</p>
+                <div className="deep-guidance-actions">
+                  <button className="secondary-action calm-action" type="button" onClick={saveDeepGuidanceAdvice} disabled={isSavingDeepGuidance}>
+                    <BadgeCheck size={18} aria-hidden="true" />
+                    {isSavingDeepGuidance ? "Saving" : "Save Advice"}
+                  </button>
+                </div>
+                {deepSaveStatus && <p className="deep-guidance-status">{deepSaveStatus}</p>}
               </>
             ) : (
               <p>Your deeper guidance will appear here after the paid backend sync completes.</p>
@@ -1176,7 +1245,7 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           </article>
 
           <div className="guidance-lists">
-            <GuidanceList title="Reading history" items={guidanceHistory} empty="Your daily readings will collect here." />
+            <GuidanceList title="Reading history" items={guidanceHistory} empty="Your deeper readings will collect here." />
             <GuidanceList title="Saved advice" items={savedGuidance} empty="Save guidance from Soul Guru to keep it here." />
           </div>
         </>
@@ -1196,13 +1265,30 @@ function GuidanceList({ title, items, empty }) {
           {items.slice(0, 5).map((item) => (
             <div key={item.id || item.date}>
               <span>{formatDate(item.date || item.dateKey)}</span>
-              <p>{item.reading?.wisdom || item.wisdom}</p>
+              {getGuidanceListMeta(item) && <strong>{getGuidanceListMeta(item)}</strong>}
+              <p>{getGuidanceListCopy(item)}</p>
             </div>
           ))}
         </div>
       )}
     </article>
   );
+}
+
+function getGuidanceListCopy(item) {
+  return item.guidance?.overview
+    || item.reading?.guidance?.overview
+    || item.reading?.overview
+    || item.reading?.wisdom
+    || item.wisdom
+    || "";
+}
+
+function getGuidanceListMeta(item) {
+  return item.guidance?.focus
+    || item.reading?.guidance?.focus
+    || item.reading?.innerWeather
+    || "";
 }
 
 function ShaniTab({ user, updateUser }) {

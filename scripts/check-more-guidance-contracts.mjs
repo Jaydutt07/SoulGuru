@@ -181,6 +181,41 @@ async function checkDashboardReturnsThreeMonthTracking() {
   ].every(Boolean));
 }
 
+async function checkDashboardReturnsPaidGuidanceHistory() {
+  const user = paidUser("dashboard-history-member");
+  const guidance = paidGuidanceFixture({
+    focus: "Review the saved pattern"
+  });
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    moreGuidanceReadings: [{
+      id: "paid-history-1",
+      user_key: user.id,
+      reading_date: "2026-06-26",
+      prompt_version: DEEP_GUIDANCE_PROMPT_VERSION,
+      created_at: "2026-06-26T05:00:00.000Z",
+      guidance
+    }]
+  });
+  const result = await getMoreGuidanceDashboard({
+    user,
+    limit: 5
+  }, {}, {
+    supabase
+  });
+
+  pushCheck("More Guidance dashboard history uses paid guidance readings", [
+    result.configured === true,
+    result.guidanceHistory.length === 1,
+    result.guidanceHistory[0].id === "paid-history-1",
+    result.guidanceHistory[0].dateKey === "2026-06-26",
+    result.guidanceHistory[0].guidance.overview === guidance.overview,
+    result.guidanceHistory[0].guidance.focus === "Review the saved pattern",
+    result.guidanceHistory[0].wisdom === guidance.overview,
+    supabase.state.calls.some((call) => call.table === "more_guidance_readings" && call.operation === "select")
+  ].every(Boolean));
+}
+
 async function checkDashboardReadFailuresReturnErrors() {
   const user = paidUser("dashboard-read-failure");
   const cases = [
@@ -273,6 +308,40 @@ async function checkLocalSaveGuidanceRequiresExplicitFlag() {
   pushCheck("Saved guidance local mode requires explicit server flag", [
     error?.statusCode === 503,
     /Supabase is required/.test(error?.message || "")
+  ].every(Boolean));
+}
+
+async function checkSavePaidGuidancePersistsMap() {
+  const user = paidUser("save-paid-guidance");
+  const guidance = paidGuidanceFixture({
+    focus: "Save the useful limit"
+  });
+  const memoryUpserts = [];
+  const supabase = createFakeSupabase();
+  const result = await saveGuidance({
+    user,
+    sourceId: "saved-paid-map",
+    guidance
+  }, {}, {
+    supabase,
+    upsertGuidanceMemory: async (payload) => {
+      memoryUpserts.push(payload);
+      return { configured: true, upserted: true };
+    }
+  });
+  const stored = supabase.state.savedGuidance[0];
+
+  pushCheck("Saved guidance persists full paid guidance maps", [
+    result.configured === true,
+    result.saved === true,
+    result.item.guidance.overview === guidance.overview,
+    result.item.guidance.focus === "Save the useful limit",
+    result.item.wisdom === guidance.overview,
+    stored.reading.type === "more-guidance",
+    stored.reading.guidance.thisMonth === guidance.thisMonth,
+    memoryUpserts.length === 1,
+    memoryUpserts[0].metadata?.kind === "more-guidance",
+    memoryUpserts[0].text.includes(guidance.thisWeek)
   ].every(Boolean));
 }
 
@@ -732,6 +801,7 @@ async function checkPaidCacheWriteFailureDoesNotReturnReading() {
 function createFakeSupabase({
   subscriptions = [],
   moreGuidanceReadings = [],
+  savedGuidance = [],
   failReadingSelect = false,
   failReadingUpsert = false,
   failSubscriptionSelect = false,
@@ -742,9 +812,11 @@ function createFakeSupabase({
     calls: [],
     subscriptions: new Map(),
     moreGuidanceReadings: new Map(),
+    savedGuidance: [],
     profiles: new Map(),
     nextProfileId: 1,
     nextReadingId: 1,
+    nextSavedId: 1,
     failReadingSelect,
     failReadingUpsert,
     failSubscriptionSelect,
@@ -757,6 +829,9 @@ function createFakeSupabase({
   }
   for (const reading of moreGuidanceReadings) {
     state.moreGuidanceReadings.set(readingKey(reading), { ...reading });
+  }
+  for (const saved of savedGuidance) {
+    state.savedGuidance.push({ ...saved });
   }
 
   return {
@@ -772,10 +847,17 @@ class FakeQuery {
     this.state = state;
     this.table = table;
     this.filters = {};
+    this.operation = null;
     this.result = { data: null, error: null };
   }
 
   select() {
+    this.operation = "select";
+    this.state.calls.push({
+      table: this.table,
+      operation: "select",
+      filters: clone(this.filters)
+    });
     return this;
   }
 
@@ -793,6 +875,7 @@ class FakeQuery {
   }
 
   upsert(payload, options = {}) {
+    this.operation = "upsert";
     this.state.calls.push({
       table: this.table,
       operation: "upsert",
@@ -835,6 +918,39 @@ class FakeQuery {
     return this;
   }
 
+  insert(payload) {
+    this.operation = "insert";
+    this.state.calls.push({
+      table: this.table,
+      operation: "insert",
+      payload: clone(payload)
+    });
+
+    if (this.table === "saved_guidance") {
+      const saved = {
+        ...clone(payload),
+        id: `saved-${this.state.nextSavedId++}`,
+        created_at: "2026-06-26T00:00:00.000Z"
+      };
+      this.state.savedGuidance.unshift(saved);
+      this.result = { data: saved, error: null };
+    }
+
+    return this;
+  }
+
+  update(payload) {
+    this.operation = "update";
+    this.state.calls.push({
+      table: this.table,
+      operation: "update",
+      payload: clone(payload)
+    });
+    this.updatePayload = clone(payload);
+    this.result = { data: null, error: null };
+    return this;
+  }
+
   async maybeSingle() {
     if (this.table === "more_guidance_subscriptions") {
       if (this.state.failSubscriptionSelect) {
@@ -871,18 +987,37 @@ class FakeQuery {
     return this.result;
   }
 
+  async single() {
+    return this.result;
+  }
+
   then(resolve, reject) {
-    if (this.table === "daily_soul_readings") {
+    if (this.operation === "select" && this.table === "more_guidance_readings" && !this.filters.reading_date) {
       const result = this.state.failHistorySelect
         ? { data: null, error: { message: "contract history read failure" } }
-        : { data: [], error: null };
+        : {
+          data: [...this.state.moreGuidanceReadings.values()]
+            .filter((item) => item.user_key === this.filters.user_key),
+          error: null
+        };
       return Promise.resolve(result).then(resolve, reject);
     }
 
     if (this.table === "saved_guidance") {
+      if (this.updatePayload) {
+        const item = this.state.savedGuidance.find((saved) => saved.id === this.filters.id);
+        if (item) Object.assign(item, clone(this.updatePayload));
+        return Promise.resolve({ data: item || null, error: null }).then(resolve, reject);
+      }
+      if (this.operation !== "select") {
+        return Promise.resolve(this.result).then(resolve, reject);
+      }
       const result = this.state.failSavedSelect
         ? { data: null, error: { message: "contract saved read failure" } }
-        : { data: [], error: null };
+        : {
+          data: this.state.savedGuidance.filter((item) => item.user_key === this.filters.user_key),
+          error: null
+        };
       return Promise.resolve(result).then(resolve, reject);
     }
 
@@ -965,9 +1100,11 @@ async function main() {
   await checkExplicitLocalAccessReturnsUnstoredGuidance();
   await checkGeneratedLocalPaidGuidanceIsHighQuality();
   await checkDashboardReturnsThreeMonthTracking();
+  await checkDashboardReturnsPaidGuidanceHistory();
   await checkDashboardReadFailuresReturnErrors();
   checkSubscriptionTrackingLifecycle();
   await checkLocalSaveGuidanceRequiresExplicitFlag();
+  await checkSavePaidGuidancePersistsMap();
   await checkPersistedSubscriptionRequired();
   await checkPaidSubscriptionReadFailureDoesNotCallOpenAI();
   await checkCachedPaidReadingBypassesOpenAI();

@@ -72,13 +72,14 @@ export async function getMoreGuidanceDashboard(payload, env = process.env, deps 
   };
 }
 
-export async function saveGuidance(payload, env = process.env) {
+export async function saveGuidance(payload, env = process.env, deps = {}) {
   const user = payload.user || {};
-  const reading = normalizeReading(payload.reading);
+  const savedPayload = normalizeSavedGuidancePayload(payload);
   const userKey = buildUserKey(user);
-  const supabase = createSupabaseAdmin(env);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+  const upsertMemory = deps.upsertGuidanceMemory || upsertGuidanceMemory;
 
-  if (!reading?.wisdom) {
+  if (!savedPayload) {
     throw new Error("Guidance reading is required");
   }
 
@@ -90,13 +91,14 @@ export async function saveGuidance(payload, env = process.env) {
   }
 
   if (!supabase) {
-    await upsertGuidanceMemory({
+    await upsertMemory({
       user,
       kind: "saved-guidance",
       sourceId: payload.sourceId || `saved-${Date.now()}`,
-      text: reading.wisdom,
+      text: savedPayload.memoryText,
       metadata: {
         source: "more-guidance",
+        kind: savedPayload.kind,
         savedAt: new Date().toISOString()
       }
     }, env);
@@ -108,7 +110,9 @@ export async function saveGuidance(payload, env = process.env) {
         id: payload.sourceId || `saved-${Date.now()}`,
         date: new Date().toISOString(),
         note: payload.note || "",
-        reading
+        reading: savedPayload.reading,
+        guidance: savedPayload.guidance,
+        wisdom: savedPayload.summary
       }
     };
   }
@@ -122,7 +126,7 @@ export async function saveGuidance(payload, env = process.env) {
       user_key: userKey,
       daily_reading_id: payload.dailyReadingId || null,
       note: payload.note || null,
-      reading
+      reading: savedPayload.reading
     })
     .select("id, note, reading, created_at")
     .single();
@@ -135,13 +139,14 @@ export async function saveGuidance(payload, env = process.env) {
     await linkSavedGuidanceToProfile(supabase, data.id, userProfileId);
   }
 
-  await upsertGuidanceMemory({
+  await upsertMemory({
     user,
     kind: "saved-guidance",
     sourceId: data.id,
-    text: reading.wisdom,
+    text: savedPayload.memoryText,
     metadata: {
       source: "more-guidance",
+      kind: savedPayload.kind,
       savedAt: data.created_at
     }
   }, env);
@@ -535,8 +540,8 @@ Create the paid More Guidance reading. Make it deeper than the free daily Words 
 
 async function readGuidanceHistory(supabase, userKey, limit = DEFAULT_LIMIT) {
   const { data, error } = await supabase
-    .from("daily_soul_readings")
-    .select("id, reading, reading_date, created_at")
+    .from("more_guidance_readings")
+    .select("id, guidance, reading_date, prompt_version, created_at")
     .eq("user_key", userKey)
     .order("reading_date", { ascending: false })
     .limit(Number(limit || DEFAULT_LIMIT));
@@ -550,8 +555,9 @@ async function readGuidanceHistory(supabase, userKey, limit = DEFAULT_LIMIT) {
     id: item.id,
     date: item.created_at || item.reading_date,
     dateKey: item.reading_date,
-    reading: item.reading,
-    wisdom: item.reading?.wisdom || ""
+    promptVersion: item.prompt_version,
+    guidance: normalizeDeepGuidance(item.guidance),
+    wisdom: item.guidance?.overview || ""
   }));
 }
 
@@ -572,12 +578,14 @@ async function readSavedGuidance(supabase, userKey, limit = DEFAULT_LIMIT) {
 }
 
 function mapSavedGuidance(item) {
+  const guidance = extractSavedDeepGuidance(item.reading);
   return {
     id: item.id,
     date: item.created_at,
     note: item.note || "",
     reading: item.reading,
-    wisdom: item.reading?.wisdom || ""
+    guidance,
+    wisdom: guidance?.overview || item.reading?.wisdom || ""
   };
 }
 
@@ -600,6 +608,57 @@ function normalizeReading(reading) {
     todayMove: String(reading.todayMove || "").trim(),
     release: String(reading.release || "").trim()
   };
+}
+
+function normalizeSavedGuidancePayload(payload = {}) {
+  const rawGuidance = payload.guidance || payload.reading?.guidance || (
+    payload.reading?.overview ? payload.reading : null
+  );
+  if (rawGuidance) {
+    const guidance = normalizeDeepGuidance(rawGuidance);
+    if (!guidance.overview) return null;
+    return {
+      kind: "more-guidance",
+      guidance,
+      summary: guidance.overview,
+      memoryText: [
+        guidance.overview,
+        guidance.thisWeek,
+        guidance.thisMonth,
+        guidance.practice
+      ].filter(Boolean).join("\n"),
+      reading: {
+        type: "more-guidance",
+        wisdom: guidance.overview,
+        guidance
+      }
+    };
+  }
+
+  const reading = normalizeReading(payload.reading);
+  if (!reading?.wisdom) return null;
+  return {
+    kind: "daily-wisdom",
+    guidance: null,
+    summary: reading.wisdom,
+    memoryText: [
+      reading.wisdom,
+      reading.innerWeather,
+      reading.todayMove,
+      reading.release
+    ].filter(Boolean).join("\n"),
+    reading: {
+      type: "daily-wisdom",
+      ...reading
+    }
+  };
+}
+
+function extractSavedDeepGuidance(reading) {
+  if (!reading || typeof reading !== "object") return null;
+  const source = reading.guidance || (reading.overview ? reading : null);
+  if (!source) return null;
+  return normalizeDeepGuidance(source);
 }
 
 function normalizeDeepGuidance(raw, fallback = buildFallbackDeepGuidance()) {

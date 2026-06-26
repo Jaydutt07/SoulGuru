@@ -121,11 +121,20 @@ function checkGuidanceHistoryAndSavedAdvice() {
   pushCheck("More Guidance page renders reading history and saved advice panels", [
     source.includes("const guidanceHistory = mergeGuidanceItems(serverDashboard?.guidanceHistory || [], localGuidanceHistory);"),
     source.includes("const savedGuidance = mergeGuidanceItems(serverDashboard?.savedGuidance || [], localSavedGuidance);"),
-    source.includes("<GuidanceList title=\"Reading history\" items={guidanceHistory} empty=\"Your daily readings will collect here.\" />"),
+    source.includes("<GuidanceList title=\"Reading history\" items={guidanceHistory} empty=\"Your deeper readings will collect here.\" />"),
     source.includes("<GuidanceList title=\"Saved advice\" items={savedGuidance} empty=\"Save guidance from Soul Guru to keep it here.\" />"),
     source.includes("function GuidanceList({ title, items, empty })"),
     source.includes("items.slice(0, 5).map((item) => ("),
-    source.includes("item.reading?.wisdom || item.wisdom")
+    source.includes("getGuidanceListCopy(item)"),
+    source.includes("item.guidance?.overview"),
+    source.includes("item.reading?.guidance?.overview")
+  ].every(Boolean));
+
+  pushCheck("More Guidance page adds synced paid readings into history", [
+    source.includes("guidanceHistory: mergeGuidanceItems(["),
+    source.includes("id: data.id || `more-guidance-${data.readingDate || dateKey}`"),
+    source.includes("guidance: data.guidance,"),
+    source.includes("wisdom: data.guidance.overview")
   ].every(Boolean));
 }
 
@@ -148,6 +157,15 @@ function checkSaveAdviceBackendFlow() {
     source.includes("reading"),
     source.includes("if (!data.saved && !LOCAL_PAID_FALLBACK_ENABLED) {"),
     source.includes("throw new Error(\"Guidance was not stored. Please try again.\");")
+  ].every(Boolean));
+
+  pushCheck("Paid More Guidance can save the deeper guidance map", [
+    source.includes("async function saveDeepGuidanceAdvice()"),
+    source.includes("setDeepSaveStatus(\"Saving deeper advice...\");"),
+    source.includes("type: \"more-guidance\","),
+    source.includes("guidance: activeDeepGuidance"),
+    source.includes("setDeepSaveStatus(result.saved ? \"Deeper advice saved.\" : \"Saved locally until the backend is connected.\");"),
+    source.includes("trackEvent(\"more_guidance_saved\"")
   ].every(Boolean));
 }
 
