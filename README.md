@@ -707,7 +707,7 @@ The release build wrapper loads these values from `.env` or shell env and passes
 
 ## Production Notes
 
-Use [docs/production-launch-runbook.md](docs/production-launch-runbook.md) as the short provider-by-provider launch path. The longer roadmap remains in [docs/production-roadmap.md](docs/production-roadmap.md).
+Use [docs/production-launch-runbook.md](docs/production-launch-runbook.md) as the short provider-by-provider launch path. The latest secret-safe live AI quality evidence is in [docs/live-ai-quality-report.md](docs/live-ai-quality-report.md). The longer roadmap remains in [docs/production-roadmap.md](docs/production-roadmap.md).
 
 Before release:
 

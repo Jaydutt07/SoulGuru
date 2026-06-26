@@ -1,0 +1,37 @@
+# SoulGuru Live AI Quality Report
+
+Generated on 2026-06-26 from the local backend environment. This report records quality-gate evidence only; it does not include API keys, raw prompts, model secrets, or provider credentials.
+
+## Commands
+
+The live checks were run with a longer timeout so failures represent quality or provider behavior rather than a short local timeout:
+
+```bash
+OPENAI_TIMEOUT_MS=120000 OPENAI_MAX_RETRIES=2 npm run soul:quality:ai
+OPENAI_TIMEOUT_MS=120000 OPENAI_MAX_RETRIES=2 npm run more-guidance:quality:ai
+OPENAI_TIMEOUT_MS=120000 OPENAI_MAX_RETRIES=2 npm run astro:quality:ai
+OPENAI_TIMEOUT_MS=120000 OPENAI_MAX_RETRIES=2 npm run shani:quality:ai
+```
+
+## Results
+
+| Surface | Live cases | Result | Max similarity | Attempts | Duration |
+| --- | ---: | --- | ---: | --- | ---: |
+| Soul Guru daily wisdom | 5 | Pass | 0.13 | 3 cases first attempt, 2 cases needed 3 attempts | 216.8s |
+| More Guidance paid reading | 5 | Pass | 0.14 | 3 cases first attempt, 2 cases needed 2 attempts | 147.7s |
+| Astro Solves answers | 5 | Pass | 0.18 | All first attempt | 68.4s |
+| Shani Pandit guidance | 5 | Pass | 0.20 | All first attempt | 45.3s |
+
+## Product Notes
+
+- Soul Guru live readings stayed under the 100-word cap and passed the generic/repeated phrase checks.
+- More Guidance live readings passed paid overview diversity, word-count, concrete-cue, and no-astrology-leak checks.
+- Astro Solves live answers passed root-cause, astrological relevance, solution usefulness, safety wording, and diversity checks.
+- Shani Pandit live answers passed phase specificity, concrete seven-day practice, grounded caution, and diversity checks.
+
+## Tuning Priorities
+
+1. Reduce first-generation latency for Soul Guru and More Guidance. The quality repair loop is working, but two daily wisdom cases needed three attempts and two paid guidance cases needed two attempts.
+2. Keep daily Supabase caching and generation locks enabled in production so successful readings are reused for the day and concurrent reloads do not multiply OpenAI calls.
+3. Use async pre-generation or a visible pending state for first reads, especially on mobile, because live daily wisdom and paid guidance can take more than two minutes in worst-case quality-repair runs.
+4. Keep the live AI gates out of every quick local loop. Run them intentionally before releases, after prompt changes, and after model/provider configuration changes.
