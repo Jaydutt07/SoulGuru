@@ -1264,7 +1264,8 @@ button:disabled {
   font-weight: 800;
 }
 
-.secure-session-panel {
+.secure-session-panel,
+.backend-status-panel {
   display: grid;
   gap: 0.8rem;
   border: 1px solid rgba(23, 50, 58, 0.1);
@@ -1273,18 +1274,37 @@ button:disabled {
   background: rgba(217, 240, 239, 0.44);
 }
 
+.backend-status-panel.ready {
+  border-color: rgba(47, 141, 101, 0.24);
+  background: rgba(47, 141, 101, 0.1);
+}
+
+.backend-status-panel.needs-setup,
+.backend-status-panel.offline {
+  border-color: rgba(199, 133, 59, 0.25);
+  background: rgba(255, 244, 214, 0.62);
+}
+
+.backend-status-panel.local {
+  background: rgba(237, 244, 242, 0.72);
+}
+
 .secure-session-panel strong,
-.secure-session-panel span {
+.secure-session-panel span,
+.backend-status-panel strong,
+.backend-status-panel span {
   display: block;
 }
 
-.secure-session-panel strong {
+.secure-session-panel strong,
+.backend-status-panel strong {
   margin-top: 0.2rem;
   color: var(--deep-teal);
   font-size: 0.98rem;
 }
 
-.secure-session-panel span {
+.secure-session-panel span,
+.backend-status-panel span {
   margin-top: 0.2rem;
   color: var(--muted);
   font-size: 0.82rem;

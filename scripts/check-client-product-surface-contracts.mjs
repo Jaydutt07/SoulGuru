@@ -189,6 +189,15 @@ function checkSettingsSurface() {
     "Soul Guru + Astro Solve",
     "Sign out"
   ]));
+
+  pushCheck("Settings drawer exposes backend connection status for mobile QA", includesAll(blocks.settings, [
+    "backendStatus",
+    "<p className=\"eyebrow\">Backend</p>",
+    "backend-status-panel",
+    "API_BASE_URL",
+    "refreshBackendStatus",
+    "<RefreshCw size={16} aria-hidden=\"true\" />"
+  ]));
 }
 
 function includesAll(text, snippets) {

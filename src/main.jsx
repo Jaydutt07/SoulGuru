@@ -13,6 +13,7 @@ import {
   LogIn,
   LogOut,
   MessageCircle,
+  RefreshCw,
   Send,
   Settings,
   ShieldCheck,
@@ -1675,6 +1676,7 @@ function SettingsDrawer({ user, onClose, onLogout }) {
     label: "",
     status: ""
   });
+  const [backendStatus, setBackendStatus] = useState(() => getInitialBackendStatus());
 
   useEffect(() => {
     if (!secureSession.configured) return undefined;
@@ -1698,6 +1700,69 @@ function SettingsDrawer({ user, onClose, onLogout }) {
       cancelled = true;
     };
   }, [secureSession.configured]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!API_BASE_URL) return undefined;
+    refreshBackendStatus({ silent: true, isCancelled: () => cancelled });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function refreshBackendStatus({ silent = false, isCancelled = () => false } = {}) {
+    if (!API_BASE_URL) {
+      setBackendStatus(getInitialBackendStatus());
+      return;
+    }
+    if (!silent) {
+      setBackendStatus((current) => ({
+        ...current,
+        state: "checking",
+        label: "Checking",
+        detail: "Contacting the configured backend."
+      }));
+    }
+
+    try {
+      const healthResponse = await fetch(getApiUrl("/api/health"));
+      if (!healthResponse.ok) {
+        throw new Error(`Health check returned ${healthResponse.status}.`);
+      }
+      const readinessResponse = await fetch(getApiUrl("/api/readiness"));
+      const readiness = await readinessResponse.json().catch(() => null);
+      if (isCancelled()) return;
+      const providerSummary = readiness?.providerSummary;
+      const providerLine = providerSummary
+        ? `${providerSummary.ready}/${providerSummary.total} providers ready`
+        : "Provider summary unavailable";
+
+      if (readiness?.ok) {
+        setBackendStatus({
+          state: "ready",
+          label: "Ready",
+          detail: providerLine,
+          target: getBackendTargetLabel()
+        });
+        return;
+      }
+
+      setBackendStatus({
+        state: "needs-setup",
+        label: "Needs setup",
+        detail: `${readiness?.status || "not ready"}; ${providerLine}`,
+        target: getBackendTargetLabel()
+      });
+    } catch (error) {
+      if (isCancelled()) return;
+      setBackendStatus({
+        state: "offline",
+        label: "Unreachable",
+        detail: error.message || "Backend could not be reached.",
+        target: getBackendTargetLabel()
+      });
+    }
+  }
 
   async function handleSecureSignIn() {
     setSecureSession((current) => ({ ...current, loading: true, status: "Opening" }));
@@ -1753,6 +1818,20 @@ function SettingsDrawer({ user, onClose, onLogout }) {
           <div><dt>Astro Solves</dt><dd>{(user.solvedProblems || []).length}/{getAstroQuestionAllowance(user)} used</dd></div>
           <div><dt>More Guidance</dt><dd>{user.soulGuruSubscription?.active ? "Soul Guru + Astro Solve" : "Not active"}</dd></div>
         </dl>
+        <section className={`backend-status-panel ${backendStatus.state}`}>
+          <div>
+            <p className="eyebrow">Backend</p>
+            <strong>{backendStatus.label}</strong>
+            <span>{backendStatus.detail}</span>
+            {backendStatus.target && <span>{backendStatus.target}</span>}
+          </div>
+          {API_BASE_URL && (
+            <button className="secondary-action small" type="button" onClick={() => refreshBackendStatus()} disabled={backendStatus.state === "checking"}>
+              <RefreshCw size={16} aria-hidden="true" />
+              Refresh
+            </button>
+          )}
+        </section>
         {secureSession.configured && (
           <section className="secure-session-panel">
             <div>
@@ -1788,6 +1867,33 @@ function SettingsDrawer({ user, onClose, onLogout }) {
       </aside>
     </div>
   );
+}
+
+function getInitialBackendStatus() {
+  if (!API_BASE_URL) {
+    return {
+      state: "local",
+      label: "Local preview",
+      detail: "No API base URL is bundled in this build.",
+      target: ""
+    };
+  }
+  return {
+    state: "checking",
+    label: "Checking",
+    detail: "Contacting the configured backend.",
+    target: getBackendTargetLabel()
+  };
+}
+
+function getBackendTargetLabel() {
+  if (!API_BASE_URL) return "";
+  try {
+    const url = new URL(API_BASE_URL);
+    return url.host;
+  } catch {
+    return API_BASE_URL;
+  }
 }
 
 function readAccounts() {
