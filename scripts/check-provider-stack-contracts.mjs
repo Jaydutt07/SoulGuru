@@ -12,6 +12,7 @@ const checks = [];
 checkProviderStackCoversPlannedProviders();
 checkProviderMappingsTargetRealReadinessChecks();
 checkProviderArtifactsExist();
+checkSupabaseProviderCoversEveryMigration();
 checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
@@ -76,6 +77,17 @@ function checkProviderArtifactsExist() {
   );
 
   pushCheck("Every provider evidence artifact exists in the repository", missing.length === 0, missing);
+}
+
+function checkSupabaseProviderCoversEveryMigration() {
+  const supabase = PROVIDER_STACK.find((provider) => provider.id === "supabase");
+  const migrations = fs.readdirSync("supabase/migrations")
+    .filter((file) => file.endsWith(".sql"))
+    .sort()
+    .map((file) => `supabase/migrations/${file}`);
+  const missing = migrations.filter((artifact) => !supabase?.artifacts?.includes(artifact));
+
+  pushCheck("Supabase provider evidence covers every production migration", missing.length === 0, missing);
 }
 
 function checkOpenAIProviderCoversEveryAIRouteAndService() {
