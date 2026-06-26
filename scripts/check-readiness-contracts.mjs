@@ -11,6 +11,7 @@ checkLocalAstroSolvesQuotaIsNotReady();
 checkLocalMoreGuidanceAccessIsNotReady();
 checkLocalShaniAccessIsNotReady();
 checkRateLimitRequireUpstashIsNotReady();
+checkGuidanceMemoryRequirePineconeIsNotReady();
 checkMissingShaniPricesAreNotReady();
 checkInvalidPaymentPricesAreNotReady();
 checkInvalidRazorpayWebhookIsNotReady();
@@ -209,6 +210,20 @@ function checkRateLimitRequireUpstashIsNotReady() {
     report.ok === false,
     rateLimit?.status === "fail",
     rateLimit?.missingEnv.includes("RATE_LIMIT_REQUIRE_UPSTASH=true")
+  ].every(Boolean));
+}
+
+function checkGuidanceMemoryRequirePineconeIsNotReady() {
+  const report = buildDeploymentReadiness({
+    ...fullEnv(),
+    GUIDANCE_MEMORY_REQUIRE_PINECONE: "false"
+  });
+  const pinecone = report.checks.find((check) => check.id === "pinecone");
+
+  pushCheck("Readiness rejects optional Pinecone memory mode", [
+    report.ok === false,
+    pinecone?.status === "fail",
+    pinecone?.missingEnv.includes("GUIDANCE_MEMORY_REQUIRE_PINECONE=true")
   ].every(Boolean));
 }
 
@@ -429,6 +444,7 @@ function fullEnv() {
     PINECONE_HOST: "memory-index.svc.pinecone.io",
     PINECONE_INDEX: "soulguru-memory",
     OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+    GUIDANCE_MEMORY_REQUIRE_PINECONE: "true",
     CLERK_SECRET_KEY: "sk_test_contract_secret_123456",
     VITE_CLERK_PUBLISHABLE_KEY: "pk_test_contract_publishable_123456",
     CLERK_REQUIRE_AUTH: "true",

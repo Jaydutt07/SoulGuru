@@ -353,11 +353,17 @@ function checkPinecone(env) {
     "PINECONE_API_KEY",
     "PINECONE_HOST",
     "PINECONE_INDEX",
-    "OPENAI_EMBEDDING_MODEL"
+    "OPENAI_EMBEDDING_MODEL",
+    "GUIDANCE_MEMORY_REQUIRE_PINECONE=true"
   ];
-  const missing = requiredEnv.filter((name) => !hasEnv(env, name));
+  const missing = requiredEnv.filter((name) => (
+    name.includes("=") ? false : !hasEnv(env, name)
+  ));
   if (hasEnv(env, "PINECONE_HOST") && !isHttpsUrlOrHost(env.PINECONE_HOST)) {
     missing.push("PINECONE_HOST=valid HTTPS URL or host");
+  }
+  if (String(env.GUIDANCE_MEMORY_REQUIRE_PINECONE || "false").toLowerCase() !== "true") {
+    missing.push("GUIDANCE_MEMORY_REQUIRE_PINECONE=true");
   }
   return {
     id: "pinecone",
@@ -366,7 +372,7 @@ function checkPinecone(env) {
     status: missing.length ? "fail" : "pass",
     requiredEnv,
     missingEnv: missing,
-    advice: missing.length ? "Configure Pinecone and embeddings to enable long-term personalized guidance memory." : ""
+    advice: missing.length ? "Configure Pinecone, embeddings, and the production memory requirement so long-term personalized guidance cannot silently launch disabled." : ""
   };
 }
 

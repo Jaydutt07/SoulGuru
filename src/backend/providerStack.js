@@ -167,7 +167,7 @@ export const PROVIDER_STACK = Object.freeze([
     planningImageLabel: "Pinecone / vector DB",
     purpose: "Long-term guidance memory search",
     readinessChecks: ["pinecone"],
-    envScope: ["PINECONE_API_KEY", "PINECONE_HOST", "PINECONE_INDEX", "OPENAI_EMBEDDING_MODEL"],
+    envScope: ["PINECONE_API_KEY", "PINECONE_HOST", "PINECONE_INDEX", "OPENAI_EMBEDDING_MODEL", "GUIDANCE_MEMORY_REQUIRE_PINECONE"],
     artifacts: ["src/backend/memoryService.js", "api/guidance-memory.js"],
     commands: ["npm run memory:check"],
     notes: "Namespaces and metadata are sanitized before vector writes."

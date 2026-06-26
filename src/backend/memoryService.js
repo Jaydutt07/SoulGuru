@@ -15,15 +15,24 @@ export function isGuidanceMemoryConfigured(env = process.env) {
   return Boolean(
     hasConfiguredValue(env.OPENAI_API_KEY) &&
     hasConfiguredValue(env.PINECONE_API_KEY) &&
+    hasConfiguredValue(env.PINECONE_INDEX) &&
     getConfiguredPineconeHost(env.PINECONE_HOST)
   );
 }
 
 export async function searchGuidanceMemory({ user = {}, query, topK = DEFAULT_TOP_K }, env = process.env, deps = {}) {
   const cleanQuery = normalizeMemoryText(query);
-  if (!isGuidanceMemoryConfigured(env) || !cleanQuery) {
+  const configured = isGuidanceMemoryConfigured(env);
+  if (!configured) {
+    if (isGuidanceMemoryRequired(env)) {
+      throwHttpError(
+        "Guidance memory is not configured. Set Pinecone and embedding environment variables before serving personalized guidance.",
+        503
+      );
+    }
     return { configured: false, matches: [] };
   }
+  if (!cleanQuery) return { configured: true, matches: [] };
 
   try {
     const makeEmbedding = deps.createEmbedding || createEmbedding;
@@ -74,9 +83,17 @@ export async function upsertGuidanceMemory({
   metadata = {}
 }, env = process.env, deps = {}) {
   const cleanText = normalizeMemoryText(text);
-  if (!isGuidanceMemoryConfigured(env) || !cleanText) {
+  const configured = isGuidanceMemoryConfigured(env);
+  if (!configured) {
+    if (isGuidanceMemoryRequired(env)) {
+      throwHttpError(
+        "Guidance memory is not configured. Set Pinecone and embedding environment variables before serving personalized guidance.",
+        503
+      );
+    }
     return { configured: false, upserted: false };
   }
+  if (!cleanText) return { configured: true, upserted: false };
 
   try {
     const makeEmbedding = deps.createEmbedding || createEmbedding;
@@ -121,6 +138,10 @@ export async function upsertGuidanceMemory({
     console.warn("Guidance memory upsert degraded", error.message);
     return { configured: true, degraded: true, upserted: false };
   }
+}
+
+export function isGuidanceMemoryRequired(env = process.env) {
+  return String(env.GUIDANCE_MEMORY_REQUIRE_PINECONE || "false").toLowerCase() === "true";
 }
 
 export function buildMemoryContext(memoryResult) {
@@ -261,6 +282,12 @@ function isLocalOrPrivateHost(hostname) {
     parts[0] === 127 ||
     (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
     (parts[0] === 192 && parts[1] === 168);
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }
 
 function sanitizeForSoulGuru(text) {

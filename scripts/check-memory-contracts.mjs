@@ -1,6 +1,7 @@
 import {
   buildMemoryContext,
   isGuidanceMemoryConfigured,
+  isGuidanceMemoryRequired,
   searchGuidanceMemory,
   upsertGuidanceMemory
 } from "../src/backend/memoryService.js";
@@ -10,7 +11,8 @@ const env = {
   OPENAI_API_KEY: "sk-contract-openai",
   OPENAI_EMBEDDING_MODEL: "text-embedding-3-large",
   PINECONE_API_KEY: "pc-contract-key",
-  PINECONE_HOST: "memory-index.svc.pinecone.io"
+  PINECONE_HOST: "memory-index.svc.pinecone.io",
+  PINECONE_INDEX: "soulguru-memory"
 };
 const user = {
   id: "profile-123",
@@ -23,6 +25,7 @@ const user = {
 };
 
 await checkUnconfiguredMemoryDegradesWithoutCalls();
+await checkStrictUnconfiguredMemoryFailsClosed();
 await checkInvalidMemoryConfigSkipsCalls();
 await checkSearchContract();
 await checkUpsertContract();
@@ -71,6 +74,44 @@ async function checkUnconfiguredMemoryDegradesWithoutCalls() {
   ].every(Boolean));
 }
 
+async function checkStrictUnconfiguredMemoryFailsClosed() {
+  let embedCalls = 0;
+  let fetchCalls = 0;
+  const deps = {
+    createEmbedding: async () => {
+      embedCalls += 1;
+      return [1, 2, 3];
+    },
+    fetch: async () => {
+      fetchCalls += 1;
+      return okJson({});
+    }
+  };
+  const strictEnv = {
+    OPENAI_API_KEY: "sk-contract-openai",
+    GUIDANCE_MEMORY_REQUIRE_PINECONE: "true"
+  };
+
+  await expectRejects(
+    "Memory search fails closed when Pinecone is required but unconfigured",
+    () => searchGuidanceMemory({ user, query: "remember this" }, strictEnv, deps),
+    /Guidance memory is not configured/i,
+    503
+  );
+  await expectRejects(
+    "Memory upsert fails closed when Pinecone is required but unconfigured",
+    () => upsertGuidanceMemory({ user, text: "remember this", kind: "daily-soul-reading" }, strictEnv, deps),
+    /Guidance memory is not configured/i,
+    503
+  );
+
+  pushCheck("Strict missing-Pinecone memory mode does not call embedding or network", [
+    isGuidanceMemoryRequired(strictEnv) === true,
+    embedCalls === 0,
+    fetchCalls === 0
+  ].every(Boolean));
+}
+
 async function checkInvalidMemoryConfigSkipsCalls() {
   let embedCalls = 0;
   let fetchCalls = 0;
@@ -109,6 +150,10 @@ async function checkInvalidMemoryConfigSkipsCalls() {
     isGuidanceMemoryConfigured({
       ...env,
       PINECONE_HOST: "https://memory-index.svc.pinecone.io/path"
+    }) === false,
+    isGuidanceMemoryConfigured({
+      ...env,
+      PINECONE_INDEX: ""
     }) === false
   ].every(Boolean));
 }
@@ -328,6 +373,18 @@ function parseRequest(url, options = {}) {
 
 function pushCheck(label, passed) {
   checks.push({ label, passed });
+}
+
+async function expectRejects(label, action, pattern, statusCode) {
+  try {
+    await action();
+    pushCheck(label, false);
+  } catch (error) {
+    pushCheck(label, [
+      pattern.test(String(error.message || "")),
+      statusCode ? error.statusCode === statusCode : true
+    ].every(Boolean));
+  }
 }
 
 function printReport() {

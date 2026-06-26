@@ -168,6 +168,7 @@ function fullEnv() {
     PINECONE_HOST: "memory-index.svc.pinecone.io",
     PINECONE_INDEX: "soulguru-memory",
     OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+    GUIDANCE_MEMORY_REQUIRE_PINECONE: "true",
     CLERK_SECRET_KEY: "sk_test_contract_secret_123456",
     VITE_CLERK_PUBLISHABLE_KEY: "pk_test_contract_publishable_123456",
     CLERK_REQUIRE_AUTH: "true",
