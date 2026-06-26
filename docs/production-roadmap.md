@@ -91,7 +91,7 @@ This project is being built toward the stack shown in the product planning image
 - Strict deployed backend smoke contract so production-ready checks require authenticated protected POST routes
 - Combined release readiness runner for local and strict production preflight checks
 - API request parsing contract for malformed JSON, body-size limits, client-error status codes, and sanitized server-error payloads
-- Active GitHub Actions CI workflow for web/API contracts, local smoke, Soul Guru diversity gates, APK build, and APK secret scanning
+- Documented GitHub Actions CI workflow for web/API contracts, local smoke, Soul Guru diversity gates, APK build, and APK secret scanning, ready to activate when GitHub workflow-scope credentials are available
 - Environment manifest contract for Vercel/mobile env setup and safe fallback defaults
 - Generated production env checklist for Vercel/provider setup that stays secret-safe and follows readiness requirements
 - Generated provider-grouped production env template that leaves server-only secrets blank and keeps local fallback flags production-safe

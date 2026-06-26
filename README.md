@@ -390,7 +390,7 @@ The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, More 
 
 ## Continuous Integration
 
-The active GitHub Actions workflow lives at `.github/workflows/ci.yml`, with a matching reference copy at `docs/github-actions-ci.yml`. The CI contract fails if the active workflow is missing, drifts from the documented copy, or stops running the required web/API, Soul Guru quality, readiness, payment, More Guidance, Shani, local smoke, and Android APK gates.
+The documented GitHub Actions workflow lives at `docs/github-actions-ci.yml`. Copy it to `.github/workflows/ci.yml` when pushing with a GitHub token that has `workflow` scope, then `npm run ci:check` also verifies the active workflow matches the documented copy and keeps the required web/API, Soul Guru quality, readiness, payment, More Guidance, Shani, local smoke, and Android APK gates.
 
 Check the CI template includes the release and mobile gates:
 
@@ -442,6 +442,8 @@ The CI template checks:
 If the repository secret `OPENAI_API_KEY` is configured, the workflow can also run `npm run soul:quality:ai` and `npm run more-guidance:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
 If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured in CI, run `npm run supabase:schema:check` after applying migrations to prove the live database still matches the app table, column, index, and uniqueness-constraint contract.
+
+Current credential note: publishing `.github/workflows/ci.yml` requires GitHub `workflow` scope. If the push is rejected, keep using `docs/github-actions-ci.yml` as the source of truth until the token or SSH key is updated.
 
 ## Supabase Setup
 
