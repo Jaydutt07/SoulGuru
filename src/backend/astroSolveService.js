@@ -202,10 +202,20 @@ Problem:
 ${question}
 
 Astrology context:
+- Ascendant: ${formatPlacement(context.birthChart?.ascendant)}
 - Birth Sun: ${context.birthChart?.sun?.sign || context.sign}
 - Birth Moon: ${context.birthChart?.moon?.sign || context.moonSign}
+- Birth Mercury: ${formatPlacement(context.birthChart?.mercury)}
+- Birth Venus: ${formatPlacement(context.birthChart?.venus)}
+- Birth Mars: ${formatPlacement(context.birthChart?.mars)}
+- Birth Jupiter: ${formatPlacement(context.birthChart?.jupiter)}
 - Birth Saturn: ${context.birthChart?.saturn?.sign || "unknown"}
+- Birth Rahu/Ketu: ${formatPlacement(context.birthChart?.rahu)} / ${formatPlacement(context.birthChart?.ketu)}
 - Transit Moon: ${context.transits?.moon?.sign || "unknown"}
+- Transit Mercury: ${formatPlacement(context.transits?.mercury)}
+- Transit Venus: ${formatPlacement(context.transits?.venus)}
+- Transit Mars: ${formatPlacement(context.transits?.mars)}
+- Transit Jupiter: ${formatPlacement(context.transits?.jupiter)}
 - Transit Saturn: ${context.transits?.saturn?.sign || "unknown"}
 - Saturn from natal Moon: ${context.transits?.saturnFromNatalMoon || "unknown"}
 - Moon from natal Moon: ${context.transits?.moonFromNatalMoon || "unknown"}
@@ -392,4 +402,11 @@ function formatBirthLocation(location, user) {
     location.source ? `${location.source} resolution` : ""
   ].filter(Boolean).join(", ");
   return details ? `${location.label} (${details})` : location.label;
+}
+
+function formatPlacement(placement = {}) {
+  if (!placement?.sign) return "unknown";
+  const house = Number.isFinite(placement.house) ? ` house ${placement.house}` : "";
+  const degree = Number.isFinite(placement.degree) ? `${placement.degree}deg` : "unknown degree";
+  return `${placement.sign} ${degree}${house}`;
 }

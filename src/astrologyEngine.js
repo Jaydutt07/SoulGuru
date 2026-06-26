@@ -31,6 +31,8 @@ const ELEMENTS = {
   Pisces: "water"
 };
 
+const BIRTH_CHART_BODIES = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+const TRANSIT_CHART_BODIES = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
 const NAKSHATRA_SPAN = 360 / 27;
 const PADA_SPAN = NAKSHATRA_SPAN / 4;
 
@@ -375,9 +377,15 @@ export function buildAstrologyContext(user, date = new Date()) {
   const birthSun = siderealBody("Sun", birthDate);
   const birthMoon = siderealBody("Moon", birthDate);
   const birthSaturn = siderealBody("Saturn", birthDate);
+  const birthAscendant = siderealAscendant(birthDate, birthPlace);
+  const birthPlacements = buildSiderealPlacements(BIRTH_CHART_BODIES, birthDate, birthAscendant.signIndex);
+  const birthNodes = buildLunarNodes(birthDate, birthAscendant.signIndex);
+  const wholeSignHouses = buildWholeSignHouses(birthAscendant.signIndex);
   const transitMoon = siderealBody("Moon", today);
   const transitSun = siderealBody("Sun", today);
   const transitSaturn = siderealBody("Saturn", today);
+  const transitPlacements = buildSiderealPlacements(TRANSIT_CHART_BODIES, today);
+  const transitNodes = buildLunarNodes(today);
   const birthMoonMansion = getLunarMansionFromLongitude(birthMoon.longitude);
   const transitMoonMansion = getLunarMansionFromLongitude(transitMoon.longitude);
   const lunarDay = getLunarDayFromLongitudes(transitMoon.longitude, transitSun.longitude);
@@ -419,12 +427,27 @@ export function buildAstrologyContext(user, date = new Date()) {
       source: birthPlace.source
     },
     birthChart: {
-      sun: serializePlacement(birthSun),
+      system: {
+        zodiac: "sidereal",
+        ayanamsa: "Lahiri",
+        houseSystem: "whole-sign",
+        ephemeris: "astronomy-engine"
+      },
+      ascendant: serializePlacement(birthAscendant),
+      houses: wholeSignHouses,
+      sun: serializePlacement(birthPlacements.sun),
       moon: {
-        ...serializePlacement(birthMoon),
+        ...serializePlacement(birthPlacements.moon),
         lunarMansion: serializeLunarMansion(birthMoonMansion)
       },
-      saturn: serializePlacement(birthSaturn)
+      mercury: serializePlacement(birthPlacements.mercury),
+      venus: serializePlacement(birthPlacements.venus),
+      mars: serializePlacement(birthPlacements.mars),
+      jupiter: serializePlacement(birthPlacements.jupiter),
+      saturn: serializePlacement(birthPlacements.saturn),
+      rahu: serializePlacement(birthNodes.rahu),
+      ketu: serializePlacement(birthNodes.ketu),
+      planets: birthPlacements
     },
     transits: {
       sun: serializePlacement(transitSun),
@@ -432,7 +455,14 @@ export function buildAstrologyContext(user, date = new Date()) {
         ...serializePlacement(transitMoon),
         lunarMansion: serializeLunarMansion(transitMoonMansion)
       },
+      mercury: serializePlacement(transitPlacements.mercury),
+      venus: serializePlacement(transitPlacements.venus),
+      mars: serializePlacement(transitPlacements.mars),
+      jupiter: serializePlacement(transitPlacements.jupiter),
       saturn: serializePlacement(transitSaturn),
+      rahu: serializePlacement(transitNodes.rahu),
+      ketu: serializePlacement(transitNodes.ketu),
+      planets: transitPlacements,
       moonFromNatalMoon: moonDistance,
       saturnFromNatalMoon: saturnDistance,
       sunFromNatalSun: solarDistance,
@@ -536,6 +566,86 @@ function siderealBody(bodyName, date) {
   };
 }
 
+function buildSiderealPlacements(bodyNames, date, ascendantSignIndex = null) {
+  return Object.fromEntries(bodyNames.map((bodyName) => {
+    const placement = siderealBody(bodyName, date);
+    const withHouse = ascendantSignIndex === null
+      ? placement
+      : {
+        ...placement,
+        house: getWholeSignHouse(placement.signIndex, ascendantSignIndex)
+      };
+    return [bodyName.toLowerCase(), serializePlacement(withHouse)];
+  }));
+}
+
+function buildLunarNodes(date, ascendantSignIndex = null) {
+  const rahu = siderealPoint("Rahu", meanLunarNodeLongitude(date), date);
+  const ketu = siderealPoint("Ketu", meanLunarNodeLongitude(date) + 180, date);
+  const withHouses = (placement) => ascendantSignIndex === null
+    ? placement
+    : {
+      ...placement,
+      house: getWholeSignHouse(placement.signIndex, ascendantSignIndex)
+    };
+  return {
+    rahu: withHouses(rahu),
+    ketu: withHouses(ketu)
+  };
+}
+
+function siderealPoint(bodyName, tropicalLongitude, date) {
+  const sidereal = mod(tropicalLongitude - lahiriAyanamsa(date), 360);
+  const signIndex = Math.floor(sidereal / 30);
+  return {
+    body: bodyName,
+    longitude: round(sidereal),
+    sign: SIDEREAL_SIGNS[signIndex],
+    signIndex,
+    degree: round(sidereal % 30)
+  };
+}
+
+function siderealAscendant(date, birthPlace) {
+  const latitude = clampLatitude(birthPlace.latitude);
+  const longitude = finiteNumber(birthPlace.longitude, 82.5);
+  const localSiderealDegrees = mod(Astronomy.SiderealTime(date) * 15 + longitude, 360);
+  const obliquity = meanObliquity(date);
+  const theta = toRadians(localSiderealDegrees);
+  const epsilon = toRadians(obliquity);
+  const phi = toRadians(latitude);
+  const tropicalAscendant = mod(toDegrees(Math.atan2(
+    -Math.cos(theta),
+    Math.sin(theta) * Math.cos(epsilon) + Math.tan(phi) * Math.sin(epsilon)
+  )), 360);
+  const sidereal = mod(tropicalAscendant - lahiriAyanamsa(date), 360);
+  const signIndex = Math.floor(sidereal / 30);
+
+  return {
+    body: "Ascendant",
+    longitude: round(sidereal),
+    sign: SIDEREAL_SIGNS[signIndex],
+    signIndex,
+    degree: round(sidereal % 30),
+    house: 1
+  };
+}
+
+function buildWholeSignHouses(ascendantSignIndex) {
+  return Array.from({ length: 12 }, (_, index) => {
+    const signIndex = mod(ascendantSignIndex + index, SIDEREAL_SIGNS.length);
+    return {
+      house: index + 1,
+      sign: SIDEREAL_SIGNS[signIndex],
+      signIndex
+    };
+  });
+}
+
+function getWholeSignHouse(signIndex, ascendantSignIndex) {
+  return mod(signIndex - ascendantSignIndex, SIDEREAL_SIGNS.length) + 1;
+}
+
 export function getLunarMansionFromLongitude(longitude) {
   const value = mod(Number(longitude) || 0, 360);
   const index = Math.min(NAKSHATRAS.length - 1, Math.floor(value / NAKSHATRA_SPAN));
@@ -580,6 +690,17 @@ function geocentricLongitude(bodyName, date) {
   }
   const vector = Astronomy.GeoVector(Astronomy.Body[bodyName], date, true);
   return Astronomy.Ecliptic(vector).elon;
+}
+
+function meanLunarNodeLongitude(date) {
+  const t = (julianDay(date) - 2451545.0) / 36525;
+  return mod(
+    125.04452
+    - 1934.136261 * t
+    + 0.0020708 * t * t
+    + (t * t * t) / 450000,
+    360
+  );
 }
 
 function findSaturnSignBoundary(date, targetSignIndex, direction) {
@@ -758,6 +879,22 @@ function finiteNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function clampLatitude(value) {
+  return Math.max(-66, Math.min(66, finiteNumber(value, 20.5937)));
+}
+
+function meanObliquity(date) {
+  const t = (julianDay(date) - 2451545.0) / 36525;
+  return 23.439291111
+    - 0.0130041667 * t
+    - 0.0000001639 * t * t
+    + 0.0000005036 * t * t * t;
+}
+
+function julianDay(date) {
+  return date.getTime() / 86400000 + 2440587.5;
+}
+
 function lahiriAyanamsa(date) {
   const year = date.getUTCFullYear() + (dayOfYear(date) - 1) / 365.2425;
   return 23.85675 + (year - 2000) * 0.013968;
@@ -770,11 +907,15 @@ function dayOfYear(date) {
 }
 
 function serializePlacement(placement) {
-  return {
+  const serialized = {
     sign: placement.sign,
     degree: placement.degree,
     longitude: placement.longitude
   };
+  if (Number.isFinite(placement.house)) {
+    serialized.house = placement.house;
+  }
+  return serialized;
 }
 
 function serializeLunarMansion(mansion) {
@@ -863,4 +1004,12 @@ function mod(value, length) {
 
 function round(value) {
   return Math.round(value * 100) / 100;
+}
+
+function toRadians(degrees) {
+  return (degrees * Math.PI) / 180;
+}
+
+function toDegrees(radians) {
+  return (radians * 180) / Math.PI;
 }

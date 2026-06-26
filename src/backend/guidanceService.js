@@ -515,6 +515,10 @@ User:
 Silent astrology-derived signals:
 - Solar temperament: ${context.sign} / ${context.element}
 - Emotional rhythm: ${context.moonSign}
+- Ascendant pattern: ${formatPlacement(context.birthChart?.ascendant)}
+- Inner planets: Mercury ${formatPlacement(context.birthChart?.mercury)}, Venus ${formatPlacement(context.birthChart?.venus)}, Mars ${formatPlacement(context.birthChart?.mars)}, Jupiter ${formatPlacement(context.birthChart?.jupiter)}
+- Lunar nodes: Rahu ${formatPlacement(context.birthChart?.rahu)}, Ketu ${formatPlacement(context.birthChart?.ketu)}
+- Current support transits: Mercury ${formatPlacement(context.transits?.mercury)}, Venus ${formatPlacement(context.transits?.venus)}, Mars ${formatPlacement(context.transits?.mars)}, Jupiter ${formatPlacement(context.transits?.jupiter)}
 - Life path pressure: ${context.lifePath}
 - Daily area: ${context.dailyArea}
 - Inner weather: ${context.innerWeather}
@@ -893,6 +897,13 @@ function formatBirthLocation(location, user) {
     location.source ? `${location.source} resolution` : ""
   ].filter(Boolean).join(", ");
   return details ? `${location.label} (${details})` : location.label;
+}
+
+function formatPlacement(placement = {}) {
+  if (!placement?.sign) return "unknown";
+  const house = Number.isFinite(placement.house) ? ` house ${placement.house}` : "";
+  const degree = Number.isFinite(placement.degree) ? `${placement.degree}deg` : "unknown degree";
+  return `${placement.sign} ${degree}${house}`;
 }
 
 function buildUserKey(user) {

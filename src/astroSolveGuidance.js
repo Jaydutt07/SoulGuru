@@ -9,8 +9,13 @@ export function buildFallbackAstroSolveInsight(question = "", user = {}, context
     user.birthDate,
     user.birthTime,
     user.birthPlace,
+    context.birthChart?.ascendant?.sign,
     context.birthChart?.sun?.sign,
     context.birthChart?.moon?.sign,
+    context.birthChart?.mercury?.sign,
+    context.birthChart?.venus?.sign,
+    context.birthChart?.mars?.sign,
+    context.birthChart?.jupiter?.sign,
     context.birthMoonMansion?.name,
     context.birthMoonMansion?.pada,
     context.transits?.moon?.sign,
@@ -40,9 +45,14 @@ export function buildAstroSolveFingerprint({ user = {}, question = "", context =
   return [
     `problem=${category.label}`,
     `cue=${cue}`,
+    `ascendant=${context.birthChart?.ascendant?.sign || "unknown"}`,
     `birthSun=${context.birthChart?.sun?.sign || context.sign || "unknown"}`,
     `birthMoon=${context.birthChart?.moon?.sign || context.moonSign || "unknown"}`,
     `birthNakshatra=${context.birthMoonMansion?.name || context.birthChart?.moon?.lunarMansion?.name || "unknown"}-${context.birthMoonMansion?.pada || context.birthChart?.moon?.lunarMansion?.pada || "unknown"}`,
+    `birthMercury=${context.birthChart?.mercury?.sign || "unknown"}`,
+    `birthVenus=${context.birthChart?.venus?.sign || "unknown"}`,
+    `birthMars=${context.birthChart?.mars?.sign || "unknown"}`,
+    `birthJupiter=${context.birthChart?.jupiter?.sign || "unknown"}`,
     `birthSaturn=${context.birthChart?.saturn?.sign || "unknown"}`,
     `transitMoon=${context.transits?.moon?.sign || "unknown"}`,
     `transitNakshatra=${context.dailyLunarMansion?.name || context.transits?.moon?.lunarMansion?.name || "unknown"}-${context.dailyLunarMansion?.pada || context.transits?.moon?.lunarMansion?.pada || "unknown"}`,
@@ -133,10 +143,19 @@ export function isLowQualityAstroSolveText(text) {
 }
 
 function buildAstroSolveParts({ problem, user, context, category, seed }) {
+  const ascendant = context.birthChart?.ascendant?.sign || "unknown";
   const sun = context.birthChart?.sun?.sign || context.sign || "unknown";
   const moon = context.birthChart?.moon?.sign || context.moonSign || "unknown";
+  const mercury = context.birthChart?.mercury?.sign || "unknown";
+  const venus = context.birthChart?.venus?.sign || "unknown";
+  const mars = context.birthChart?.mars?.sign || "unknown";
+  const jupiter = context.birthChart?.jupiter?.sign || "unknown";
   const saturn = context.birthChart?.saturn?.sign || "unknown";
   const transitMoon = context.transits?.moon?.sign || "unknown";
+  const transitMercury = context.transits?.mercury?.sign || "unknown";
+  const transitVenus = context.transits?.venus?.sign || "unknown";
+  const transitMars = context.transits?.mars?.sign || "unknown";
+  const transitJupiter = context.transits?.jupiter?.sign || "unknown";
   const transitSaturn = context.transits?.saturn?.sign || "unknown";
   const saturnDistance = context.transits?.saturnFromNatalMoon || "unknown";
   const moonDistance = context.transits?.moonFromNatalMoon || "unknown";
@@ -156,10 +175,19 @@ function buildAstroSolveParts({ problem, user, context, category, seed }) {
     category,
     seed,
     name,
+    ascendant,
     sun,
     moon,
+    mercury,
+    venus,
+    mars,
+    jupiter,
     saturn,
     transitMoon,
+    transitMercury,
+    transitVenus,
+    transitMars,
+    transitJupiter,
     transitSaturn,
     saturnDistance,
     moonDistance,
@@ -193,12 +221,12 @@ function pickAstrology(parts, seed) {
   const routedAstrology = pickCategoryAstrology(parts, seed);
   if (routedAstrology) return routedAstrology;
 
-  const { category, sun, moon, saturn, transitMoon, transitSaturn, saturnDistance, moonDistance, area, cue, decision, work } = parts;
+  const { category, ascendant, sun, moon, mercury, venus, mars, jupiter, saturn, transitMoon, transitMercury, transitMars, transitJupiter, transitSaturn, saturnDistance, moonDistance, area, cue, decision, work } = parts;
   const templates = [
-    `Birth Moon in ${moon} shows how the nervous system seeks safety, while birth Sun in ${sun} describes the style of action that restores confidence. Saturn in ${saturn} adds a discipline lesson around ${category.saturnLesson}. Today, transit Moon in ${transitMoon} is ${moonDistance} signs from the natal Moon and activates ${area}; transit Saturn in ${transitSaturn} is ${saturnDistance} signs from the natal Moon. That combination explains why ${cue} feels tied to timing, duty, and emotional proof. The chart points toward this decision gate: ${decision}, not another spiral.`,
-    `The chart links this question to ${area}. Your natal Moon in ${moon} reacts strongly to ${category.sensitivity}, and Sun in ${sun} wants progress to feel personally honest. Saturn's natal placement in ${saturn}, with transit Saturn now ${saturnDistance} signs from the Moon, presses for maturity rather than speed. Transit Moon in ${transitMoon} makes the daily trigger more noticeable. This does not decide the outcome for you; it shows why ${cue} needs structure, fewer assumptions, and this work signal: ${work}.`,
-    `Astrologically, this is a Moon-Saturn timing problem more than a simple mood. Natal Moon in ${moon} describes the emotional reflex; transit Moon in ${transitMoon}, ${moonDistance} signs away, brings the reflex into the day. Transit Saturn in ${transitSaturn}, ${saturnDistance} signs from the natal Moon, asks for accountability around ${category.saturnLesson}. With the daily area focused on ${area}, ${cue} becomes the doorway. The useful reading is clear: make responsibility measurable before emotion names it fate.`,
-    `The strongest chart signal is the relationship between natal Moon in ${moon}, natal Saturn in ${saturn}, and today's Moon in ${transitMoon}. The Moon shows the felt need, Saturn shows the test of discipline, and Sun in ${sun} shows how confidence returns through action. Because the daily area highlights ${area}, ${cue} is not random; it is where the pattern is visible today. Use the astrology as a map for timing: act after the body settles, then keep the next step concrete.`
+    `Ascendant in ${ascendant} shows the surface response, Moon in ${moon} shows where the nervous system seeks safety, and Sun in ${sun} describes how confidence returns through action. Mercury in ${mercury} and Mars in ${mars} add the speech/action style behind ${cue}. Today, transit Moon in ${transitMoon} is ${moonDistance} signs from the natal Moon; transit Saturn in ${transitSaturn} is ${saturnDistance} signs away. With Jupiter in ${jupiter}, the chart points toward this decision gate: ${decision}, not another spiral.`,
+    `The chart links this question to ${area}. Natal Moon in ${moon} reacts strongly to ${category.sensitivity}, while ascendant ${ascendant} shows the first visible defense. Venus in ${venus} shows the relational cost; Saturn in ${saturn}, with transit Saturn now ${saturnDistance} signs from the Moon, presses for maturity rather than speed. Transit Mercury in ${transitMercury} makes wording matter. This does not decide the outcome for you; it shows why ${cue} needs structure, fewer assumptions, and this work signal: ${work}.`,
+    `Astrologically, this is a timing problem more than a simple mood. Natal Moon in ${moon} describes the emotional reflex; transit Moon in ${transitMoon}, ${moonDistance} signs away, brings the reflex into the day. Mars in ${mars} shows how pressure moves, while transit Jupiter in ${transitJupiter} points to the wiser frame. Transit Saturn in ${transitSaturn}, ${saturnDistance} signs from the natal Moon, asks for accountability around ${category.saturnLesson}. With the daily area focused on ${area}, ${cue} becomes the doorway.`,
+    `The strongest chart signal is the relationship between natal Moon in ${moon}, natal Saturn in ${saturn}, and today's Moon in ${transitMoon}. The Moon shows the felt need, Saturn shows discipline, Mercury in ${mercury} shows the wording pattern, and Sun in ${sun} shows how confidence returns through action. Transit Mars in ${transitMars} adds urgency, so ${cue} is not random; it is where the pattern is visible today. Use the astrology as a map for timing: act after the body settles, then keep the next step concrete.`
   ];
   return templates[mod(seed + 5 + templateBias(category), templates.length)];
 }
@@ -233,13 +261,13 @@ function pickCategoryRoot(parts) {
 }
 
 function pickCategoryAstrology(parts) {
-  const { category, sun, moon, saturn, transitMoon, transitSaturn, saturnDistance, moonDistance, area, cue } = parts;
+  const { category, ascendant, sun, moon, mercury, venus, mars, jupiter, saturn, transitMoon, transitVenus, transitMars, transitJupiter, transitSaturn, saturnDistance, moonDistance, area, cue } = parts;
   const routes = {
-    relationship: `Birth Moon in ${moon} shows how emotional safety is registered, while Sun in ${sun} shows how confidence returns when action feels honest. With transit Moon in ${transitMoon}, ${moonDistance} signs from the natal Moon, ${cue} becomes louder today. Natal Saturn in ${saturn}, with transit Saturn in ${transitSaturn} ${saturnDistance} signs from the Moon, presses for patient truth rather than chasing closeness. The daily area of ${area} says the useful move is timing, evidence, and a boundary that stays warm.`,
-    career: `For work, the chart points to visibility being rebuilt through discipline. Sun in ${sun} wants the work to carry identity; Moon in ${moon} shows the emotional reflex when the first draft is not perfect. Saturn in ${saturn}, with transit Saturn ${saturnDistance} signs from the natal Moon, makes unfinished craft feel heavy until it has a schedule. Transit Moon in ${transitMoon} activates ${area}, so ${cue} is the practical doorway. Astrology is pointing to visible output, not another private confidence test.`,
-    "money-family": `This money-family pattern is strongly Saturnian. Natal Moon in ${moon} shows the emotional bond, while Saturn in ${saturn} describes the duty that has to become measurable. Transit Saturn in ${transitSaturn}, ${saturnDistance} signs from the natal Moon, presses for boundaries around responsibility; transit Moon in ${transitMoon} brings the feeling into the day. Because the daily area highlights ${area}, ${cue} is the chart's practical teaching point: generosity needs structure before it can stay loving.`,
-    "study-health": `The chart ties this to Moon rhythm and Saturn discipline. Natal Moon in ${moon} shows how quickly the nervous system responds to pressure, and Sun in ${sun} needs a sense of direction before confidence rises. Transit Moon in ${transitMoon}, ${moonDistance} signs from the natal Moon, agitates the daily routine; transit Saturn in ${transitSaturn}, ${saturnDistance} signs away, asks for repeatable effort. With the daily area focused on ${area}, ${cue} is a body-timing signal, not a verdict on ability.`,
-    "business-boundary": `The business signal comes through Saturn more than emotion. Natal Saturn in ${saturn} describes the lesson of responsibility, and transit Saturn in ${transitSaturn}, ${saturnDistance} signs from the natal Moon, demands patient due diligence. Moon in ${moon} senses the relational cost, while Sun in ${sun} wants movement and clear agency. Transit Moon in ${transitMoon} brings ${cue} into focus under the daily area of ${area}. The chart does not say reject the deal; it says write the terms before trust does the work.`
+    relationship: `Birth Moon in ${moon} shows how emotional safety is registered, Venus in ${venus} shows how affection seeks proof, and ascendant ${ascendant} shows the first visible defense. With transit Moon in ${transitMoon}, ${moonDistance} signs from the natal Moon, ${cue} becomes louder today. Natal Saturn in ${saturn}, with transit Venus in ${transitVenus} and transit Saturn in ${transitSaturn} ${saturnDistance} signs from the Moon, presses for patient truth rather than chasing closeness. The daily area of ${area} says the useful move is timing, evidence, and a boundary that stays warm.`,
+    career: `For work, the chart points to visibility being rebuilt through discipline. Sun in ${sun} wants the work to carry identity; Mercury in ${mercury} shows the planning voice, and Mars in ${mars} shows how effort moves under pressure. Saturn in ${saturn}, with transit Saturn ${saturnDistance} signs from the natal Moon, makes unfinished craft feel heavy until it has a schedule. Transit Mars in ${transitMars} activates the need for action under ${area}, so ${cue} is the practical doorway. Astrology is pointing to visible output, not another private confidence test.`,
+    "money-family": `This money-family pattern is strongly Saturnian, but Jupiter in ${jupiter} shows the wisdom available when duty has proportion. Natal Moon in ${moon} shows the emotional bond, while Saturn in ${saturn} describes the responsibility that has to become measurable. Transit Saturn in ${transitSaturn}, ${saturnDistance} signs from the natal Moon, presses for boundaries; transit Jupiter in ${transitJupiter} shows where support can become wiser. Because the daily area highlights ${area}, ${cue} is the chart's teaching point: generosity needs structure before it can stay loving.`,
+    "study-health": `The chart ties this to Moon rhythm, Mercury habits, and Saturn discipline. Natal Moon in ${moon} shows how quickly the nervous system responds to pressure, while Mercury in ${mercury} shows how attention organizes itself. Transit Moon in ${transitMoon}, ${moonDistance} signs from the natal Moon, agitates the daily routine; transit Saturn in ${transitSaturn}, ${saturnDistance} signs away, asks for repeatable effort. With the daily area focused on ${area}, ${cue} is a body-timing signal, not a verdict on ability.`,
+    "business-boundary": `The business signal comes through Saturn, Mercury, and Mars together. Natal Saturn in ${saturn} describes responsibility, Mercury in ${mercury} describes terms, and Mars in ${mars} shows how quickly action wants to move. Transit Saturn in ${transitSaturn}, ${saturnDistance} signs from the natal Moon, demands due diligence. Moon in ${moon} senses the relational cost, while Sun in ${sun} wants agency. Transit Moon in ${transitMoon} brings ${cue} into focus under ${area}. The chart does not say reject the deal; it says write the terms before trust does the work.`
   };
   return routes[category.id] || "";
 }
