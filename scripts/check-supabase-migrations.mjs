@@ -14,7 +14,18 @@ const requiredMigrationFiles = [
   "009_unique_subscription_provider_ids.sql",
   "010_schema_contract_rpc.sql",
   "011_schema_contract_constraints.sql",
-  "012_shani_membership.sql"
+  "012_shani_membership.sql",
+  "013_hashed_user_keys.sql"
+];
+
+const hashedUserKeyTables = [
+  "daily_soul_readings",
+  "more_guidance_subscriptions",
+  "saved_guidance",
+  "astro_solve_questions",
+  "more_guidance_readings",
+  "shani_remedy_memberships",
+  "shani_pandit_messages"
 ];
 
 const schemaContract = [
@@ -281,6 +292,7 @@ function checkIndexesAndIdempotency() {
     contains("where provider_payment_id is not null"),
     contains("where provider_subscription_id is not null")
   ].every(Boolean));
+  pushCheck("Backend user_key columns require privacy-safe hashed values", hashedUserKeyTables.every((table) => hasHashedUserKeyConstraint(table)));
 }
 
 function checkCriticalDefaults() {
@@ -306,11 +318,22 @@ function checkCriticalDefaults() {
     contains("returns jsonb"),
     contains("from pg_indexes"),
     contains("from information_schema.key_column_usage"),
+    contains("information_schema.check_constraints"),
     contains("'constraints'"),
     contains("grant execute on function public.soulguru_schema_contract() to service_role"),
     contains("revoke all on function public.soulguru_schema_contract() from anon"),
     contains("revoke all on function public.soulguru_schema_contract() from authenticated")
   ].every(Boolean));
+}
+
+function hasHashedUserKeyConstraint(table) {
+  const constraintName = `${table}_user_key_hashed_chk`;
+  const valuesRow = new RegExp(`\\(\\s*'${escapeRegex(table)}'\\s*,\\s*'${escapeRegex(constraintName)}'\\s*\\)`, "i");
+  return contains(constraintName)
+    && contains(table)
+    && contains("^sgu_[a-f0-9]{32}$")
+    && valuesRow.test(combinedSql)
+    && /add\s+constraint\s+%I\s+check\s*\(\s*user_key\s*~\s*%L\s*\)/i.test(combinedSql);
 }
 
 function hasTable(table) {

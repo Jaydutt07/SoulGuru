@@ -294,7 +294,22 @@ const constraintContract = [
     table: "payment_events",
     columns: ["provider_event_id"],
     type: "PRIMARY KEY"
-  }
+  },
+  ...[
+    "daily_soul_readings",
+    "more_guidance_subscriptions",
+    "saved_guidance",
+    "astro_solve_questions",
+    "more_guidance_readings",
+    "shani_remedy_memberships",
+    "shani_pandit_messages"
+  ].map((table) => ({
+    label: `${table} user_key is hashed`,
+    table,
+    columns: [],
+    type: "CHECK",
+    checkIncludes: "^sgu_[a-f0-9]{32}$"
+  }))
 ];
 
 const missingEnv = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((key) => !hasEnv(env, key));
@@ -413,7 +428,11 @@ function checkConstraint(item, constraints) {
   const match = Object.entries(constraints || {}).find(([, constraint]) => (
     String(constraint?.table || "") === item.table
     && String(constraint?.type || "").toUpperCase() === item.type
-    && sameColumns(constraint?.columns || [], item.columns)
+    && (
+      item.type === "CHECK"
+        ? normalizeConstraintExpression(constraint?.check || "").includes(normalizeConstraintExpression(item.checkIncludes || ""))
+        : sameColumns(constraint?.columns || [], item.columns)
+    )
   ));
   const passed = Boolean(match);
 
@@ -425,10 +444,20 @@ function checkConstraint(item, constraints) {
     table: item.table,
     columns: item.columns,
     constraintType: item.type,
+    checkIncludes: item.checkIncludes || "",
     error: passed
       ? ""
-      : `${item.table} is missing required ${item.type.toLowerCase()} constraint on (${item.columns.join(", ")}).`
+      : item.type === "CHECK"
+        ? `${item.table} is missing required ${item.type.toLowerCase()} constraint containing ${item.checkIncludes}.`
+        : `${item.table} is missing required ${item.type.toLowerCase()} constraint on (${item.columns.join(", ")}).`
   };
+}
+
+function normalizeConstraintExpression(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/::text/g, "");
 }
 
 function buildReport({ status, checks, missingEnv }) {

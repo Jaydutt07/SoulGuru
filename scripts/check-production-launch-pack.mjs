@@ -91,7 +91,8 @@ function checkArtifactContents() {
     actionReport.includes("Final Launch Verification"),
     supabaseSql.includes("-- SoulGuru Supabase production schema bundle"),
     supabaseSql.includes("001_initial_schema.sql"),
-    supabaseSql.includes("012_shani_membership.sql")
+    supabaseSql.includes("012_shani_membership.sql"),
+    supabaseSql.includes("013_hashed_user_keys.sql")
   ].every(Boolean));
 }
 
