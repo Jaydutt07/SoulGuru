@@ -86,6 +86,16 @@ const rateLimitedRoutes = [
     downstream: ["createDailySoulWisdom"]
   },
   {
+    file: "soul-wisdom-feedback.js",
+    label: "Soul Guru reading feedback",
+    route: "soul-wisdom-feedback",
+    limitEnv: "SOUL_WISDOM_FEEDBACK_RATE_LIMIT",
+    defaultLimit: 30,
+    windowExpression: "24 * 60 * 60",
+    subject: "payload.user",
+    downstream: ["submitSoulWisdomFeedback"]
+  },
+  {
     file: "user-profile.js",
     label: "User profile",
     route: "user-profile",

@@ -17,7 +17,8 @@ const requiredMigrationFiles = [
   "012_shani_membership.sql",
   "013_hashed_user_keys.sql",
   "014_soul_wisdom_generation_locks.sql",
-  "015_more_guidance_generation_locks.sql"
+  "015_more_guidance_generation_locks.sql",
+  "016_soul_wisdom_feedback.sql"
 ];
 
 const hashedUserKeyTables = [
@@ -29,7 +30,8 @@ const hashedUserKeyTables = [
   "astro_solve_questions",
   "more_guidance_readings",
   "shani_remedy_memberships",
-  "shani_pandit_messages"
+  "shani_pandit_messages",
+  "soul_wisdom_feedback"
 ];
 
 const schemaContract = [
@@ -213,6 +215,23 @@ const schemaContract = [
       "prompt_version",
       "created_at"
     ]
+  },
+  {
+    table: "soul_wisdom_feedback",
+    columns: [
+      "id",
+      "user_profile_id",
+      "user_key",
+      "daily_reading_id",
+      "reading_date",
+      "prompt_version",
+      "reading_hash",
+      "rating",
+      "reason",
+      "metadata",
+      "created_at",
+      "updated_at"
+    ]
   }
 ];
 
@@ -237,7 +256,9 @@ const requiredIndexes = [
   "shani_memberships_provider_payment_unique_idx",
   "shani_memberships_provider_subscription_unique_idx",
   "shani_pandit_messages_user_created_idx",
-  "shani_pandit_messages_membership_created_idx"
+  "shani_pandit_messages_membership_created_idx",
+  "soul_wisdom_feedback_user_date_idx",
+  "soul_wisdom_feedback_rating_created_idx"
 ];
 
 const checks = [];
@@ -309,6 +330,7 @@ function checkIndexesAndIdempotency() {
   pushCheck("Daily Soul Guru generation lock is unique per user/date/prompt", hasUniqueTuple("soul_wisdom_generation_locks", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("More Guidance cache is unique per user/date/prompt", hasUniqueTuple("more_guidance_readings", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("More Guidance generation lock is unique per user/date/prompt", hasUniqueTuple("more_guidance_generation_locks", ["user_key", "reading_date", "prompt_version"]));
+  pushCheck("Soul Guru feedback is unique per user/date/prompt", hasUniqueTuple("soul_wisdom_feedback", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("Razorpay payment activation is idempotent", [
     contains("create unique index if not exists subscriptions_provider_payment_unique_idx"),
     contains("where provider_payment_id is not null")
@@ -323,6 +345,11 @@ function checkIndexesAndIdempotency() {
     contains("create unique index if not exists shani_memberships_provider_subscription_unique_idx"),
     contains("where provider_payment_id is not null"),
     contains("where provider_subscription_id is not null")
+  ].every(Boolean));
+  pushCheck("Soul Guru feedback stores bounded ratings and reading hashes", [
+    contains("constraint soul_wisdom_feedback_rating_chk check (rating in ('accurate', 'missed'))"),
+    contains("constraint soul_wisdom_feedback_reading_hash_chk check (reading_hash ~ '^swr_[a-f0-9]{32}$')"),
+    contains("constraint soul_wisdom_feedback_reason_length_chk check (reason is null or char_length(reason) <= 180)")
   ].every(Boolean));
   pushCheck("Backend user_key columns require privacy-safe hashed values", hashedUserKeyTables.every((table) => hasHashedUserKeyConstraint(table)));
 }

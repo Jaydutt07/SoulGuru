@@ -560,6 +560,36 @@ button:disabled {
   margin-top: 0.15rem;
 }
 
+.wisdom-feedback {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.wisdom-feedback button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  min-height: 2.75rem;
+  border: 1px solid rgba(23, 50, 58, 0.1);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--deep-teal);
+  font-weight: 900;
+}
+
+.wisdom-feedback button.active {
+  border-color: rgba(23, 107, 115, 0.32);
+  background: rgba(217, 240, 239, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(23, 107, 115, 0.1);
+}
+
+.wisdom-feedback button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .guidance-actions {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
@@ -1363,6 +1393,7 @@ button:disabled {
 
   .form-row,
   .section-heading-row,
+  .wisdom-feedback,
   .guidance-actions {
     grid-template-columns: 1fr;
   }

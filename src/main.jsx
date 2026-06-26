@@ -18,6 +18,8 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   UserPlus,
   X
 } from "lucide-react";
@@ -478,7 +480,14 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const [readingStatus, setReadingStatus] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? "" : "Preparing today's guidance...");
   const [isSavingAdvice, setIsSavingAdvice] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  const [feedbackChoice, setFeedbackChoice] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState("");
   const focus = useMemo(() => getDailyFocus(user), [user]);
+
+  useEffect(() => {
+    setFeedbackChoice("");
+    setFeedbackStatus("");
+  }, [reading?.wisdom]);
 
   useEffect(() => {
     let cancelled = false;
@@ -664,6 +673,51 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
     }
   }
 
+  async function sendWisdomFeedback(rating) {
+    if (!reading) return;
+
+    setFeedbackChoice(rating);
+    setFeedbackStatus("Noting this...");
+
+    try {
+      const response = await authFetch(getApiUrl("/api/soul-wisdom-feedback"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            email: user.email,
+            birthDate: user.birthDate,
+            birthTime: user.birthTime,
+            birthPlace: user.birthPlace,
+            birthLatitude: user.birthLatitude,
+            birthLongitude: user.birthLongitude,
+            birthTimezone: user.birthTimezone,
+            birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+            birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+            birthPlaceResolutionSource: user.birthPlaceResolutionSource
+          },
+          rating,
+          readingDate: todayKey,
+          promptVersion: SOUL_WISDOM_PROMPT_VERSION,
+          wisdom: reading.wisdom
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Unable to save feedback");
+      }
+
+      setFeedbackStatus(data.stored ? "Feedback saved." : "Feedback noted.");
+      trackEvent("soul_wisdom_feedback", { rating, stored: Boolean(data.stored) });
+    } catch {
+      setFeedbackStatus("Feedback could not sync.");
+      trackEvent("soul_wisdom_feedback_failed", { rating });
+    }
+  }
+
   return (
     <section className="tab-section soul-section">
       <p className="eyebrow">Soul Guru</p>
@@ -685,6 +739,28 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           <strong>{reading?.release || "Do not force an answer"}</strong>
         </div>
       </div>
+      <div className="wisdom-feedback" aria-label="Reading feedback">
+        <button
+          className={feedbackChoice === "accurate" ? "active" : ""}
+          type="button"
+          onClick={() => sendWisdomFeedback("accurate")}
+          disabled={!reading}
+          aria-pressed={feedbackChoice === "accurate"}
+        >
+          <ThumbsUp size={17} aria-hidden="true" />
+          Accurate
+        </button>
+        <button
+          className={feedbackChoice === "missed" ? "active" : ""}
+          type="button"
+          onClick={() => sendWisdomFeedback("missed")}
+          disabled={!reading}
+          aria-pressed={feedbackChoice === "missed"}
+        >
+          <ThumbsDown size={17} aria-hidden="true" />
+          Missed
+        </button>
+      </div>
       <div className="daily-focus">
         {focus.map((item) => (
           <div key={item.label}>
@@ -704,6 +780,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         </button>
       </div>
       {saveStatus && <p className="checkout-note">{saveStatus}</p>}
+      {feedbackStatus && <p className="checkout-note">{feedbackStatus}</p>}
     </section>
   );
 }

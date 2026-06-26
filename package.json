@@ -60,6 +60,7 @@
     "shani:quality": "node scripts/check-shani-quality.mjs",
     "shani:quality:ai": "node scripts/check-shani-quality.mjs --include-ai",
     "soul:cache:check": "node scripts/check-soul-wisdom-cache.mjs",
+    "soul:feedback:check": "node scripts/check-soul-wisdom-feedback-contracts.mjs",
     "soul:quality": "node scripts/check-soul-wisdom-quality.mjs --max-similarity=0.18 --max-repeated-owners=2",
     "soul:quality:extended": "node scripts/check-soul-wisdom-quality.mjs --case-set=extended --max-similarity=0.22 --max-repeated-owners=3",
     "soul:quality:ai": "node scripts/check-soul-wisdom-quality.mjs --include-ai",

@@ -98,7 +98,8 @@ function checkArtifactContents() {
     supabaseSql.includes("001_initial_schema.sql"),
     supabaseSql.includes("012_shani_membership.sql"),
     supabaseSql.includes("013_hashed_user_keys.sql"),
-    supabaseSql.includes("014_soul_wisdom_generation_locks.sql")
+    supabaseSql.includes("014_soul_wisdom_generation_locks.sql"),
+    supabaseSql.includes("016_soul_wisdom_feedback.sql")
   ].every(Boolean));
 }
 

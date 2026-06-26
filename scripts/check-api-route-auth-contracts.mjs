@@ -41,6 +41,11 @@ const protectedRoutes = [
     downstream: ["createDailySoulWisdom"]
   },
   {
+    file: "soul-wisdom-feedback.js",
+    label: "Soul Guru reading feedback",
+    downstream: ["submitSoulWisdomFeedback"]
+  },
+  {
     file: "user-profile.js",
     label: "User profile",
     downstream: ["handleUserProfile"]

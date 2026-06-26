@@ -191,6 +191,23 @@ const schemaContract = [
       "prompt_version",
       "created_at"
     ]
+  },
+  {
+    table: "soul_wisdom_feedback",
+    columns: [
+      "id",
+      "user_profile_id",
+      "user_key",
+      "daily_reading_id",
+      "reading_date",
+      "prompt_version",
+      "reading_hash",
+      "rating",
+      "reason",
+      "metadata",
+      "created_at",
+      "updated_at"
+    ]
   }
 ];
 
@@ -307,6 +324,16 @@ const indexContract = [
     name: "shani_pandit_messages_membership_created_idx",
     table: "shani_pandit_messages",
     columns: ["membership_id", "created_at"]
+  },
+  {
+    name: "soul_wisdom_feedback_user_date_idx",
+    table: "soul_wisdom_feedback",
+    columns: ["user_key", "reading_date"]
+  },
+  {
+    name: "soul_wisdom_feedback_rating_created_idx",
+    table: "soul_wisdom_feedback",
+    columns: ["rating", "created_at"]
   }
 ];
 
@@ -336,6 +363,12 @@ const constraintContract = [
     type: "UNIQUE"
   },
   {
+    label: "Soul Guru feedback is unique per user/date/prompt",
+    table: "soul_wisdom_feedback",
+    columns: ["user_key", "reading_date", "prompt_version"],
+    type: "UNIQUE"
+  },
+  {
     label: "Payment webhook events are idempotent by provider event id",
     table: "payment_events",
     columns: ["provider_event_id"],
@@ -350,7 +383,8 @@ const constraintContract = [
     "astro_solve_questions",
     "more_guidance_readings",
     "shani_remedy_memberships",
-    "shani_pandit_messages"
+    "shani_pandit_messages",
+    "soul_wisdom_feedback"
   ].map((table) => ({
     label: `${table} user_key is hashed`,
     table,

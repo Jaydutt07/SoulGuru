@@ -135,6 +135,7 @@ This project is being built toward the stack shown in the product planning image
 - Supabase hashed `user_key` constraints for privacy-safe cache, quota, paid-history, saved-guidance, and Shani membership rows
 - Supabase-backed Soul Guru generation locks to prevent duplicate OpenAI calls during concurrent same-day requests
 - Supabase-backed More Guidance generation locks to prevent duplicate paid OpenAI calls during concurrent same-day requests
+- Supabase-backed Soul Guru feedback storage for privacy-safe prompt tuning signals on daily readings
 - Vercel deployment contract checker for build settings, API route duration, CSP/security/cache headers, SPA rewrites, and upload exclusions
 - Production domain and Cloudflare DNS readiness gate for the Namecheap/Cloudflare launch path
 - Secret-safe production provider launch plan grouped by source/AI, data/auth, deployment/DNS, payments, and reliability phases
@@ -157,17 +158,18 @@ This project is being built toward the stack shown in the product planning image
 13. Apply `supabase/migrations/013_hashed_user_keys.sql`.
 14. Apply `supabase/migrations/014_soul_wisdom_generation_locks.sql`.
 15. Apply `supabase/migrations/015_more_guidance_generation_locks.sql`.
-16. Generate the ordered Supabase SQL bundle with `npm run supabase:bundle` or `npm run supabase:bundle -- --out=tmp/soulguru-supabase.sql` when applying migrations through the SQL editor.
-17. Run `npm run supabase:schema:check` against the Supabase project.
-18. Run `npm run production:env:checklist`, `npm run production:env:template`, `npm run production:providers`, `npm run production:actions`, `npm run production:audit`, `npm run production:launch-plan`, and `npm run production:launch-pack` while configuring Vercel, Cloudflare, and provider dashboards.
-19. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
-20. Run `npm run place:geocoder:smoke -- --place="Paris, France"` against the configured geocoder.
-21. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-22. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
-23. Configure token-authenticated phone OTP delivery through `OTP_SMS_WEBHOOK_URL` and `OTP_SMS_WEBHOOK_TOKEN`, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
-24. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
-25. Run `npm run public-env:check:strict`.
-26. Run `npm run payments:check`.
+16. Apply `supabase/migrations/016_soul_wisdom_feedback.sql`.
+17. Generate the ordered Supabase SQL bundle with `npm run supabase:bundle` or `npm run supabase:bundle -- --out=tmp/soulguru-supabase.sql` when applying migrations through the SQL editor.
+18. Run `npm run supabase:schema:check` against the Supabase project.
+19. Run `npm run production:env:checklist`, `npm run production:env:template`, `npm run production:providers`, `npm run production:actions`, `npm run production:audit`, `npm run production:launch-plan`, and `npm run production:launch-pack` while configuring Vercel, Cloudflare, and provider dashboards.
+20. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
+21. Run `npm run place:geocoder:smoke -- --place="Paris, France"` against the configured geocoder.
+22. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+23. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
+24. Configure token-authenticated phone OTP delivery through `OTP_SMS_WEBHOOK_URL` and `OTP_SMS_WEBHOOK_TOKEN`, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
+25. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.
+26. Run `npm run public-env:check:strict`.
+27. Run `npm run payments:check`.
 27. Run `npm run shani:check`.
 28. Run `npm run production:domain:smoke -- --expect-ready` after the Cloudflare DNS and Vercel custom-domain setup are live.
 29. Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.

@@ -50,6 +50,7 @@ function checkDevApiUsesSharedErrorSanitizer() {
     source.includes("sendErrorJson"),
     rawErrorResponses.length === 0,
     source.includes('route: "soul-wisdom"'),
+    source.includes('route: "soul-wisdom-feedback"'),
     source.includes('route: "more-guidance"'),
     source.includes('route: "auth-otp"')
   ].every(Boolean));

@@ -94,6 +94,11 @@ function checkSoulGuruSurface() {
     "Move",
     "Release",
     "Save Advice",
+    "wisdom-feedback",
+    "sendWisdomFeedback(\"accurate\")",
+    "sendWisdomFeedback(\"missed\")",
+    "Accurate",
+    "Missed",
     "More Guidance"
   ]));
 
