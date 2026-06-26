@@ -438,7 +438,7 @@ The CI template checks:
 - `npm run production:domain:check`
 - `npm audit --omit dev`
 - `npm run production:check -- --allow-fail`
-- Android debug APK build plus `npm run security:check`
+- Android debug APK build plus `npm run android:artifact:check` and `npm run security:check`
 
 If the repository secret `OPENAI_API_KEY` is configured, the workflow can also run `npm run soul:quality:ai` and `npm run more-guidance:quality:ai` for live prompt-quality regression checks. The secret is used only inside the CI job and is not bundled into the frontend or APK.
 
@@ -656,6 +656,7 @@ Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds mus
 Set `VITE_API_BASE_URL` to the production domain-backed backend before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
 Run `npm run public-env:check:strict` before any web or mobile release so server-only keys cannot be exposed through public `VITE_` variables.
 Run `npm run android:security:check` before release as well; it verifies Android backup and data extraction are disabled so profile, birth, paid-access, and cached guidance data are not included in cloud backup or device transfer.
+Run `npm run android:artifact:check` after building an APK to verify the installable artifact contains the expected web chunks, points at the intended backend URL when provided, and does not expose server-only env names or secret-shaped tokens.
 
 For phone testing before Vercel deployment, run the backend on your Mac's Wi-Fi/LAN address:
 

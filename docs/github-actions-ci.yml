@@ -192,6 +192,9 @@ jobs:
           chmod +x android/gradlew
           npm run android:apk
 
+      - name: Audit debug APK artifact
+        run: npm run android:artifact:check
+
       - name: Check APK for bundled secrets
         run: npm run security:check
 

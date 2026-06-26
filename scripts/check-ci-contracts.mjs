@@ -63,7 +63,8 @@ function checkRequiredCommands(workflowText) {
     "npm run production:domain:check",
     "npm audit --omit dev",
     "npm run production:check -- --allow-fail",
-    "npm run android:apk"
+    "npm run android:apk",
+    "npm run android:artifact:check"
   ];
   const missing = requiredCommands.filter((command) => !workflowText.includes(command));
   pushCheck("CI template runs the required release and mobile gates", missing.length === 0, missing);
