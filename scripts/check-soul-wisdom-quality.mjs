@@ -144,7 +144,7 @@ function evaluateReading({ user, source, result }) {
     failures.push("used mechanical capitalized direct-address phrasing.");
   }
   if (hasAwkwardTemplateJoin(wisdom)) {
-    failures.push("used an awkward template join such as 'Let turn' or 'Let letting'.");
+    failures.push("used an awkward template join such as 'Let turn', 'Let give', or 'Let letting'.");
   }
   if (mentionsAstrology(wisdom)) {
     failures.push("mentioned astrology/planet terminology in Soul Guru wisdom.");
@@ -470,7 +470,7 @@ function hasMechanicalDirectAddressCasing(text, name) {
 
 function hasAwkwardTemplateJoin(text) {
   return [
-    /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i,
+    /\bLet\s+(?:answer|choose|clean|close|complete|document|do|drink|eat|finish|give|handle|keep|lower|make|name|protect|put|reduce|repair|schedule|separate|send|simplify|sleep|step|take|turn|use|walk|write)\b/i,
     /\blet\s+let\b/i,
     /\bwhen\s+(?:protect|eat|drink|walk|leave|start|lower|step)\b/i,
     /\bwhen\s+do not\b/i,

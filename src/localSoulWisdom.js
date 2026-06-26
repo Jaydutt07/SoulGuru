@@ -242,11 +242,21 @@ function compactFillerLine(context, seed, imperative, usedLines = new Set()) {
     relationshipTimingLine(seed),
     `${capitalize(area)} becomes easier to handle when the body is fed, watered, or rested first.`,
     `A kept limit gives ${area} shape before effort starts arguing for permission.`,
-    `${capitalize(area)} needs a public shape that can survive a busy hour.`,
+    publicAreaShapeLine(area, seed),
     compactAreaLine(context),
     silenceTimingLine(seed)
   ];
   return pickDistinctLine(imperative ? imperativeLines : statementLines, seed, usedLines, area, body, avoid);
+}
+
+function publicAreaShapeLine(area, seed = 0) {
+  return pickLine([
+    `${capitalize(area)} needs a visible container before the hour gets crowded.`,
+    `Give ${area} one outside sign of progress before the day scatters.`,
+    `${capitalize(area)} holds better when the next task has a time, owner, and finish.`,
+    `A visible appointment, line, or sent piece gives ${area} somewhere real to stand.`,
+    `${capitalize(area)} needs one practical marker that another person could actually see.`
+  ], seed, area);
 }
 
 function compactTimedTaskLine(context, seed = 0) {
@@ -311,7 +321,7 @@ function compactNeed(text, seed = 0) {
       "a limit with a real hour on it",
       "an answer small enough to keep",
       "a clear edge that does not need a speech",
-      "one amount of access that can survive the mood",
+      "one available hour that can survive the mood",
       "a no or yes with timing attached"
     ], seed, normalized);
   }
@@ -341,8 +351,10 @@ function compactAvoid(text, seed = 0) {
       "checking every small change",
       "turning tiny shifts into evidence",
       "scanning ordinary details for proof",
-      "reading small shifts as verdicts",
-      "making every change testify"
+      "making every change testify",
+      "treating ordinary pauses like evidence",
+      "asking small changes to explain too much",
+      "scanning each delay for permission"
     ], seed, normalized);
   }
   if (normalized.includes("worth") || normalized.includes("exhaustion")) return "proving worth through exhaustion";
@@ -361,8 +373,10 @@ function avoidPhrase(text, seed = 0) {
       "checking every small change",
       "turning tiny shifts into proof",
       "scanning ordinary details for hidden signals",
-      "reading each small shift as a verdict",
-      "reading every shift as a verdict"
+      "making ordinary pauses sound personal",
+      "asking small changes to explain too much",
+      "scanning each delay for permission",
+      "letting one pause testify for the whole day"
     ], seed, normalized);
   }
   if (normalized.includes("delay") && normalized.includes("verdict")) {
@@ -894,8 +908,8 @@ function timedActionLine(action, window, seed = 0) {
     `Keep the block narrow: ${infinitive}, then stop at the first usable result.`,
     `The next ${window} block should make ${gerund} concrete enough to respect by evening.`,
     `Give ${gerund} a beginning, an ending, and no second debate in your head after the timer stops.`,
-    `Set ${window} aside to ${infinitive}; the result only has to be usable, not impressive.`,
-    `Make ${gerund} the whole assignment for ${window}, then leave the rest outside the block.`,
+    `Set a ${window} block aside to ${infinitive}; the result only has to be usable, not impressive.`,
+    `Make ${gerund} the whole assignment for a ${window} block, then leave the rest outside it.`,
     `A ${window} block is enough to ${infinitive} if it ends with something handled.`
   ], seed, action, window, infinitive, gerund);
 }
@@ -972,7 +986,7 @@ function relationLine(name, context, seed) {
     conversationPullLine(seed, relation, avoid),
     relationPaceLine(seed, relation),
     nextExchangeLine(seed),
-    `Respond from proportion: kind, brief, and clear enough that resentment has less room.`,
+    `Respond from proportion: kind, brief, and clear enough that resentment has fewer places to gather.`,
     availabilityTimingLine(seed),
     timedAnswerLine(seed, name),
     "Answer only the part you can still stand behind after dinner.",
@@ -992,7 +1006,7 @@ function bodySizedAccessLine(context, seed = 0) {
     `Offer the time your body can keep, then let ${area} stop borrowing from tomorrow.`,
     `A warmer answer works better when ${body} is protected before availability is promised.`,
     `Let the next yes fit the body you actually have today, not the guilt around ${area}.`,
-    `Keep care present, but make the amount of access something ${body} can afford.`,
+    `Keep care present, but offer only the time ${body} can afford.`,
     `Name the hour before offering the heart; ${area} needs shape more than sacrifice.`
   ], seed, area, body, context.relationalCaution, context.relationshipMirror);
 }
@@ -1028,7 +1042,7 @@ function relationCloseLine(context, seed, salt = "", preferredBucket = "") {
   const lines = [
     `Keep the next reply plain: ${relationInstruction}, then leave one finished detail behind you.`,
     `With other people, ${relation}; the day can still end with one useful detail finished.`,
-    `Keep the answer simple enough to keep, and let ${close} count without decoration.`,
+    `Keep the answer simple enough to keep, and record ${close} without decoration.`,
     `When the room asks for more explanation, ${relation}, and leave with one less loose end.`,
     `${capitalize(permission)}; put a clock around care before it becomes performance.`,
     `A shorter answer and one closed task will help more than solving the room's whole weather.`,
@@ -1102,7 +1116,7 @@ function bodyInterpretationLine(bodyPractice, seed = 0) {
     `After ${bodyPractice}, the decision has more room to land.`,
     `Let ${bodyPractice} happen before the decision gets oversized.`,
     `The next answer gets easier to trust once ${bodyPractice} is no longer postponed.`,
-    `${capitalize(bodyPractice)} gives the mind less room to invent a crisis.`,
+    `${capitalize(bodyPractice)} leaves the mind fewer excuses to invent a crisis.`,
     `A decision made after ${bodyPractice} is less likely to borrow urgency.`
   ], seed, bodyPractice);
 }
@@ -1130,7 +1144,7 @@ function relationshipLimitLine(avoid, seed = 0) {
     `Let ${avoid} lose authority by naming when you are available and what is actually being asked.`,
     `Where ${avoid} gets loud, make the answer smaller: one time, one limit, no extra defense.`,
     `Once ${avoid} tries to manage the room, keep the reply brief and survivable.`,
-    `Give ${avoid} less room by answering the request instead of the atmosphere around it.`
+    `Give ${avoid} a smaller role by answering the request instead of the atmosphere around it.`
   ], seed, avoid);
 }
 
@@ -1140,7 +1154,7 @@ function availabilityTimingLine(seed = 0) {
     "Kindness gets easier to keep when the hour is named first.",
     "A clear hour will protect the warmth better than an open-ended yes.",
     "The next yes should come with a time, not a quiet debt.",
-    "A named amount of access keeps care easier to mean.",
+    "A named hour keeps care warm without leaving you endlessly reachable.",
     "The answer can be caring without staying endlessly reachable."
   ], seed);
 }
@@ -1189,7 +1203,7 @@ function subjectPhysicalActionLine(subject, seed = 0) {
   const lowerSubject = lowerFirst(subject);
   return pickLine([
     `${subject} loses force once the next action has a clear finish point.`,
-    `A visible move gives ${lowerSubject} less room to grow.`,
+    `A visible move keeps ${lowerSubject} from growing.`,
     `${subject} softens when the practical step can be touched, sent, finished, or cleared.`,
     `The next action takes authority away from ${lowerSubject}.`,
     `${subject} stops growing when the next move is made physical.`
@@ -1251,7 +1265,7 @@ function containerAskLine(area, name, seed = 0) {
 function solveAreaLine(name, area, need, seed = 0) {
   return pickLine([
     `${name} does not have to solve ${area} by feeling ready; ${need} only needs a usable place to land.`,
-    `${area} needs a time and place from ${name}, not a mood that feels complete.`,
+    `${capitalize(area)} needs a time and place from ${name}, not a mood that feels complete.`,
     `${name} can give ${area} one practical holder while ${need} catches up.`,
     `Feeling ready is not required here; ${name} can give ${area} a time, place, and edge.`,
     `${name} can stop solving ${area} internally and give the need for ${need} one visible slot.`
@@ -1442,7 +1456,7 @@ function keptPromiseClosingLine(seed = 0) {
 function keptPromiseTrustLine(seed = 0) {
   return pickLine([
     "Finish it; explanation can wait.",
-    "A kept promise gives the mind less room to request perfect wording.",
+    "A kept promise reduces the mind's demand for perfect wording.",
     "A completed promise can earn trust before the mood agrees with it.",
     "You can let the completed promise matter more than the perfect explanation.",
     "A promise kept quietly can settle the room before another explanation arrives."
@@ -1803,7 +1817,7 @@ function participationCloseLine(seed = 0) {
 
 function eveningEvidenceLine(close, seed = 0) {
   return pickLine([
-    `By evening, let ${close} count before the mind asks for a late review.`,
+    `By evening, put ${close} in the record before the mind asks for a late review.`,
     `When the day closes, ${close} deserves a place in the evidence.`,
     `Before night, let ${close} be the answer you actually respect.`,
     eveningQuestionLine(close, seed),
