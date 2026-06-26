@@ -27,6 +27,7 @@ const plan = parseJson(jsonOutput);
 checkGeneratorRuns();
 checkLaunchPlanCoversEveryProviderExactlyOnce();
 checkLaunchPlanKeepsStackOrderPhases();
+checkLaunchPlanCarriesPlanningImageCosts();
 checkEnvVisibilityLabels();
 checkProviderCommandsAndArtifactsArePresent();
 checkFinalVerificationCommands();
@@ -83,6 +84,21 @@ function checkLaunchPlanKeepsStackOrderPhases() {
     plan?.phases?.[2]?.providers?.some((provider) => provider.id === "vercel"),
     plan?.phases?.[3]?.providers?.some((provider) => provider.id === "razorpay"),
     plan?.phases?.[4]?.providers?.some((provider) => provider.id === "pinecone")
+  ].every(Boolean));
+}
+
+function checkLaunchPlanCarriesPlanningImageCosts() {
+  const providerCosts = plan?.phases?.flatMap((phase) =>
+    phase.providers.map((provider) => `${provider.id}:${provider.planningImageCost || ""}`)
+  ) || [];
+
+  pushCheck("Provider launch plan preserves planning-image cost context", [
+    output.includes("Planning image cost"),
+    providerCosts.every((entry) => entry.split(":").slice(1).join(":").trim()),
+    providerCosts.some((entry) => /namecheap/i.test(entry) && /INR 800\/year/i.test(entry)),
+    providerCosts.some((entry) => /razorpay/i.test(entry) && /2\.5%/.test(entry)),
+    providerCosts.some((entry) => /supabase/i.test(entry) && /free/i.test(entry)),
+    providerCosts.some((entry) => /pinecone/i.test(entry) && /free/i.test(entry))
   ].every(Boolean));
 }
 

@@ -55,6 +55,9 @@ function checkReportContent() {
     markdown.includes("Immediate Critical Actions"),
     markdown.includes("Warning Actions"),
     markdown.includes("Provider Setup Table"),
+    markdown.includes("Cost Assumption"),
+    markdown.includes("Approx INR 800/year"),
+    markdown.includes("2.5% per transaction"),
     markdown.includes("Final Launch Verification"),
     markdown.includes("Supabase"),
     markdown.includes("Razorpay"),
@@ -72,8 +75,8 @@ function checkJsonContract() {
     Array.isArray(json?.criticalActions),
     Array.isArray(json?.warningActions),
     Array.isArray(json?.providers),
-    json.providers.some((provider) => provider.id === "supabase"),
-    json.providers.some((provider) => provider.id === "razorpay"),
+    json.providers.some((provider) => provider.id === "supabase" && /free/i.test(provider.planningImageCost || "")),
+    json.providers.some((provider) => provider.id === "razorpay" && /2\.5%/.test(provider.planningImageCost || "")),
     json.finalVerification.includes("npm run android:apk:backend")
   ].every(Boolean));
 }

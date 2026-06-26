@@ -64,7 +64,7 @@ function renderMarkdown(report) {
     "",
     `Generated: ${report.generatedAt}`,
     "",
-    "This report is generated from the current environment and is secret-safe. It prints provider names, statuses, missing env names, evidence files, and verification commands only.",
+    "This report is generated from the current environment and is secret-safe. It prints provider names, cost assumptions, statuses, missing env names, evidence files, and verification commands only.",
     "",
     "## Summary",
     "",
@@ -86,8 +86,8 @@ function renderMarkdown(report) {
     "",
     "## Provider Setup Table",
     "",
-    "| Provider | Status | Missing / Evidence | Verify |",
-    "| --- | --- | --- | --- |",
+    "| Provider | Cost Assumption | Status | Missing / Evidence | Verify |",
+    "| --- | --- | --- | --- | --- |",
     ...report.providers.map((provider) => {
       const evidence = provider.missingEnv.length
         ? formatMissing(provider.missingEnv)
@@ -95,7 +95,7 @@ function renderMarkdown(report) {
           ? `Unmapped checks: ${provider.missingCheckIds.map((id) => `\`${id}\``).join(", ")}`
           : provider.artifacts.map((artifact) => `\`${artifact}\``).join(", ");
       const commands = provider.commands.map((command) => `\`${command}\``).join("<br>");
-      return `| ${provider.name} | ${provider.status} | ${evidence} | ${commands} |`;
+      return `| ${provider.name} | ${formatTableText(provider.planningImageCost || "not specified")} | ${provider.status} | ${evidence} | ${commands} |`;
     }),
     "",
     "## Final Launch Verification",
@@ -125,6 +125,7 @@ function sanitizeProvider(provider) {
     id: provider.id,
     name: provider.name,
     planningImageLabel: provider.planningImageLabel,
+    planningImageCost: provider.planningImageCost || "",
     purpose: provider.purpose,
     status: provider.status,
     missingEnv: [...(provider.missingEnv || [])],
@@ -137,6 +138,10 @@ function sanitizeProvider(provider) {
 
 function formatMissing(items = []) {
   return items.length ? items.map((item) => `\`${item}\``).join(", ") : "none";
+}
+
+function formatTableText(value) {
+  return String(value || "").replace(/\|/g, "\\|");
 }
 
 function buildGeneratedAt() {

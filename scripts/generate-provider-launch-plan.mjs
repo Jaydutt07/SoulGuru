@@ -90,6 +90,7 @@ function formatProvider(provider) {
     id: provider.id,
     name: provider.name,
     planningImageLabel: provider.planningImageLabel,
+    planningImageCost: provider.planningImageCost,
     purpose: provider.purpose,
     status: provider.status,
     dashboardSetup: stackProvider.notes || provider.notes || "",
@@ -125,6 +126,7 @@ function printMarkdown(plan) {
       console.log(`#### ${provider.name}`);
       console.log("");
       console.log(`- Planning image label: ${provider.planningImageLabel}`);
+      console.log(`- Planning image cost: ${provider.planningImageCost || "not specified"}`);
       console.log(`- Purpose: ${provider.purpose}`);
       console.log(`- Current status: \`${provider.status}\``);
       if (provider.dashboardSetup) {

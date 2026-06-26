@@ -10,6 +10,7 @@ import {
 const checks = [];
 
 checkProviderStackCoversPlannedProviders();
+checkProviderStackCarriesPlanningImageCostContext();
 checkProviderMappingsTargetRealReadinessChecks();
 checkProviderArtifactsExist();
 checkSupabaseProviderCoversEveryMigration();
@@ -63,6 +64,21 @@ function checkProviderStackCoversPlannedProviders() {
     duplicates.length === 0,
     PROVIDER_STACK.length === requiredProviderIds.length
   ].every(Boolean), [...missing, ...duplicates]);
+}
+
+function checkProviderStackCarriesPlanningImageCostContext() {
+  const missing = PROVIDER_STACK
+    .filter((provider) => !String(provider.planningImageCost || "").trim())
+    .map((provider) => provider.id);
+  const labels = PROVIDER_STACK.map((provider) => `${provider.id}:${provider.planningImageCost || ""}`);
+
+  pushCheck("Provider stack preserves planning-image cost assumptions", [
+    missing.length === 0,
+    labels.some((label) => /namecheap/i.test(label) && /INR 800\/year/i.test(label)),
+    labels.some((label) => /razorpay/i.test(label) && /2\.5%/.test(label)),
+    labels.some((label) => /supabase/i.test(label) && /free/i.test(label)),
+    labels.some((label) => /pinecone/i.test(label) && /free/i.test(label))
+  ].every(Boolean), missing);
 }
 
 function checkProviderMappingsTargetRealReadinessChecks() {
