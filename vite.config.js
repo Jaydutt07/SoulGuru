@@ -448,5 +448,41 @@ function soulGuruApiPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), soulGuruApiPlugin()]
+  plugins: [react(), soulGuruApiPlugin()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+            return "react-vendor";
+          }
+          if (id.includes("node_modules/lucide-react")) {
+            return "ui-vendor";
+          }
+          if (id.includes("node_modules/@sentry")) {
+            return "sentry-vendor";
+          }
+          if (id.includes("node_modules/posthog-js")) {
+            return "posthog-vendor";
+          }
+          if (id.includes("node_modules/astronomy-engine") || id.includes("node_modules/tz-lookup")) {
+            return "astrology-vendor";
+          }
+          if (id.endsWith("/src/deepGuidance.js")) {
+            return "paid-guidance-local";
+          }
+          if (id.endsWith("/src/localSoulWisdom.js") || id.endsWith("/src/soulGuruPrompt.js")) {
+            return "soul-wisdom-local";
+          }
+          if (id.endsWith("/src/astroSolveGuidance.js")) {
+            return "astro-solve-local";
+          }
+          if (id.endsWith("/src/shaniGuidance.js")) {
+            return "shani-local";
+          }
+          return undefined;
+        }
+      }
+    }
+  }
 });

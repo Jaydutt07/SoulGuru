@@ -5,8 +5,10 @@ const vercel = readJson("vercel.json");
 const vercelIgnore = readLines(".vercelignore");
 const indexHtml = readFile("index.html");
 const manifest = readJson("public/manifest.webmanifest");
+const viteConfig = readFile("vite.config.js");
 
 checkVercelBuildConfig();
+checkViteChunkingConfig();
 checkVercelApiFunctionConfig();
 checkVercelSecurityHeaders();
 checkVercelCacheHeaders();
@@ -30,6 +32,22 @@ function checkVercelBuildConfig() {
     vercel?.outputDirectory === "dist"
   ].every(Boolean), [
     "Expected framework=vite, buildCommand=\"npm run build\", outputDirectory=dist."
+  ]);
+}
+
+function checkViteChunkingConfig() {
+  pushCheck("Vite production build keeps large app modules in stable chunks", [
+    viteConfig.includes("manualChunks(id)"),
+    viteConfig.includes("\"react-vendor\""),
+    viteConfig.includes("\"sentry-vendor\""),
+    viteConfig.includes("\"posthog-vendor\""),
+    viteConfig.includes("\"astrology-vendor\""),
+    viteConfig.includes("\"paid-guidance-local\""),
+    viteConfig.includes("\"soul-wisdom-local\""),
+    viteConfig.includes("\"astro-solve-local\""),
+    viteConfig.includes("\"shani-local\"")
+  ].every(Boolean), [
+    "Expected vite.config.js to split heavy vendor and local guidance modules into named chunks."
   ]);
 }
 
