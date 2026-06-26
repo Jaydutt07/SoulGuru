@@ -313,15 +313,20 @@ async function checkVerifyOtpAttemptsAndSuccess() {
     supabase
   });
   const afterSuccess = supabase.state.challenges.get("otp-verify");
-  const repeat = await verifyOtp({
-    challengeId: "otp-verify",
-    phone,
-    code: "654321"
-  }, {
-    OTP_HASH_SECRET: otpSecret
-  }, {
-    supabase
-  });
+  await expectRejects(
+    "Verified OTP cannot be replayed",
+    () => verifyOtp({
+      challengeId: "otp-verify",
+      phone,
+      code: "654321"
+    }, {
+      OTP_HASH_SECRET: otpSecret
+    }, {
+      supabase
+    }),
+    /already been used/i,
+    409
+  );
 
   pushCheck("Correct OTP verifies after a failed attempt", [
     afterWrong.attempts === 1,
@@ -329,8 +334,7 @@ async function checkVerifyOtpAttemptsAndSuccess() {
     success.verified === true,
     Boolean(success.verifiedAt),
     afterSuccess.attempts === 2,
-    Boolean(afterSuccess.verified_at),
-    repeat.alreadyVerified === true
+    Boolean(afterSuccess.verified_at)
   ].every(Boolean));
 }
 

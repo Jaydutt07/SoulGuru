@@ -115,11 +115,7 @@ export async function verifyOtp(payload, env = process.env, deps = {}) {
     throw createHttpError("OTP could not be verified", 401);
   }
   if (data.verified_at) {
-    return {
-      configured: true,
-      verified: true,
-      alreadyVerified: true
-    };
+    throw createHttpError("OTP has already been used", 409);
   }
   if (new Date(data.expires_at).getTime() < Date.now()) {
     throw createHttpError("OTP has expired", 410);
