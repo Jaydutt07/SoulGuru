@@ -119,6 +119,15 @@ async function checkOrderCreationContract() {
   );
 
   await expectRejects(
+    "Razorpay order rejects missing configured price",
+    () => createRazorpayOrder({ user: { id: "user-contract" } }, {
+      RAZORPAY_KEY_ID: "rzp_test_contract",
+      RAZORPAY_KEY_SECRET: "contract-secret"
+    }),
+    /MORE_GUIDANCE_PRICE_PAISE must be configured/i
+  );
+
+  await expectRejects(
     "Razorpay order rejects invalid configured price",
     () => createRazorpayOrder({ user: {} }, {
       RAZORPAY_KEY_ID: "rzp_test_contract",
@@ -225,6 +234,18 @@ async function checkShaniOrderCreationContract() {
     }),
     /positive integer/i
   );
+
+  await expectRejects(
+    "Shani Razorpay order rejects missing selected plan price",
+    () => createShaniRazorpayOrder({
+      user: { id: "shani-user-contract" },
+      planId: "3m"
+    }, {
+      RAZORPAY_KEY_ID: "rzp_test_contract",
+      RAZORPAY_KEY_SECRET: "contract-secret"
+    }),
+    /SHANI_PLAN_3M_PRICE_PAISE must be configured/i
+  );
 }
 
 async function checkCheckoutSignatureContract() {
@@ -258,6 +279,24 @@ async function checkCheckoutVerificationContract() {
   const amount = 49900;
   const currency = "INR";
   const orderToken = hmac(`${orderId}|user-contract|${amount}|${currency}`, secret);
+
+  await expectRejects(
+    "Checkout verification rejects missing configured price",
+    () => verifyRazorpayCheckoutPayment({
+      user: { id: "user-contract" },
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+    }),
+    /MORE_GUIDANCE_PRICE_PAISE must be configured/i
+  );
+
   const result = await verifyRazorpayCheckoutPayment({
     user: {
       id: "user-contract",
@@ -271,7 +310,8 @@ async function checkCheckoutVerificationContract() {
     signature
   }, {
     RAZORPAY_KEY_SECRET: secret,
-    PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+    PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+    MORE_GUIDANCE_PRICE_PAISE: "49900"
   });
 
   pushCheck("Checkout verification returns local subscription only when explicitly allowed", [
@@ -302,7 +342,8 @@ async function checkCheckoutVerificationContract() {
       paymentId,
       signature
     }, {
-      RAZORPAY_KEY_SECRET: secret
+      RAZORPAY_KEY_SECRET: secret,
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /Supabase is required/i
   );
@@ -318,7 +359,8 @@ async function checkCheckoutVerificationContract() {
       paymentId,
       signature: "bad-signature"
     }, {
-      RAZORPAY_KEY_SECRET: secret
+      RAZORPAY_KEY_SECRET: secret,
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /could not be verified/i
   );
@@ -334,7 +376,8 @@ async function checkCheckoutVerificationContract() {
       paymentId,
       signature
     }, {
-      RAZORPAY_KEY_SECRET: secret
+      RAZORPAY_KEY_SECRET: secret,
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /could not be matched/i
   );
@@ -351,7 +394,8 @@ async function checkCheckoutVerificationContract() {
       signature
     }, {
       RAZORPAY_KEY_SECRET: secret,
-      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /identity is required/i,
     400
@@ -369,7 +413,8 @@ async function checkCheckoutVerificationContract() {
       signature
     }, {
       RAZORPAY_KEY_SECRET: secret,
-      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /amount does not match/i,
     400
@@ -387,7 +432,8 @@ async function checkCheckoutVerificationContract() {
       signature
     }, {
       RAZORPAY_KEY_SECRET: secret,
-      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /amount does not match/i,
     400
@@ -403,7 +449,8 @@ async function checkCheckoutVerificationContract() {
       paymentId,
       signature
     }, {
-      RAZORPAY_KEY_SECRET: secret
+      RAZORPAY_KEY_SECRET: secret,
+      MORE_GUIDANCE_PRICE_PAISE: "49900"
     }),
     /could not be matched/i
   );
@@ -417,6 +464,25 @@ async function checkShaniCheckoutVerificationContract() {
   const amount = 29900;
   const currency = "INR";
   const orderToken = hmac(`${orderId}|shani-checkout-user|${amount}|${currency}|shani_remedy_3m`, secret);
+
+  await expectRejects(
+    "Shani checkout verification rejects missing selected plan price",
+    () => verifyShaniRazorpayCheckoutPayment({
+      user: { id: "shani-checkout-user" },
+      planId: "3m",
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
+    }),
+    /SHANI_PLAN_3M_PRICE_PAISE must be configured/i
+  );
+
   const result = await verifyShaniRazorpayCheckoutPayment({
     user: {
       id: "shani-checkout-user",
@@ -532,7 +598,8 @@ async function checkCheckoutSubscriptionRaceContract() {
     paymentId,
     signature
   }, {
-    RAZORPAY_KEY_SECRET: secret
+    RAZORPAY_KEY_SECRET: secret,
+    MORE_GUIDANCE_PRICE_PAISE: "49900"
   }, { supabase });
 
   pushCheck("Checkout activation treats unique subscription race as existing membership", [

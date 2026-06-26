@@ -7,7 +7,6 @@ import { createSupabaseAdmin } from "./supabaseAdmin.js";
 const RAZORPAY_ORDERS_URL = "https://api.razorpay.com/v1/orders";
 const MEMBERSHIP_PLAN_NAME = "Soul Guru + Astro Solve";
 const MORE_GUIDANCE_CURRENCY = "INR";
-const DEFAULT_MORE_GUIDANCE_PRICE_PAISE = 49900;
 const SUBSCRIPTION_SELECT = "id, plan_name, status, starts_at, ends_at, astro_bonus_questions, provider, provider_payment_id, provider_subscription_id, metadata";
 const SHANI_CURRENCY = "INR";
 const SHANI_PRODUCT_KEY = "shani_remedy";
@@ -18,7 +17,6 @@ const SHANI_PLAN_DEFINITIONS = Object.freeze({
     name: "3 months",
     duration: "3 months",
     envKey: "SHANI_PLAN_3M_PRICE_PAISE",
-    defaultPricePaise: 29900,
     months: 3
   },
   "6m": {
@@ -26,7 +24,6 @@ const SHANI_PLAN_DEFINITIONS = Object.freeze({
     name: "6 months",
     duration: "6 months",
     envKey: "SHANI_PLAN_6M_PRICE_PAISE",
-    defaultPricePaise: 54900,
     months: 6
   },
   "1y": {
@@ -34,7 +31,6 @@ const SHANI_PLAN_DEFINITIONS = Object.freeze({
     name: "1 year",
     duration: "1 year",
     envKey: "SHANI_PLAN_1Y_PRICE_PAISE",
-    defaultPricePaise: 99900,
     months: 12
   },
   full: {
@@ -42,7 +38,6 @@ const SHANI_PLAN_DEFINITIONS = Object.freeze({
     name: "Remaining timeline",
     duration: "Remaining timeline",
     envKey: "SHANI_PLAN_FULL_PRICE_PAISE",
-    defaultPricePaise: 149900,
     fullTimeline: true
   }
 });
@@ -882,11 +877,7 @@ function isLocalPaymentActivationAllowed(env) {
 }
 
 function getMoreGuidancePricePaise(env) {
-  const amount = Number(env.MORE_GUIDANCE_PRICE_PAISE || DEFAULT_MORE_GUIDANCE_PRICE_PAISE);
-  if (!Number.isInteger(amount) || amount <= 0) {
-    throw new Error("MORE_GUIDANCE_PRICE_PAISE must be a positive integer");
-  }
-  return amount;
+  return getPositiveIntegerEnv(env, "MORE_GUIDANCE_PRICE_PAISE");
 }
 
 function getShaniPlan(planId, env = process.env) {
@@ -898,13 +889,20 @@ function getShaniPlan(planId, env = process.env) {
 
   return {
     ...definition,
-    pricePaise: getPositiveIntegerEnv(env, definition.envKey, definition.defaultPricePaise)
+    pricePaise: getPositiveIntegerEnv(env, definition.envKey)
   };
 }
 
-function getPositiveIntegerEnv(env, key, fallback) {
-  const amount = Number(env[key] || fallback);
-  if (!Number.isInteger(amount) || amount <= 0) {
+function getPositiveIntegerEnv(env, key) {
+  const raw = String(env[key] || "").trim();
+  if (!raw) {
+    throw new Error(`${key} must be configured as a positive integer`);
+  }
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`${key} must be a positive integer`);
+  }
+  const amount = Number(raw);
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
     throw new Error(`${key} must be a positive integer`);
   }
   return amount;
