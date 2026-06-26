@@ -165,6 +165,7 @@ npm run soul:feedback:report
 Treat the report as the first triage pass. If miss rate rises or the top missed theme is generic/repeated wording, review the prompt and rerun:
 
 ```bash
+npm run soul:daily:check
 npm run soul:quality
 npm run soul:quality:ai
 ```

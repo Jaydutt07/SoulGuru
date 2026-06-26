@@ -309,6 +309,12 @@ Check the daily Soul Guru cache contract without contacting OpenAI or Supabase:
 npm run soul:cache:check
 ```
 
+Check that the same user receives distinct date-specific Words of Wisdom as daily transits change:
+
+```bash
+npm run soul:daily:check
+```
+
 Check the Astro Solves allowance/storage contract without contacting OpenAI or Supabase:
 
 ```bash
@@ -756,9 +762,10 @@ Before release:
 - Run `npm run deployment:smoke:check`.
 - Run `npm run production:domain:check`.
 - Run `npm run soul:cache:check`.
+- Run `npm run soul:daily:check`.
 - Run `npm run astro:check`.
 - Run `npm run otp:check`.
-- Run `npm run soul:quality`, `npm run soul:quality:extended`, `npm run astro:quality`, `npm run more-guidance:quality`, `npm run more-guidance:quality:extended`, and `npm run shani:quality` before release after prompt changes.
+- Run `npm run soul:daily:check`, `npm run soul:quality`, `npm run soul:quality:extended`, `npm run astro:quality`, `npm run more-guidance:quality`, `npm run more-guidance:quality:extended`, and `npm run shani:quality` before release after prompt changes.
 - Run `npm run soul:quality:ai`, `npm run astro:quality:ai`, `npm run more-guidance:quality:ai`, and `npm run shani:quality:ai` with `OPENAI_API_KEY` configured before release after prompt changes.
 - Run `npm run production:domain:smoke -- --expect-ready` after the production domain resolves.
 - Run `npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready` with `--auth-token=...` or `DEPLOYMENT_SMOKE_AUTH_TOKEN` when production Clerk auth is enabled.

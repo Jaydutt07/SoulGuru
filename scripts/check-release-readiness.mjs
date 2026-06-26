@@ -37,6 +37,7 @@ await runStep("Backend fetch timeout contract checks", "npm", ["run", "backend-f
 await runStep("Email contract checks", "npm", ["run", "email:check"]);
 await runStep("Supabase migration contract", "npm", ["run", "supabase:migrations:check"]);
 await runStep("Soul Guru daily cache contract", "npm", ["run", "soul:cache:check"]);
+await runStep("Soul Guru same-user daily variation", "npm", ["run", "soul:daily:check"]);
 await runStep("Soul Guru feedback contract", "npm", ["run", "soul:feedback:check"]);
 await runStep("Soul Guru local reading quality", "npm", ["run", "soul:quality"]);
 await runStep("Soul Guru extended local reading diversity", "npm", ["run", "soul:quality:extended"]);

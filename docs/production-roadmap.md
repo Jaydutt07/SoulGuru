@@ -108,6 +108,7 @@ This project is being built toward the stack shown in the product planning image
 - Operator birth-place geocoder smoke test for configured provider resolution, coordinate validation, timezone derivation, and secret-safe output
 - Runtime transactional email validation for safe recipients, subjects, and normalized Resend tags
 - Soul Guru v21 daily wisdom prompt with 72-98 word shared bounds, private reading fingerprints, chart-derived architecture diversity, shared client/backend cache versioning, surface-rhythm repair checks, assembled-phrase and grammar rejection, whole-sentence cache refreshes, stricter structure-similarity gates, extra house-phrase rejection, and real lunar mansion/tithi timing
+- Same-user Soul Guru daily-variation gate so one profile receives distinct date-specific guidance as transit Moon, lunar mansion, tithi, and daily area change
 - More Guidance v5 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
 - Astro Solves v2 answer prompt with chart-specific root-cause analysis, practical remedies, safety-sensitive support wording, and stored prompt metadata
 - Shani Pandit v2 member prompt with exact phase, question cue, Moon/Saturn context, seven-day practice, qualified-support caution, and stored prompt metadata
