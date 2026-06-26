@@ -305,6 +305,7 @@ async function checkOpenAiAnswerIsStoredForMember() {
     result.source === "openai",
     result.model === "gpt-contract",
     result.quality?.passed === true,
+    result.quality?.contractRepaired === false,
     openAiRequests.length === 1,
     openAiRequests[0].instructions.includes("Output valid JSON only"),
     supabase.state.messages.length === 1,
@@ -352,6 +353,8 @@ async function checkOpenAiSafetyAnswerRepairsWithoutFallback() {
   pushCheck("Shani OpenAI safety answer repairs qualified support without fallback", [
     result.source === "openai",
     result.quality?.fallbackUsed === false,
+    result.quality?.repaired === true,
+    result.quality?.contractRepaired === true,
     result.quality?.passed === true,
     !/\bpanic\b/i.test(JSON.stringify(result.answer || {})),
     countWord(JSON.stringify(result.answer || {}), "Mira") <= 1,

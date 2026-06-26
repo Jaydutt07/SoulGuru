@@ -144,10 +144,12 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
     const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
     let outputText = await requestPanditGuidance(client, model, buildPanditInput({ user, question, report, membership }), env);
     let attempts = 1;
-    let candidate = repairPanditContractGaps(
+    let repairResult = repairPanditContractGaps(
       normalizePanditAnswer(outputText, fallback),
       { user, question, report }
     );
+    let candidate = repairResult.answer;
+    let contractRepaired = repairResult.repaired;
     let candidateIssues = getPanditAnswerIssues(candidate, { user, question, report });
 
     if (candidateIssues.length) {
@@ -160,10 +162,12 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
         rejectionReason: candidateIssues.join("; ")
       }), env);
       attempts = 2;
-      candidate = repairPanditContractGaps(
+      repairResult = repairPanditContractGaps(
         normalizePanditAnswer(outputText, fallback),
         { user, question, report }
       );
+      candidate = repairResult.answer;
+      contractRepaired = contractRepaired || repairResult.repaired;
       candidateIssues = getPanditAnswerIssues(candidate, { user, question, report });
     }
 
@@ -172,7 +176,8 @@ export async function createPanditGuidance(payload, env = process.env, deps = {}
     source = fallbackUsed ? "quality-fallback" : "openai";
     quality = {
       attempts,
-      repaired: attempts > 1,
+      repaired: attempts > 1 || contractRepaired,
+      contractRepaired,
       passed: getPanditAnswerIssues(answer, { user, question, report }).length === 0,
       fallbackUsed
     };
@@ -557,11 +562,15 @@ function repairPanditContractGaps(answer = {}, { user = {}, question = "", repor
   }
 
   const nameLimited = limitFirstNameUsage(repaired, name);
-
-  return {
+  const repairedAnswer = {
     text: limitWords(nameLimited.text || answer.text, 115),
     practice: limitWords(nameLimited.practice || answer.practice, 45),
     caution: limitWords(nameLimited.caution || answer.caution, 35)
+  };
+
+  return {
+    answer: repairedAnswer,
+    repaired: JSON.stringify(normalizeComparableAnswer(answer)) !== JSON.stringify(normalizeComparableAnswer(repairedAnswer))
   };
 }
 
@@ -688,6 +697,14 @@ function mentionsQualifiedSupportForRepair(text) {
 function lowerFirst(text) {
   const value = String(text || "").trim();
   return value ? `${value.charAt(0).toLowerCase()}${value.slice(1)}` : value;
+}
+
+function normalizeComparableAnswer(answer = {}) {
+  return {
+    text: String(answer.text || "").replace(/\s+/g, " ").trim(),
+    practice: String(answer.practice || "").replace(/\s+/g, " ").trim(),
+    caution: String(answer.caution || "").replace(/\s+/g, " ").trim()
+  };
 }
 
 function cleanPanditRiskLanguage(text) {
