@@ -16,6 +16,8 @@ Treat the daily signals as exact private inputs, not mood-board words. Translate
 The reading must feel like a fresh handwritten note, not a horoscope card. Avoid reusable mentor scaffolds such as "scene -> pressure -> one action -> reassurance". Let the user's hidden combination decide whether the paragraph sounds clipped, tender, practical, relational, work-focused, body-led, or corrective.
 Do not assemble advice from reusable SoulGuru fragments. If a sentence sounds like it came from a previous reading, replace it with a sharper observed detail: an object, a consequence, a time window, and a human cost that belong only to this user's daily signals.
 Never begin from a feeling forecast. In particular, never write "you may feel", "you might feel", "you could feel", "you may notice", "part of you", or any similar generic sensitivity setup.
+Avoid tiny house-style anchors that make different users sound related. Do not lean on phrases such as "calendar square", "honest appointment", "warmth loses", "visible finish", "private trial", "plain answer", or "practical part asking for shape"; translate the same idea into a detail that belongs to this user's actual scene.
+When two users share the same broad scene category, the vocabulary must still diverge. A calendar scene can be a marked hour, due line, blank slot, appointment, list item, or deadline; never let the category force the same object noun or mentor cadence.
 The first-name sentence must not default to "For Name". Use varied natural placement: "Name needs...", "the private cost for Name...", "around this, Name...", or another sentence that belongs to the user's exact friction.
 Each paragraph needs one specific day-sized detail: a timed block, a reply length, a meal/water/rest cue, a payment/checklist/calendar action, or a conversation boundary that can happen within two hours.
 Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
@@ -60,7 +62,7 @@ Wisdom paragraph rules:
 - Avoid the common mentor arc "name a feeling, advise a small step, promise peace." Find a more particular angle.
 - Avoid the common rhythm "scene, Name, instruction, relationship caution, reassurance" unless the supplied architecture specifically requires that order. Vary where the name appears and let the user's actual friction decide the emotional turn.
 - Avoid common fallback phrases such as "the useful part", "whole mood", "one observable choice", "another internal argument", "ordinary repair", "plain finish", "cleaner reply", "let warmth have timing", and "finished work and a cleaner reply".
-- Avoid locally assembled phrases such as "the sharper work", "useful and short enough", "practical finish deserves", "body that has been included", "asking small changes to explain", "feeling asks for court", or any sentence where an abstract phrase is visibly stitched into another abstract phrase.
+- Avoid locally assembled phrases such as "the sharper work", "useful and short enough", "practical finish deserves", "body that has been included", "asking small changes to explain", "feeling asks for court", "courtroom", or any sentence where an abstract phrase is visibly stitched into another abstract phrase.
 - Use fresh verbs and images from ordinary life. No grand spiritual language.
 - Do not use a colon, dash, or label-style setup in the opening sentence. The scene must be woven into a real sentence, not announced.
 - Do not use hedging language such as "may", "might", or "could" to soften the main insight. Sound observant and precise, not fortune-cookie vague.
@@ -68,6 +70,7 @@ Wisdom paragraph rules:
 - Do not lean on the same mentor skeleton of "object, name, instruction, relationship caution, reassurance" unless the Paragraph architecture specifically demands it. Even then, vary the verbs, emotional turn, and close.
 - Do not use assembled-sounding labels inside the paragraph, including "relational note", "useful edge", "body cue", "proof of care", "practical truth", "first honest reset", "private test", "signal, not a sentence", or "evidence enough".
 - Avoid app-like mentor filler such as "needs a practical container", "real pressure", "useful move", "one ordinary job", "less explanation", "mind/body vote", "larger story", "quiet proof", or "modest and workable". Say the actual human thing instead.
+- Avoid short repeated brand-sounding anchors such as "calendar square", "honest appointment", "warmth loses", "visible finish", "private trial", "plain answer", "cleaner floor", or "practical part asking for shape"; these make separate users feel like they received the same reading.
 - Do not make the user feel categorized. The line should feel like it was written after seeing one ordinary scene, one pressure pattern, and one doable correction from their specific day.
 
 Avoid these phrases and close variants:
@@ -188,7 +191,7 @@ function buildVoiceLane(user, context, today) {
   const lanes = [
     "spare and corrective; direct sentences, no soothing flourish",
     "warm but exact; tenderness arrives through practical care",
-    "workbench mentor; tasks, timing, and visible finish lead",
+    "workbench mentor; tasks, timing, and marked completion lead",
     "relationship-aware; access, reply length, and emotional cost lead",
     "body-led; food, water, sleep, breath, or shoulders decide timing",
     "money-and-duty plainspoken; numbers, promises, and self-respect stay separate",
@@ -216,7 +219,7 @@ function buildVoiceLane(user, context, today) {
 function buildSpecificityPattern(user, context, today) {
   const patterns = [
     "use one named object, one exact time window, and one consequence for a reply",
-    "use one body/routine cue, one visible finish mark, and one thing not to reopen tonight",
+    "use one body/routine cue, one marked completion, and one thing not to reopen tonight",
     "use one work or money action, one relational limit, and one under-two-hour checkpoint",
     "use one room/location detail, one count or length, and one private cost",
     "use one delayed task, one exact action before the next meal, and one softer close",
@@ -417,6 +420,8 @@ export function isLowQualityWisdom(text) {
     /\bborrows the whole room\b/,
     /\battention has been paying too much rent\b/,
     /\bprivate courtroom\b/,
+    /\bcourtroom\b/,
+    /\bholds court\b/,
     /\bbefore you pass\b/,
     /\bwhen your attention lands on\b/,
     /\bbefore the pressure gets a story\b/,
@@ -452,6 +457,49 @@ export function isLowQualityWisdom(text) {
     /\bpractical container\b/,
     /\bthe real pressure\b/,
     /\bmodest and workable\b/,
+    /\bcalendar square\b/,
+    /\bhonest appointment\b/,
+    /\bwarmth loses?\b/,
+    /\bvisible finish\b/,
+    /\bprivate trial\b/,
+    /\bplain answer\b/,
+    /\bcleaner floor\b/,
+    /\bpractical part asking for shape\b/,
+    /\bone action with an ending\b/,
+    /\bnext private debate begins\b/,
+    /\bturns into evidence\b/,
+    /\bevidence against\b/,
+    /\btable before the thought starts arguing again\b/,
+    /\bworkspace pressure\b/,
+    /\breading each shift as a verdict\b/,
+    /\bhidden trial\b/,
+    /\bthe reply stay\b/,
+    /\bstarts carrying too much meaning\b/,
+    /\bgathers extra meaning\b/,
+    /\bcollects more meaning\b/,
+    /\bmood catch up to something already shaped\b/,
+    /\banswer carries only the part\b/,
+    /\banswer handles only the real request\b/,
+    /\breply loses\b/,
+    /\bevery room\b/,
+    /\bstarts speaking for the whole day\b/,
+    /\bstarts speaking for more than itself\b/,
+    /\breply names the request and leaves\b/,
+    /\bhunger should not get to argue\b/,
+    /\bfood first, then the decision\b/,
+    /\bwith a place you can use\b/,
+    /\bborrows tone from everything else\b/,
+    /\bcontainer that can be seen from the outside\b/,
+    /\breply has a shape instead of an open tab\b/,
+    /\baffection can stay present without making access endless\b/,
+    /\bcare lands better when timing is visible\b/,
+    /\bvisible hour keeps care\b/,
+    /\bkeeps care from turning into open access\b/,
+    /\bname the available hour\b/,
+    /\breply widens\b/,
+    /\bkindness works better when\b/,
+    /\broom asking\b/,
+    /\bbody first\b/,
     /\bbody gets the first vote\b/,
     /\bbody as the first clock\b/,
     /\blarger story\b/,
@@ -654,6 +702,10 @@ export function buildParagraphArchitecture(user, context, today) {
     user.birthTime,
     user.birthPlace,
     today,
+    context.sign,
+    context.moonSign,
+    context.element,
+    context.lifePath,
     context.openingScene,
     classifyPromptScene(context.openingScene || context.dailyScene),
     context.dailyLunarMansion?.name,
@@ -695,6 +747,10 @@ export function buildSurfaceRhythm(user, context, today) {
     user.birthTime,
     user.birthPlace,
     today,
+    context.sign,
+    context.moonSign,
+    context.element,
+    context.lifePath,
     context.openingScene,
     classifyPromptScene(context.openingScene || context.dailyScene),
     context.dailyLunarMansion?.name,
@@ -714,12 +770,12 @@ function classifyPromptScene(text) {
   const normalized = String(text || "").toLowerCase();
   if (/\b(phone|message|text|unread|inbox|notification|screen|reply)\b/.test(normalized)) return "device";
   if (/\b(water|glass|drink)\b/.test(normalized)) return "water";
+  if (/\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/.test(normalized)) return "kitchen";
   if (/\b(calendar|appointment|deadline|time)\b/.test(normalized)) return "calendar";
   if (/\b(notebook|page|pen|line|written|write)\b/.test(normalized)) return "notebook";
-  if (/\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/.test(normalized)) return "kitchen";
   if (/\b(wallet|receipt|payment|bill|price|money)\b/.test(normalized)) return "money";
   if (/\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|send)\b/.test(normalized)) return "conversation";
-  if (/\b(chair|room|desk|workspace|drawer|laundry|bed|domestic)\b/.test(normalized)) return "room";
+  if (/\b(chair|room|desk|workspace|surface|drawer|laundry|bed|domestic)\b/.test(normalized)) return "room";
   if (/\b(shoes|door|keys|bag|charger|errand)\b/.test(normalized)) return "door";
   if (/\b(mirror|shoulder|shoulders|jaw|body|breath)\b/.test(normalized)) return "body";
   if (/\b(list|task|item|draft|work|promise)\b/.test(normalized)) return "task";

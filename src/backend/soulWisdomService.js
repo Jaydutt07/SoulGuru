@@ -523,7 +523,7 @@ function hasAwkwardTemplateJoin(text) {
   return [
     /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i,
     /\blet\s+let\b/i,
-    /\bwhen\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b/i,
+    /\bwhen\s+(?:protect|eat|drink|walk|leave|start|lower|step)\b/i,
     /\bwhen\s+do not\b/i,
     /\blet\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b[^.!?]+\bdecide\b/i,
     /\bhandle simplify\b/i,
@@ -550,11 +550,11 @@ function classifyScene(text) {
   const categories = [
     ["device", /\b(phone|message|text|unread|inbox|notification|screen|reply)\b/],
     ["water", /\b(water|glass|drink)\b/],
+    ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["calendar", /\b(calendar|appointment|deadline|time)\b/],
     ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
-    ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
-    ["room", /\b(chair|room|desk|drawer|laundry|bed|domestic)\b/],
+    ["room", /\b(chair|room|desk|workspace|surface|drawer|laundry|bed|domestic)\b/],
     ["door", /\b(shoes|door|doorway|keys|bag|charger|errand)\b/],
     ["body", /\b(mirror|shoulder|shoulders|jaw|body|breath)\b/],
     ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|held-back|send)\b/],

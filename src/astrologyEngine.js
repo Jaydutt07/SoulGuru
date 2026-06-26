@@ -180,7 +180,7 @@ const DAILY_SCENES = [
   "the part of the day where silence can become strength",
   "a half-finished message waiting in the mind",
   "the receipt, deadline, or tab that keeps taking attention",
-  "a room, desk, or inbox asking for one visible reset",
+  "a room detail asking for one practical reset",
   "the moment your shoulders tighten before saying yes",
   "an old worry trying to enter a new conversation",
   "a choice that gets cleaner once it is written plainly"
@@ -188,13 +188,13 @@ const DAILY_SCENES = [
 
 const OPENING_SCENES = [
   "the water glass beside the bed before the first decision",
-  "a calendar square that needs one honest appointment",
+  "a marked calendar slot needing one real commitment",
   "a notebook page with one unfinished line",
   "the kitchen counter before the first practical task",
   "the wallet, receipt, or small payment decision",
   "the chair where the same worry keeps returning",
   "the shoes near the door before a necessary errand",
-  "a desk corner asking for one visible reset",
+  "a workspace edge asking for one practical reset",
   "the first meal that keeps getting delayed",
   "a door half-closed before a conversation",
   "the list that grew because one item stayed unnamed",
@@ -278,7 +278,7 @@ const DECISION_GATES = [
   "name the cost before accepting the request",
   "put the deadline on paper before negotiating the mood",
   "repair the practical leak before asking for certainty",
-  "wait until the first reaction has passed"
+  "pause until the reply can stay brief and clean"
 ];
 
 const RELATIONSHIP_MIRRORS = [

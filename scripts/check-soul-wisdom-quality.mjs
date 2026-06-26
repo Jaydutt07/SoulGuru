@@ -23,6 +23,7 @@ const cases = getSoulWisdomQualityCases(caseSet);
 const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || defaultMaxSceneRepeats(cases.length));
 const maxStructureRepeats = Number(getArgValue("--max-structure-repeats") || defaultMaxStructureRepeats(cases.length));
 const repeatedPhraseOwners = Number(getArgValue("--max-repeated-owners") || 2);
+const maxShortAnchorOwners = Number(getArgValue("--max-short-anchor-owners") || 1);
 
 const started = performance.now();
 const localResults = cases.map((user) => evaluateReading({
@@ -51,6 +52,7 @@ for (const group of groups) {
   const repeatedStructures = buildStructureRepeats(group.results).filter((item) => item.count > maxStructureRepeats);
   const deviceOpenings = group.results.filter((item) => item.openingSceneCategory === "device");
   const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results, repeatedPhraseOwners);
+  const repeatedShortAnchors = buildRepeatedShortAnchorPhrases(group.results, maxShortAnchorOwners);
   if (repeatedScenes.length) {
     failures.push(`${group.source}: repeated opening scene category ${repeatedScenes.map((item) => `${item.category}=${item.count}`).join(", ")}.`);
   }
@@ -62,6 +64,9 @@ for (const group of groups) {
   }
   if (repeatedDistinctivePhrases.length) {
     failures.push(`${group.source}: repeated distinctive phrase(s): ${repeatedDistinctivePhrases.slice(0, 3).map((item) => `"${item.phrase}" in ${item.names.join(" / ")}`).join("; ")}.`);
+  }
+  if (repeatedShortAnchors.length) {
+    failures.push(`${group.source}: repeated short anchor phrase(s): ${repeatedShortAnchors.slice(0, 3).map((item) => `"${item.phrase}" in ${item.names.join(" / ")}`).join("; ")}.`);
   }
 
   for (const item of group.results) {
@@ -237,6 +242,81 @@ function buildRepeatedDistinctivePhrases(results, minOwners = 2) {
     .sort((first, second) => second.names.length - first.names.length || second.phrase.length - first.phrase.length);
 }
 
+function buildRepeatedShortAnchorPhrases(results, maxOwners = 1) {
+  const phraseOwners = new Map();
+  for (const item of results) {
+    const seen = new Set(buildShortAnchorPhrases(firstTwoSentences(item.wisdom)));
+    for (const phrase of seen) {
+      const names = phraseOwners.get(phrase) || [];
+      names.push(item.name);
+      phraseOwners.set(phrase, names);
+    }
+  }
+  return [...phraseOwners]
+    .filter(([, names]) => names.length > maxOwners)
+    .map(([phrase, names]) => ({ phrase, names }))
+    .sort((first, second) => second.names.length - first.names.length || second.phrase.length - first.phrase.length);
+}
+
+function buildShortAnchorPhrases(text) {
+  const tokens = normalizedPhraseTokens(text);
+  const phrases = new Set();
+  for (const size of [3, 2]) {
+    for (let index = 0; index <= tokens.length - size; index += 1) {
+      const phraseTokens = tokens.slice(index, index + size);
+      if (isShortAnchorPhrase(phraseTokens)) {
+        phrases.add(phraseTokens.join(" "));
+      }
+    }
+  }
+  return [...phrases];
+}
+
+function isShortAnchorPhrase(tokens) {
+  const stop = new Set(["a", "an", "and", "are", "around", "as", "at", "before", "by", "for", "from", "has", "have", "in", "into", "is", "it", "its", "near", "not", "of", "on", "or", "that", "the", "then", "this", "to", "when", "where", "with", "without", "you", "your"]);
+  const anchors = new Set([
+    "access",
+    "appointment",
+    "approval",
+    "bedtime",
+    "block",
+    "body",
+    "calendar",
+    "container",
+    "decision",
+    "desk",
+    "door",
+    "draft",
+    "evening",
+    "evidence",
+    "explanation",
+    "finish",
+    "hearing",
+    "invoice",
+    "line",
+    "meal",
+    "message",
+    "payment",
+    "pressure",
+    "private",
+    "promise",
+    "proof",
+    "reply",
+    "room",
+    "square",
+    "task",
+    "timing",
+    "trial",
+    "water",
+    "warmth"
+  ]);
+  const meaningful = tokens.filter((token) => !stop.has(token) && !/\d/.test(token));
+  if (meaningful.length < 2) return false;
+  if (!tokens.some((token) => anchors.has(token))) return false;
+  if (tokens.some((token) => token.length < 4 && !["due"].includes(token))) return false;
+  return true;
+}
+
 function buildDistinctivePhrases(text) {
   const tokens = normalizedPhraseTokens(text);
   const phrases = [];
@@ -249,6 +329,11 @@ function buildDistinctivePhrases(text) {
     }
   }
   return phrases;
+}
+
+function firstTwoSentences(text) {
+  const sentences = splitSentences(text);
+  return sentences.slice(0, 2).join(" ");
 }
 
 function normalizedPhraseTokens(text) {
@@ -292,12 +377,12 @@ function classifyScene(text) {
   const categories = [
     ["device", /\b(phone|message|text|unread|inbox|notification|screen|reply)\b/],
     ["water", /\b(water|glass|drink)\b/],
+    ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["calendar", /\b(calendar|appointment|deadline|time)\b/],
     ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
-    ["kitchen", /\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
     ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|held-back|send)\b/],
-    ["room", /\b(chair|room|desk|workspace|drawer|laundry|bed|domestic)\b/],
+    ["room", /\b(chair|room|desk|workspace|surface|drawer|laundry|bed|domestic)\b/],
     ["door", /\b(shoes|door|keys|bag|charger|errand)\b/],
     ["body", /\b(mirror|shoulder|shoulders|jaw|body|breath)\b/],
     ["task", /\b(list|task|item|draft|work|promise)\b/],
@@ -387,7 +472,7 @@ function hasAwkwardTemplateJoin(text) {
   return [
     /\bLet\s+(?:answer|choose|clean|close|complete|document|do not|finish|letting|make|protect|separate|turn)\b/i,
     /\blet\s+let\b/i,
-    /\bwhen\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b/i,
+    /\bwhen\s+(?:protect|eat|drink|walk|leave|start|lower|step)\b/i,
     /\bwhen\s+do not\b/i,
     /\blet\s+(?:protect|eat|drink|walk|sleep|leave|start|lower|step)\b[^.!?]+\bdecide\b/i
   ].some((pattern) => pattern.test(String(text || "")));
