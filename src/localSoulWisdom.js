@@ -1528,6 +1528,7 @@ function matchesArchitectureConstraints(text, name, constraints) {
   const sentences = splitSentences(text);
   if (constraints.sentenceCount && sentences.length !== constraints.sentenceCount) return false;
   if (constraints.nameSentence) {
+    if (countWord(text, name) !== 1) return false;
     const nameIndex = sentences.findIndex((sentence) => countWord(sentence, name) > 0);
     if (nameIndex !== constraints.nameSentence - 1) return false;
   }
