@@ -122,6 +122,9 @@ jobs:
       - name: Verify Shani contracts
         run: npm run shani:check
 
+      - name: Verify Android security contracts
+        run: npm run android:security:check
+
       - name: Verify mobile backend validation contracts
         run: npm run mobile:backend:check
 

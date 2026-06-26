@@ -48,6 +48,7 @@ const files = [
         "npm run providers:check",
         "npm run env:check",
         "npm run supabase:migrations:check",
+        "npm run android:security:check",
         "npm run production:check -- --strict",
         "npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing"
       ]
@@ -103,8 +104,9 @@ function buildReadme() {
     "2. Fill private production values from `env.production.template` in Vercel/provider dashboards, never in committed files.",
     "3. Use `production-env-checklist.md` and `provider-launch-plan.md` to configure Supabase, OTP/SMS, Razorpay, Clerk, Cloudflare/domain, Resend, Upstash, Pinecone, Sentry, and PostHog.",
     "4. Run `npm run production:check` with production env loaded.",
-    "5. Run `npm run production:domain:smoke -- --expect-ready` after DNS and Vercel custom-domain setup are live.",
-    "6. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
+    "5. Run `npm run android:security:check` before mobile release output.",
+    "6. Run `npm run production:domain:smoke -- --expect-ready` after DNS and Vercel custom-domain setup are live.",
+    "7. Run `npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing` before release.",
     "",
     "## Safety",
     "",

@@ -67,6 +67,7 @@ await runStep("More Guidance paid reading quality", "npm", ["run", "more-guidanc
 await runStep("More Guidance extended paid reading diversity", "npm", ["run", "more-guidance:quality:extended"]);
 await runStep("Shani contract checks", "npm", ["run", "shani:check"]);
 await runStep("Shani Pandit answer quality", "npm", ["run", "shani:quality"]);
+await runStep("Android security contract checks", "npm", ["run", "android:security:check"]);
 await runStep("Mobile backend validation contract checks", "npm", ["run", "mobile:backend:check"]);
 await runStep("Local API smoke", "npm", ["run", "local:smoke"]);
 await runStep("Deployment smoke contract checks", "npm", ["run", "deployment:smoke:check"]);

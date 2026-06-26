@@ -98,6 +98,7 @@ function checkManifestContract() {
     manifest?.name === "SoulGuru Production Launch Pack",
     manifest?.generatedAt === "2026-05-28T20:26:40.000Z",
     missing.length === 0,
+    verification.includes("npm run android:security:check"),
     verification.includes("npm run production:check -- --strict"),
     verification.some((command) => command.includes("release:check"))
   ].every(Boolean), missing);

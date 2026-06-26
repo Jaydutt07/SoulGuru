@@ -431,6 +431,7 @@ The CI template checks:
 - `npm run payments:check`
 - `npm run more-guidance:check`
 - `npm run more-guidance:quality`
+- `npm run android:security:check`
 - `npm run mobile:backend:check`
 - `npm run local:smoke`
 - `npm run deployment:smoke:check`
@@ -654,6 +655,7 @@ The Android scripts auto-detect common Homebrew JDK and Android SDK paths. If yo
 Important: do not put `OPENAI_API_KEY` inside the Android app. Mobile builds must call the deployed backend API.
 Set `VITE_API_BASE_URL` to the production domain-backed backend before building a backend-connected APK. Without it, the local debug APK uses the in-app fallback reading when `/api/soul-wisdom` is not reachable.
 Run `npm run public-env:check:strict` before any web or mobile release so server-only keys cannot be exposed through public `VITE_` variables.
+Run `npm run android:security:check` before release as well; it verifies Android backup and data extraction are disabled so profile, birth, paid-access, and cached guidance data are not included in cloud backup or device transfer.
 
 For phone testing before Vercel deployment, run the backend on your Mac's Wi-Fi/LAN address:
 
@@ -681,6 +683,7 @@ That command refuses to build if `VITE_API_BASE_URL` is missing, points at local
 Signed release outputs:
 
 ```bash
+npm run android:security:check
 npm run android:release:check
 npm run android:aab:release
 npm run android:apk:release

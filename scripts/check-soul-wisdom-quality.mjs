@@ -21,6 +21,7 @@ const maxSimilarity = Number(getArgValue("--max-similarity") || 0.24);
 const cases = getSoulWisdomQualityCases(caseSet);
 const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || defaultMaxSceneRepeats(cases.length));
 const maxStructureRepeats = Number(getArgValue("--max-structure-repeats") || defaultMaxStructureRepeats(cases.length));
+const repeatedPhraseOwners = Number(getArgValue("--max-repeated-owners") || 2);
 
 const started = performance.now();
 const localResults = cases.map((user) => evaluateReading({
@@ -48,7 +49,7 @@ for (const group of groups) {
   const repeatedScenes = buildSceneRepeats(group.results).filter((item) => item.category !== "general" && item.count > maxSceneRepeats);
   const repeatedStructures = buildStructureRepeats(group.results).filter((item) => item.count > maxStructureRepeats);
   const deviceOpenings = group.results.filter((item) => item.openingSceneCategory === "device");
-  const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results, group.results.length <= 5 ? 2 : 3);
+  const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results, repeatedPhraseOwners);
   if (repeatedScenes.length) {
     failures.push(`${group.source}: repeated opening scene category ${repeatedScenes.map((item) => `${item.category}=${item.count}`).join(", ")}.`);
   }
