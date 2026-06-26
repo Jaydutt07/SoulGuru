@@ -347,6 +347,12 @@ Check paid More Guidance word counts, concrete cues, banned generic phrasing, an
 npm run more-guidance:quality
 ```
 
+Run the broader twenty-profile paid-reading diversity gate used by release readiness:
+
+```bash
+npm run more-guidance:quality:extended
+```
+
 Run the same quality gate with live OpenAI paid More Guidance readings:
 
 ```bash

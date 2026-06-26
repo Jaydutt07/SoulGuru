@@ -64,6 +64,7 @@ await runStep("Release secret and artifact scan", "npm", ["run", "security:check
 await runStep("Payment contract checks", "npm", ["run", "payments:check"]);
 await runStep("More Guidance contract checks", "npm", ["run", "more-guidance:check"]);
 await runStep("More Guidance paid reading quality", "npm", ["run", "more-guidance:quality"]);
+await runStep("More Guidance extended paid reading diversity", "npm", ["run", "more-guidance:quality:extended"]);
 await runStep("Shani contract checks", "npm", ["run", "shani:check"]);
 await runStep("Shani Pandit answer quality", "npm", ["run", "shani:quality"]);
 await runStep("Mobile backend validation contract checks", "npm", ["run", "mobile:backend:check"]);

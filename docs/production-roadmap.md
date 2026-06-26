@@ -105,6 +105,7 @@ This project is being built toward the stack shown in the product planning image
 - Soul Guru v13 daily wisdom prompt with private reading fingerprints, surface-rhythm repair checks, whole-sentence cache refreshes, and structure-similarity gates
 - More Guidance v3 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
 - Five-profile More Guidance paid-reading quality gate for word counts, concrete cues, generic-phrase bans, and overview diversity
+- Extended twenty-profile More Guidance paid-reading diversity gate in release readiness
 - Sidereal chart-based Harmony compatibility with offline contract coverage
 - Shared #Numbers numerology engine with deterministic card/value contract coverage
 - Location-aware birth place resolution with timezone-safe chart dates
