@@ -396,6 +396,7 @@ The CI template checks:
 - `npm run soul:quality:extended`
 - `npm run env:check`
 - `npm run production:env:checklist`
+- `npm run production:env:template`
 - `npm run production:launch-plan`
 - `npm run deployment:check`
 - `npm run astrology:check`

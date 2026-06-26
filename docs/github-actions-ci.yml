@@ -47,6 +47,12 @@ jobs:
       - name: Print production env checklist
         run: npm run production:env:checklist
 
+      - name: Print production env template
+        run: npm run production:env:template
+
+      - name: Print provider launch plan
+        run: npm run production:launch-plan
+
       - name: Verify deployment config contracts
         run: npm run deployment:check
 
