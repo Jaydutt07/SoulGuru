@@ -25,7 +25,13 @@ export const PROVIDER_STACK = Object.freeze([
       "api/soul-wisdom.js",
       "api/astro-solve.js",
       "api/more-guidance.js",
-      "api/shani-guidance.js"
+      "api/shani-guidance.js",
+      "scripts/check-openai-contracts.mjs",
+      "scripts/check-soul-wisdom-quality.mjs",
+      "scripts/check-astro-solve-quality.mjs",
+      "scripts/check-more-guidance-quality.mjs",
+      "scripts/check-shani-quality.mjs",
+      "scripts/soul-wisdom-quality-cases.mjs"
     ],
     commands: [
       "npm run openai:check",

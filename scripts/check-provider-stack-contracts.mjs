@@ -15,6 +15,7 @@ checkProviderArtifactsExist();
 checkSupabaseProviderCoversEveryMigration();
 checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
+checkOpenAIProviderCoversQualityAndContractScripts();
 checkVercelProviderCoversDeploymentContracts();
 checkDomainProvidersCoverCustomDomainContracts();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
@@ -126,6 +127,21 @@ function checkOpenAIProviderCoversEveryLiveQualityGate() {
   const missing = requiredCommands.filter((command) => !openai?.commands?.includes(command));
 
   pushCheck("OpenAI provider verifies every live AI reading surface", missing.length === 0, missing);
+}
+
+function checkOpenAIProviderCoversQualityAndContractScripts() {
+  const openai = PROVIDER_STACK.find((provider) => provider.id === "openai");
+  const requiredArtifacts = [
+    "scripts/check-openai-contracts.mjs",
+    "scripts/check-soul-wisdom-quality.mjs",
+    "scripts/check-astro-solve-quality.mjs",
+    "scripts/check-more-guidance-quality.mjs",
+    "scripts/check-shani-quality.mjs",
+    "scripts/soul-wisdom-quality-cases.mjs"
+  ];
+  const missing = requiredArtifacts.filter((artifact) => !openai?.artifacts?.includes(artifact));
+
+  pushCheck("OpenAI provider evidence covers AI request and reading-quality scripts", missing.length === 0, missing);
 }
 
 function checkVercelProviderCoversDeploymentContracts() {
