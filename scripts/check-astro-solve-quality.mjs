@@ -16,7 +16,9 @@ const env = {
 };
 const date = getArgValue("--date") || new Date().toISOString().slice(0, 10);
 const maxSimilarity = Number(getArgValue("--max-similarity") || 0.36);
-const cases = getAstroSolveQualityCases();
+const caseSet = getArgValue("--case-set") || "base";
+const cases = getAstroSolveQualityCases(caseSet);
+const maxRepeatedOpenings = Number(getArgValue("--max-repeated-openings") || defaultMaxRepeatedOpenings(cases.length));
 
 const started = performance.now();
 const localResults = cases.map((item, index) => {
@@ -44,10 +46,10 @@ for (const group of groups) {
   const similarity = buildSimilarity(group.results);
   const highSimilarity = similarity.filter((item) => item.score > maxSimilarity);
   if (highSimilarity.length) {
-    failures.push(`${group.source}: ${highSimilarity.length} answer pair(s) exceeded max similarity ${maxSimilarity}.`);
+    failures.push(`${group.source}: ${highSimilarity.length} answer pair(s) exceeded max similarity ${maxSimilarity}: ${formatSimilarityPairs(highSimilarity)}.`);
   }
 
-  const repeatedOpenings = buildOpeningRepeats(group.results).filter((item) => item.count > 2);
+  const repeatedOpenings = buildOpeningRepeats(group.results).filter((item) => item.count > maxRepeatedOpenings);
   if (repeatedOpenings.length) {
     failures.push(`${group.source}: repeated root opening ${repeatedOpenings.map((item) => `${item.opening}=${item.count}`).join(", ")}.`);
   }
@@ -175,6 +177,15 @@ function buildSimilarity(results) {
   return pairs;
 }
 
+function formatSimilarityPairs(items) {
+  return items
+    .slice()
+    .sort((first, second) => second.score - first.score)
+    .slice(0, 5)
+    .map((item) => `${item.pair}=${item.score}`)
+    .join(", ");
+}
+
 function buildOpeningRepeats(results) {
   const counts = new Map();
   for (const item of results) {
@@ -201,7 +212,7 @@ function jaccard(first, second) {
   return Math.round((intersection / union) * 100) / 100;
 }
 
-function getAstroSolveQualityCases() {
+function getAstroSolveBaseCases() {
   return [
     {
       user: {
@@ -266,6 +277,202 @@ function getAstroSolveQualityCases() {
   ];
 }
 
+function getAstroSolveExtendedCases() {
+  return [
+  ...getAstroSolveBaseCases(),
+  {
+    user: {
+      id: "astro-quality-marriage-family",
+      name: "Rhea Kapoor",
+      phone: "+919800000016",
+      email: "rhea@soulguru.local",
+      birthDate: "1986-12-14",
+      birthTime: "08:18",
+      birthPlace: "Delhi"
+    },
+    question: "My in-laws keep interfering in my marriage and my husband avoids taking a clear stand."
+  },
+  {
+    user: {
+      id: "astro-quality-job-switch",
+      name: "Arjun Bedi",
+      phone: "+919800000017",
+      email: "arjun@soulguru.local",
+      birthDate: "1990-02-07",
+      birthTime: "10:32",
+      birthPlace: "Jaipur"
+    },
+    question: "I received a job offer with better salary, but my current boss is promising growth if I stay."
+  },
+  {
+    user: {
+      id: "astro-quality-debt",
+      name: "Nisha Rao",
+      phone: "+919800000018",
+      email: "nisha@soulguru.local",
+      birthDate: "1984-09-25",
+      birthTime: "02:44",
+      birthPlace: "Hyderabad"
+    },
+    question: "A loan I took for family expenses is becoming heavy and I feel ashamed asking anyone to repay me."
+  },
+  {
+    user: {
+      id: "astro-quality-panic",
+      name: "Samar Khan",
+      phone: "+919800000019",
+      email: "samar@soulguru.local",
+      birthDate: "1999-05-12",
+      birthTime: "23:06",
+      birthPlace: "Lucknow"
+    },
+    question: "I get panic before presentations and my chest feels tight even when I know the material."
+  },
+  {
+    user: {
+      id: "astro-quality-relocation",
+      name: "Tara Menon",
+      phone: "+919800000020",
+      email: "tara@soulguru.local",
+      birthDate: "1995-07-30",
+      birthTime: "15:19",
+      birthPlace: "Kochi"
+    },
+    question: "Should I move abroad for studies or stay near home where my parents need support?"
+  },
+  {
+    user: {
+      id: "astro-quality-ex",
+      name: "Vivaan Shah",
+      phone: "+919800000021",
+      email: "vivaan@soulguru.local",
+      birthDate: "1991-10-21",
+      birthTime: "19:47",
+      birthPlace: "Surat"
+    },
+    question: "My ex has started messaging again, and I cannot tell if this is closure or another emotional trap."
+  },
+  {
+    user: {
+      id: "astro-quality-client",
+      name: "Leela Das",
+      phone: "+919800000022",
+      email: "leela@soulguru.local",
+      birthDate: "1978-03-03",
+      birthTime: "05:58",
+      birthPlace: "Guwahati"
+    },
+    question: "A client keeps changing the scope and delaying payment, but I am afraid of losing the project."
+  },
+  {
+    user: {
+      id: "astro-quality-sibling",
+      name: "Pranav Joshi",
+      phone: "+919800000023",
+      email: "pranav@soulguru.local",
+      birthDate: "1982-06-16",
+      birthTime: "12:40",
+      birthPlace: "Varanasi"
+    },
+    question: "My sibling expects me to handle every family problem and then criticizes how I do it."
+  },
+  {
+    user: {
+      id: "astro-quality-burnout",
+      name: "Kavya Sinha",
+      phone: "+919800000024",
+      email: "kavya@soulguru.local",
+      birthDate: "1993-01-27",
+      birthTime: "03:21",
+      birthPlace: "Bhopal"
+    },
+    question: "I feel burned out and keep skipping meals, but I still push myself because everyone depends on me."
+  },
+  {
+    user: {
+      id: "astro-quality-startup",
+      name: "Neel Reddy",
+      phone: "+919800000025",
+      email: "neel@soulguru.local",
+      birthDate: "1988-11-19",
+      birthTime: "16:11",
+      birthPlace: "Nagpur"
+    },
+    question: "My startup cofounder wants more equity without taking more responsibility, and I am avoiding the contract talk."
+  },
+  {
+    user: {
+      id: "astro-quality-friendship",
+      name: "Anika Pillai",
+      phone: "+919800000026",
+      email: "anika@soulguru.local",
+      birthDate: "2002-04-05",
+      birthTime: "09:37",
+      birthPlace: "Coimbatore"
+    },
+    question: "My closest friend keeps cancelling plans but expects me to be available whenever they are upset."
+  },
+  {
+    user: {
+      id: "astro-quality-promotion",
+      name: "Rohan Iyer",
+      phone: "+919800000027",
+      email: "rohan@soulguru.local",
+      birthDate: "1979-08-08",
+      birthTime: "22:05",
+      birthPlace: "Chennai"
+    },
+    question: "I was passed over for promotion and now I cannot decide whether to confront my manager or leave quietly."
+  },
+  {
+    user: {
+      id: "astro-quality-parent-health",
+      name: "Meenal Verma",
+      phone: "+919800000028",
+      email: "meenal@soulguru.local",
+      birthDate: "1974-12-02",
+      birthTime: "06:52",
+      birthPlace: "Indore"
+    },
+    question: "My mother's health appointments and household expenses are falling on me, and I am angry all the time."
+  },
+  {
+    user: {
+      id: "astro-quality-exam-parent",
+      name: "Zoya Khan",
+      phone: "+919800000029",
+      email: "zoya@soulguru.local",
+      birthDate: "2004-09-17",
+      birthTime: "01:26",
+      birthPlace: "Patna"
+    },
+    question: "My parents compare my exam marks with cousins, and I freeze even when I prepared well."
+  },
+  {
+    user: {
+      id: "astro-quality-legal-risk",
+      name: "Aditya Sen",
+      phone: "+919800000030",
+      email: "aditya@soulguru.local",
+      birthDate: "1969-05-24",
+      birthTime: "18:09",
+      birthPlace: "Bengaluru"
+    },
+    question: "A property paperwork issue with a relative is turning legal and I do not know whether to fight or settle."
+  }
+  ];
+}
+
+function getAstroSolveQualityCases(selectedCaseSet = "base") {
+  if (selectedCaseSet === "base") return getAstroSolveBaseCases();
+  if (selectedCaseSet === "extended") return getAstroSolveExtendedCases();
+  throw new Error(`Unknown Astro Solves quality case set "${selectedCaseSet}". Use base or extended.`);
+}
+
+function defaultMaxRepeatedOpenings(caseCount) {
+  return caseCount <= 5 ? 2 : Math.ceil(caseCount * 0.25);
+}
+
 function formatDateForPrompt(dateKey) {
   return new Date(`${dateKey}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
@@ -285,6 +492,6 @@ function cleanToken(text) {
 }
 
 function getArgValue(name) {
-  const arg = process.argv.find((value) => value.startsWith(`${name}=`));
+  const arg = process.argv.slice().reverse().find((value) => value.startsWith(`${name}=`));
   return arg ? arg.slice(name.length + 1).trim() : "";
 }

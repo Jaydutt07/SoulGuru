@@ -46,7 +46,7 @@ for (const group of groups) {
   const similarity = buildSimilarity(group.results);
   const highSimilarity = similarity.filter((item) => item.score > maxSimilarity);
   if (highSimilarity.length) {
-    failures.push(`${group.source}: ${highSimilarity.length} reading pair(s) exceeded max similarity ${maxSimilarity}.`);
+    failures.push(`${group.source}: ${highSimilarity.length} reading pair(s) exceeded max similarity ${maxSimilarity}: ${formatSimilarityPairs(highSimilarity)}.`);
   }
 
   const repeatedScenes = buildSceneRepeats(group.results).filter((item) => item.category !== "general" && item.count > maxSceneRepeats);
@@ -238,6 +238,15 @@ function buildSimilarity(results) {
     }
   }
   return pairs;
+}
+
+function formatSimilarityPairs(items) {
+  return items
+    .slice()
+    .sort((first, second) => second.score - first.score)
+    .slice(0, 5)
+    .map((item) => `${item.pair}=${item.score}`)
+    .join(", ");
 }
 
 function buildRepeatedDistinctivePhrases(results, minOwners = 2) {
@@ -571,6 +580,6 @@ function defaultMaxStructureRepeats(caseCount) {
 }
 
 function getArgValue(name) {
-  const arg = process.argv.find((value) => value.startsWith(`${name}=`));
+  const arg = process.argv.slice().reverse().find((value) => value.startsWith(`${name}=`));
   return arg ? arg.slice(name.length + 1).trim() : "";
 }

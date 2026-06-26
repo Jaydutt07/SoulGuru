@@ -37,6 +37,7 @@ function checkRequiredCommands(workflowText, source = "template") {
     "npm run soul:quality",
     "npm run soul:quality:extended",
     "npm run astro:quality",
+    "npm run astro:quality:extended",
     "npm run more-guidance:quality",
     "npm run more-guidance:quality:extended",
     "npm run shani:quality",

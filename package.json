@@ -12,6 +12,7 @@
     "email:check": "node scripts/check-email-contracts.mjs",
     "astro:check": "node scripts/check-astro-solve-contracts.mjs",
     "astro:quality": "node scripts/check-astro-solve-quality.mjs",
+    "astro:quality:extended": "node scripts/check-astro-solve-quality.mjs --case-set=extended --max-similarity=0.34 --max-repeated-openings=5",
     "astro:quality:ai": "node scripts/check-astro-solve-quality.mjs --include-ai",
     "astrology:check": "node scripts/check-astrology-contracts.mjs",
     "compatibility:check": "node scripts/check-compatibility-contracts.mjs",

@@ -62,7 +62,7 @@ function buildReport() {
     }),
     requirement("astroSolves", "Astro Solves gives 3 persisted free questions with detailed root-cause and solution answers", {
       status: combinedStatus(["astroSolvesQuota", "supabase"]),
-      evidence: ["`npm run astro:check`", "`npm run astro:quality`", "`npm run astro:quality:ai`"],
+      evidence: ["`npm run astro:check`", "`npm run astro:quality`", "`npm run astro:quality:extended`", "`npm run astro:quality:ai`"],
       remaining: missingFor("supabase")
     }),
     requirement("moreGuidance", "Paid More Guidance page has deeper reading, history, saved advice, and 3-month tracking", {

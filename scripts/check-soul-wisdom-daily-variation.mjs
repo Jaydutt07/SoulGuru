@@ -236,7 +236,7 @@ function classifyScene(text) {
   const categories = [
     ["device", /\b(phone|message|text|unread|inbox|notification|screen|reply)\b/],
     ["water", /\b(water|glass|drink|cup)\b/],
-    ["calendar", /\b(calendar|appointment|deadline|time|hour|slot)\b/],
+    ["calendar", /\b(calendar|appointment|deadline|dated|date|slot)\b/],
     ["notebook", /\b(notebook|page|pen|line|written|write)\b/],
     ["money", /\b(wallet|receipt|payment|bill|price|money)\b/],
     ["conversation", /\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|send)\b/],

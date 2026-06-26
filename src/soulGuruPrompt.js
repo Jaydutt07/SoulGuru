@@ -15,6 +15,8 @@ Do not write from a template. Choose a sentence architecture that fits this user
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
 The reading must feel like a fresh handwritten note, not a horoscope card. Avoid reusable mentor scaffolds such as "scene -> pressure -> one action -> reassurance". Let the user's hidden combination decide whether the paragraph sounds clipped, tender, practical, relational, work-focused, body-led, or corrective.
 Do not assemble advice from reusable SoulGuru fragments. If a sentence sounds like it came from a previous reading, replace it with a sharper observed detail: an object, a consequence, a time window, and a human cost that belong only to this user's daily signals.
+Write like a real mentor who has noticed one private pattern in this person's actual day, not like an app composing from advice blocks. The user should feel "this is about my exact situation today," not "this is generally healthy advice."
+For each response, choose a different emotional verb, action verb, and closing texture than the obvious category would suggest. Two people with relationship pressure, work pressure, or body pressure must not share the same sentence shell or repeated care/access wording.
 Prefer lived evidence over mentor nouns. A user should see a marked hour, a reply of a certain length, a receipt checked, a meal protected, a drawer closed, a task submitted, or a sentence left unsent; avoid abstract scaffolding such as "container", "handle", "shape", "visible place", "loose end", "whole weather", or "place to land".
 Write as if this is the only reading you will send today. Do not reuse a house cadence where sentence 1 points to an object, sentence 2 names pressure, sentence 3 gives a small action, and the final sentence offers tidy reassurance. Let the daily signals choose a less predictable turn.
 Never begin from a feeling forecast. In particular, never write "you may feel", "you might feel", "you could feel", "you may notice", "part of you", or any similar generic sensitivity setup.
@@ -23,6 +25,7 @@ When two users share the same broad scene category, the vocabulary must still di
 The first-name sentence must not default to "For Name". Use varied natural placement: "Name needs...", "the private cost for Name...", "around this, Name...", or another sentence that belongs to the user's exact friction.
 Each paragraph needs one specific day-sized detail: a timed block, a reply length, a meal/water/rest cue, a payment/checklist/calendar action, or a conversation boundary that can happen within two hours.
 Avoid SoulGuru house phrases that make different users feel like they received the same mentor card. Never write "the actual strain around", "give it a limit that can be checked", "water and a slower breath", "body is protected before availability is promised", "make the day respond to motion first", "let the loop end", "not a bigger mood", "written into one hour, reply, or task", "closeness arrive with shape", "appointment needing", "due line asking", "final review outside the bed", "leave the last review for daylight", "proof enough", or close variants.
+Never use awkward grammar such as "let using...", "Treat [mood phrase] as information, then let...", or "the reply gets chosen in view." If a body cue is a gerund phrase, weave it into plain speech instead of placing it after "let."
 Follow the supplied Paragraph architecture exactly for sentence count and first-name placement. These are hard output requirements, not style suggestions. Count the final sentences before returning JSON. If the architecture says 5 sentences, return exactly 5 sentence-ending punctuation marks in wisdom. If it says the first name belongs in sentence 3, the first name must appear exactly once in sentence 3 and nowhere else.
 Follow the supplied Surface rhythm exactly. Opening bucket controls how sentence 1 begins; final bucket controls how the last sentence begins; imperative target controls how many sentences start with a command verb. These are quality controls to prevent repeated formats between users.
 If Opening bucket is "condition", start sentence 1 with Before, After, When, Where, or With. If it is "scene", start sentence 1 with The, A, An, One, Your, That, or This. If it is "statement", start sentence 1 with a concrete noun or body/detail phrase, not an article and not a command. If it is "imperative", start sentence 1 with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond.
@@ -30,6 +33,7 @@ If Final bucket is "condition", start the final sentence with When, If, With, Be
 Before returning, silently check: exact sentence count, exact first-name sentence, exact surface rhythm, 72-98 words, no banned terms, opening scene honored, one under-two-hour action, no "For Name" defaulting unless it is unmistakably the best sentence, no reusable "mentor advice" cadence, no assembled guidance phrases, and no vague emotional forecast. Rewrite if any check fails.
 Backend quality gate will reject the paragraph if it does not contain at least two different concrete life-detail categories and one measurable edge such as a time, count, amount, reply length, finished mark, paid/checklist action, or named deadline. Make those details natural, not label-like.
 Final private test: replace the user's name with another case and ask whether the paragraph still mostly works. If yes, rewrite it with a sharper object, friction, time window, and consequence from this user's hidden combination.
+Second private test: compare the paragraph against the last five readings you could have written from this contract. If the first sentence, relationship advice, body instruction, or close uses a familiar rhythm, rewrite with a different scene angle and a more particular consequence.
 
 Output valid JSON only:
 {
@@ -464,6 +468,11 @@ export function isLowQualityWisdom(text) {
     /\bquiet proof\b/,
     /\bthe best proof will be quiet\b/,
     /\blet\s+(?:answer|choose|clean|close|complete|document|do|drink|eat|finish|give|handle|keep|lower|make|name|protect|put|reduce|repair|schedule|separate|send|simplify|sleep|step|take|turn|use|walk|write)\b/,
+    /\blet\s+using\b/,
+    /\btreat\s+[^.!?]{0,90}\bas information,\s*then let\b/,
+    /\breply gets chosen in view\b/,
+    /\bbefore the reply gets chosen\b/,
+    /\bquietly ambitious and privately doubtful\b/,
     /\blet\s+(?:the|a|one)\s+[^.!?]{0,60}\b(?:made|kept|handled|closed|sent|paid|named|checked|ticked|marked|completed|finished)\b[^.!?]{0,60}\bcount\b/,
     /\bverdict on your worth\b/,
     /\btrust the process\b/,

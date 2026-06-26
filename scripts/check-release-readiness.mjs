@@ -43,6 +43,7 @@ await runStep("Soul Guru local reading quality", "npm", ["run", "soul:quality"])
 await runStep("Soul Guru extended local reading diversity", "npm", ["run", "soul:quality:extended"]);
 await runStep("Astro Solves contract checks", "npm", ["run", "astro:check"]);
 await runStep("Astro Solves answer quality", "npm", ["run", "astro:quality"]);
+await runStep("Astro Solves extended answer diversity", "npm", ["run", "astro:quality:extended"]);
 await runStep("OTP contract checks", "npm", ["run", "otp:check"]);
 
 if (includeAi) {

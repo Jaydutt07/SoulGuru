@@ -19,7 +19,7 @@ npm run soul:quality:ai -- --show-readings --case-set=base
 
 | Surface | Live cases | Result | Max similarity | Attempts | Duration |
 | --- | ---: | --- | ---: | --- | ---: |
-| Soul Guru daily wisdom v23 | 5 | Pass | 0.12 | 4 cases first attempt, 1 case needed 3 attempts | 232.1s |
+| Soul Guru daily wisdom v24 | 5 | Pass | 0.12 | 3 cases first attempt, 2 cases needed 3 attempts | 276.6s |
 | Soul Guru live same-user daily variation v23 | 4 dates | Pass | 0.15 | 1 date first attempt, 2 dates needed 2 attempts, 1 date needed 3 attempts | 215.9s |
 | More Guidance paid reading | 5 | Pass | 0.14 | 3 cases first attempt, 2 cases needed 2 attempts | 147.7s |
 | Astro Solves answers | 5 | Pass | 0.18 | All first attempt | 68.4s |
@@ -27,7 +27,7 @@ npm run soul:quality:ai -- --show-readings --case-set=base
 
 ## Product Notes
 
-- Soul Guru v23 live readings stayed under the 100-word cap and passed generic/repeated phrase, measurable-edge, concrete-detail, and diversity checks. The v23 contract rejects readings that lack at least two concrete life-detail categories and one measurable day-sized edge.
+- Soul Guru v24 live readings stayed under the 100-word cap and passed generic/repeated phrase, measurable-edge, concrete-detail, and diversity checks. The v24 contract adds stronger anti-template mentor wording, rejects awkward assembled grammar such as "let using", and keeps the two-category concrete-detail gate plus one measurable day-sized edge.
 - Soul Guru live same-user daily variation now checks one profile across four dates, verifying that daily area, lunar mansion, tithi, and final wording change instead of repeating the same mentor card.
 - More Guidance live readings passed paid overview diversity, word-count, concrete-cue, and no-astrology-leak checks.
 - Astro Solves live answers passed root-cause, astrological relevance, solution usefulness, safety wording, and diversity checks.
@@ -35,7 +35,7 @@ npm run soul:quality:ai -- --show-readings --case-set=base
 
 ## Tuning Priorities
 
-1. Reduce first-generation latency for Soul Guru and More Guidance. The v23 quality repair loop is working, but one Soul Guru profile and one daily date still needed three attempts.
+1. Reduce first-generation latency for Soul Guru and More Guidance. The v24 quality repair loop is working, but two Soul Guru profiles still needed three attempts, so the next tuning pass should focus on first-draft compliance rather than adding more fallback coverage.
 2. Keep daily Supabase caching and generation locks enabled in production so successful readings are reused for the day and concurrent reloads do not multiply OpenAI calls.
 3. Keep the five-minute client pending window and five-minute backend generation lock defaults for first reads, especially on mobile, because live daily wisdom and paid guidance can take more than three minutes in worst-case quality-repair runs.
 4. Use `npm run soul:daily:ai` after any Soul Guru prompt or astrology-context change that could affect date-specific wording.

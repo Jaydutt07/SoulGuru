@@ -44,6 +44,9 @@ jobs:
       - name: Astro Solves local answer quality gate
         run: npm run astro:quality
 
+      - name: Astro Solves extended diversity gate
+        run: npm run astro:quality:extended
+
       - name: More Guidance paid reading quality gate
         run: npm run more-guidance:quality
 
