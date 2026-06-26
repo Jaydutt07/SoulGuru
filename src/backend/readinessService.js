@@ -129,16 +129,19 @@ function checkPlaceGeocoding(env) {
   if (!hasEnv(env, "PLACE_GEOCODER_USER_AGENT")) {
     missingEnv.push("PLACE_GEOCODER_USER_AGENT");
   }
+  if (String(env.PLACE_GEOCODER_REQUIRE_RESOLUTION || "false").toLowerCase() !== "true") {
+    missingEnv.push("PLACE_GEOCODER_REQUIRE_RESOLUTION=true");
+  }
 
   return {
     id: "birthPlaceAccuracy",
     label: "Birth place accuracy",
     severity: "warning",
     status: missingEnv.length ? "fail" : "pass",
-    requiredEnv: ["PLACE_GEOCODER_URL", "PLACE_GEOCODER_USER_AGENT"],
+    requiredEnv: ["PLACE_GEOCODER_URL", "PLACE_GEOCODER_USER_AGENT", "PLACE_GEOCODER_REQUIRE_RESOLUTION=true"],
     missingEnv,
     advice: missingEnv.length
-      ? "Configure a Nominatim-compatible geocoder so uncatalogued birth places resolve to accurate coordinates and timezones before chart calculations."
+      ? "Configure a Nominatim-compatible geocoder and require resolved birth places so uncatalogued profiles do not fall back to default coordinates before chart calculations."
       : ""
   };
 }

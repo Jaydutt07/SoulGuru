@@ -106,6 +106,7 @@ function templateValue(key) {
   if (SERVER_ONLY_ENV_KEYS.includes(key)) return "";
   if (FALLBACK_FLAG_DEFAULTS[key] !== undefined) return FALLBACK_FLAG_DEFAULTS[key];
   if (key === "CLERK_REQUIRE_AUTH") return "true";
+  if (key === "PLACE_GEOCODER_REQUIRE_RESOLUTION") return "true";
   if (key === "RAZORPAY_WEBHOOK_READY") return "false";
   if (key === "CLOUDFLARE_DNS_READY") return "false";
 
@@ -119,6 +120,7 @@ function entryNotes(key, classification) {
   if (classification === "public Vite env") return "safe for browser/APK only if it is in the public allowlist";
   if (FALLBACK_FLAG_DEFAULTS[key] !== undefined) return "production-safe local fallback value";
   if (key === "CLERK_REQUIRE_AUTH") return "production target is fail-closed authenticated API access";
+  if (key === "PLACE_GEOCODER_REQUIRE_RESOLUTION") return "production target is fail-closed accurate birth-place resolution";
   if (key === "RAZORPAY_WEBHOOK_READY") return "set true only after the production Razorpay dashboard webhook is live";
   if (key === "CLOUDFLARE_DNS_READY") return "set true only after the production domain resolves through Cloudflare";
   return "";

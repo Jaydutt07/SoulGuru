@@ -7,6 +7,7 @@ await checkLookupContract();
 await checkPhoneProfileCreationContract();
 await checkGeocodedBirthPlaceProfileContract();
 await checkGeocoderValidationContract();
+await checkStrictPlaceResolutionContract();
 await checkAuthenticatedPhoneMergeContract();
 await checkSharedProfileIdMergeContract();
 await checkPhoneMergeRaceContract();
@@ -244,6 +245,90 @@ async function checkGeocoderValidationContract() {
     insecureResult.profile?.birthPlaceResolutionSource === "default",
     insecureResult.profile?.birthPlace === "Paris, France",
     insecureResult.profile?.birthTimezone === "Asia/Kolkata"
+  ].every(Boolean));
+}
+
+async function checkStrictPlaceResolutionContract() {
+  const strictSupabase = createFakeProfileSupabase();
+  const strictRequests = [];
+  await expectRejects(
+    "Strict profile place resolution rejects unresolved uncatalogued places",
+    () => upsertUserProfile({
+      user: profileUser({
+        authUserId: "",
+        phone: "+91 99990 08801",
+        email: "unknown-place@soulguru.local",
+        birthPlace: "Atlantis, Ocean",
+        birthLatitude: null,
+        birthLongitude: null,
+        birthTimezone: "",
+        birthTimezoneOffsetMinutes: null,
+        birthPlaceResolvedLabel: "",
+        birthPlaceResolutionSource: ""
+      })
+    }, {
+      PLACE_GEOCODER_URL: "https://geocoder.example/search",
+      PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Test",
+      PLACE_GEOCODER_REQUIRE_RESOLUTION: "true"
+    }, {
+      supabase: strictSupabase,
+      fetch: async (url, options) => {
+        strictRequests.push({ url, options });
+        return {
+          ok: true,
+          async json() {
+            return [];
+          }
+        };
+      }
+    }),
+    /Birth place could not be resolved accurately/i,
+    422
+  );
+
+  const catalogSupabase = createFakeProfileSupabase();
+  const catalogRequests = [];
+  const catalogResult = await upsertUserProfile({
+    user: profileUser({
+      authUserId: "",
+      phone: "+91 99990 08802",
+      email: "catalog-place@soulguru.local",
+      birthPlace: "Mumbai, India",
+      birthLatitude: null,
+      birthLongitude: null,
+      birthTimezone: "",
+      birthTimezoneOffsetMinutes: null,
+      birthPlaceResolvedLabel: "",
+      birthPlaceResolutionSource: ""
+    })
+  }, {
+    PLACE_GEOCODER_REQUIRE_RESOLUTION: "true"
+  }, {
+    supabase: catalogSupabase,
+    fetch: async (url, options) => {
+      catalogRequests.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return [];
+        }
+      };
+    }
+  });
+
+  const catalogRow = Array.from(catalogSupabase.state.profiles.values())[0];
+  pushCheck("Strict profile place resolution does not persist default coordinates", [
+    strictRequests.length === 1,
+    strictSupabase.state.profiles.size === 0,
+    strictSupabase.state.calls.filter((call) => call.operation === "upsert").length === 0
+  ].every(Boolean));
+  pushCheck("Strict profile place resolution still accepts catalog places", [
+    catalogRequests.length === 0,
+    catalogResult.profile?.birthPlaceResolutionSource === "catalog",
+    catalogResult.profile?.birthTimezone === "Asia/Kolkata",
+    approx(catalogResult.profile?.birthLatitude, 19.076, 0.001),
+    approx(catalogResult.profile?.birthLongitude, 72.8777, 0.001),
+    catalogRow?.birth_place_resolution_source === "catalog"
   ].every(Boolean));
 }
 

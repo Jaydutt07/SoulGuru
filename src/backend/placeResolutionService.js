@@ -22,7 +22,18 @@ export async function enrichUserWithServerPlace(user = {}, env = process.env, de
     return mergeResolvedPlace(user, geocodedPlace);
   }
 
+  if (isStrictPlaceResolutionRequired(env)) {
+    throwHttpError(
+      "Birth place could not be resolved accurately. Please enter a specific city and country, or try again after place lookup is configured.",
+      422
+    );
+  }
+
   return enrichUserWithPlace(user);
+}
+
+export function isStrictPlaceResolutionRequired(env = process.env) {
+  return String(env.PLACE_GEOCODER_REQUIRE_RESOLUTION || "false").toLowerCase() === "true";
 }
 
 export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
@@ -279,4 +290,10 @@ function isPlaceholderValue(value) {
   if (/^\*+$/.test(normalized)) return true;
 
   return false;
+}
+
+function throwHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
 }

@@ -408,6 +408,7 @@ function fullEnv() {
     UPSTASH_REDIS_REST_TOKEN: "upstash-contract-token-123456",
     PLACE_GEOCODER_URL: "https://geocoder.soulguru.app/search",
     PLACE_GEOCODER_USER_AGENT: "SoulGuru/1.0 production contact@soulguru.app",
+    PLACE_GEOCODER_REQUIRE_RESOLUTION: "true",
     PINECONE_API_KEY: "pcsk_contract_key_123456",
     PINECONE_HOST: "memory-index.svc.pinecone.io",
     PINECONE_INDEX: "soulguru-memory",
