@@ -23,6 +23,25 @@ import {
 
 export { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS, SOUL_WISDOM_PROMPT_VERSION };
 
+export async function readCachedDailySoulWisdom(payload, env = process.env, deps = {}) {
+  const user = payload.user || {};
+  const date = payload.date || new Date().toISOString().slice(0, 10);
+  const userKey = buildBackendUserKey(user);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+
+  if (!supabase) return null;
+
+  const cached = await readCachedReading(supabase, userKey, date);
+  if (!cached) return null;
+
+  return {
+    ...cached,
+    cached: true,
+    source: "supabase",
+    stored: true
+  };
+}
+
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
   const date = payload.date || new Date().toISOString().slice(0, 10);

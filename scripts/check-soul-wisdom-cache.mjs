@@ -1,6 +1,7 @@
 import {
   createDailySoulWisdom,
   isUncachedSoulWisdomAllowed,
+  readCachedDailySoulWisdom,
   SOUL_WISDOM_PROMPT_VERSION
 } from "../src/backend/soulWisdomService.js";
 import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
@@ -180,6 +181,50 @@ async function checkCachedReadingBypassesOpenAI() {
   ].every(Boolean));
   pushCheck("Cached reading bypasses OpenAI without API key", openAiCalls.length === 0);
   pushCheck("Cached reading does not rewrite cache", supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert").length === 0);
+}
+
+async function checkCachedReaderBypassesRateLimitedGenerationPath() {
+  const date = "2026-06-24";
+  const user = { id: "tara-cache-reader", name: "Tara Sen", birthDate: "1992-04-12", birthTime: "08:20", birthPlace: "Pune" };
+  const userKey = buildBackendUserKey(user);
+  const supabase = createFakeSupabase({
+    dailyReadings: [{
+      id: "daily-cached-reader-1",
+      user_key: userKey,
+      reading_date: date,
+      prompt_version: SOUL_WISDOM_PROMPT_VERSION,
+      model: "gpt-test",
+      created_at: "2026-06-24T03:00:00.000Z",
+      reading: {
+        wisdom: "The notebook line that waits near the morning task gives Tara a clean place to stop explaining. Use the first quiet block to finish the one promise that can be seen, then keep the reply short enough to remain kind. A fed body and a closed note will carry more trust than another private hearing. When the room asks for proof, point it toward the completed detail.",
+        innerWeather: "Focused after private pressure",
+        todayMove: "Finish the visible promise",
+        release: "Drop the extra defense"
+      },
+      astrology_context: {
+        dailyArea: "relationship tone and unspoken expectations"
+      }
+    }]
+  });
+
+  const result = await readCachedDailySoulWisdom({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: ""
+  }, {
+    supabase
+  });
+
+  pushCheck("Cache-first Soul Guru reader returns stored reading without generation", [
+    result.cached === true,
+    result.source === "supabase",
+    result.stored === true,
+    result.wisdom === result.reading.wisdom,
+    result.promptVersion === SOUL_WISDOM_PROMPT_VERSION,
+    supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert").length === 0,
+    supabase.state.calls.filter((call) => call.table === "soul_wisdom_generation_locks").length === 0
+  ].every(Boolean));
 }
 
 async function checkCacheMissWritesAndSecondReadUsesCache() {
@@ -860,6 +905,7 @@ async function main() {
   await checkExplicitUncachedModeReturnsUnstoredReading();
   await checkCacheReadFailureDoesNotCallOpenAI();
   await checkCachedReadingBypassesOpenAI();
+  await checkCachedReaderBypassesRateLimitedGenerationPath();
   await checkCacheMissWritesAndSecondReadUsesCache();
   await checkGenerationLockContentionDoesNotCallOpenAI();
   await checkSeedMismatchRepairsBeforeCaching();

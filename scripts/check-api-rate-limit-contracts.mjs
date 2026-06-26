@@ -175,6 +175,15 @@ function checkRoute(route) {
   requireCondition(details, /sendJson\(res,\s*429,[\s\S]{0,180}?\brate\b[\s\S]{0,60}?\);/.test(text.slice(blockedIndex)), "blocked requests must return 429 with rate metadata");
   requireCondition(details, firstDownstreamIndex > blockedIndex, "business logic must run only after the 429 guard");
 
+  if (route.file === "soul-wisdom.js") {
+    const cachedReadIndex = indexOfAwaitedCall(text, "readCachedDailySoulWisdom");
+    const cachedSendIndex = text.indexOf("rate: { allowed: true, cached: true, skipped: true }");
+    requireCondition(details, text.includes("createDailySoulWisdom, readCachedDailySoulWisdom"), "Soul Guru route must import cache-first reader");
+    requireCondition(details, cachedReadIndex > parseIndex, "Soul Guru cache read must run after parsing and auth");
+    requireCondition(details, cachedReadIndex < rateStart, "Soul Guru cached reads must happen before rate-limit increments");
+    requireCondition(details, cachedSendIndex > cachedReadIndex && cachedSendIndex < rateStart, "Soul Guru cached responses must return with skipped rate metadata before rate limiting");
+  }
+
   for (const functionName of route.downstream) {
     const callIndex = indexOfAwaitedCall(text, functionName);
     requireCondition(details, callIndex > blockedIndex, `${functionName} must run after rate limiting`);

@@ -1,5 +1,5 @@
 import { applyVerifiedIdentity } from "../src/backend/auth.js";
-import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
+import { createDailySoulWisdom, readCachedDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
 import { getHttpMethod, parseJsonRequest, sendErrorJson, sendJson } from "../src/backend/request.js";
 
@@ -12,6 +12,16 @@ export default async function handler(req, res) {
   try {
     const parsedPayload = await parseJsonRequest(req);
     const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, process.env);
+    const cached = await readCachedDailySoulWisdom(payload, process.env);
+    if (cached) {
+      sendJson(res, 200, {
+        ...cached,
+        rate: { allowed: true, cached: true, skipped: true },
+        auth
+      });
+      return;
+    }
+
     const rate = await checkRateLimit({
       env: process.env,
       key: buildRateLimitKey(req, payload.user),
