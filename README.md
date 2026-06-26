@@ -108,6 +108,15 @@ npm run production:env:checklist
 
 The checklist includes the custom domain and Cloudflare DNS launch gate. Set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and `VITE_API_BASE_URL` only after the production HTTPS domain is attached to the Vercel app.
 
+Print a provider-grouped `.env` template with placeholder-only values for private production setup:
+
+```bash
+npm run production:env:template
+npm run production:env:template -- --out=tmp/env.production.template
+```
+
+The template is generated from the env manifest and provider stack, leaves server-only secrets blank, labels public `VITE_` values, and keeps local fallback flags production-safe.
+
 Print and verify the provider stack from the planning image against the real production readiness gate:
 
 ```bash
@@ -372,7 +381,7 @@ The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, More 
 
 ## Continuous Integration
 
-The ready-to-use GitHub Actions workflow template lives at `docs/github-actions-ci.yml`. To activate it, copy it to `.github/workflows/ci.yml` using GitHub credentials with `workflow` scope.
+The active GitHub Actions workflow lives at `.github/workflows/ci.yml`, with a matching reference copy at `docs/github-actions-ci.yml`. The CI contract fails if the active workflow is missing, drifts from the documented copy, or stops running the required web/API, Soul Guru quality, readiness, payment, More Guidance, Shani, local smoke, and Android APK gates.
 
 Check the CI template includes the release and mobile gates:
 
