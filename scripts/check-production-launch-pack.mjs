@@ -32,6 +32,7 @@ const expectedFiles = [
   "env.production.template",
   "production-env-checklist.md",
   "provider-launch-plan.md",
+  "current-readiness-action-report.md",
   "soulguru-supabase-schema.sql",
   "manifest.json"
 ];
@@ -74,6 +75,7 @@ function checkArtifactContents() {
   const envTemplate = readPackFile("env.production.template");
   const checklist = readPackFile("production-env-checklist.md");
   const launchPlan = readPackFile("provider-launch-plan.md");
+  const actionReport = readPackFile("current-readiness-action-report.md");
   const supabaseSql = readPackFile("soulguru-supabase-schema.sql");
 
   pushCheck("Production launch pack includes usable operator artifacts", [
@@ -83,6 +85,10 @@ function checkArtifactContents() {
     envTemplate.includes("OPENAI_API_KEY="),
     checklist.includes("# SoulGuru Production Env Checklist"),
     launchPlan.includes("# SoulGuru Production Provider Launch Plan"),
+    actionReport.includes("# SoulGuru Current Readiness Action Report"),
+    actionReport.includes("Immediate Critical Actions"),
+    actionReport.includes("Provider Setup Table"),
+    actionReport.includes("Final Launch Verification"),
     supabaseSql.includes("-- SoulGuru Supabase production schema bundle"),
     supabaseSql.includes("001_initial_schema.sql"),
     supabaseSql.includes("012_shani_membership.sql")

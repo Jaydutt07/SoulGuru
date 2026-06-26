@@ -1,8 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { loadEnv } from "vite";
+import { buildDeploymentReadiness } from "../src/backend/readinessService.js";
 
 const outDir = path.resolve(process.cwd(), getArgValue("--out") || path.join("tmp", "soulguru-production-launch-pack"));
+const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
+const env = {
+  ...loadEnv(mode, process.cwd(), ""),
+  ...process.env
+};
 const generatedAt = buildGeneratedAt();
 const files = [
   {
@@ -20,6 +27,10 @@ const files = [
   {
     path: "provider-launch-plan.md",
     contents: runGenerator("scripts/generate-provider-launch-plan.mjs")
+  },
+  {
+    path: "current-readiness-action-report.md",
+    contents: buildReadinessActionReport()
   },
   {
     path: "soulguru-supabase-schema.sql",
@@ -41,6 +52,7 @@ const files = [
         "env.production.template",
         "production-env-checklist.md",
         "provider-launch-plan.md",
+        "current-readiness-action-report.md",
         "soulguru-supabase-schema.sql",
         "manifest.json"
       ],
@@ -72,7 +84,7 @@ function runGenerator(script) {
   const result = spawnSync(process.execPath, [script], {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: process.env
+    env
   });
 
   if (result.status !== 0) {
@@ -95,6 +107,7 @@ function buildReadme() {
     "- `env.production.template`: private Vercel/backend env template with server-only secrets left blank and public `VITE_` values labeled.",
     "- `production-env-checklist.md`: readiness-derived checklist for every critical and warning env item.",
     "- `provider-launch-plan.md`: provider-by-provider setup order for the planning-image stack.",
+    "- `current-readiness-action-report.md`: generated from the current private env state with secret-safe missing provider actions.",
     "- `soulguru-supabase-schema.sql`: ordered Supabase migration bundle for a new production project.",
     "- `manifest.json`: generated file list and final verification commands.",
     "",
@@ -115,6 +128,70 @@ function buildReadme() {
     "- Keep local fallback flags set to production-safe defaults unless running isolated local tests.",
     ""
   ].join("\n");
+}
+
+function buildReadinessActionReport() {
+  const readiness = buildDeploymentReadiness(env);
+  const providers = readiness.providers || [];
+  const criticalFailures = readiness.checks.filter((check) => check.status === "fail" && check.severity === "critical");
+  const warnings = readiness.checks.filter((check) => check.status === "warn" || (check.severity === "warning" && check.status === "fail"));
+
+  return [
+    "# SoulGuru Current Readiness Action Report",
+    "",
+    `Generated: ${generatedAt}`,
+    "",
+    "This report is generated from the current environment and is secret-safe. It prints provider names, statuses, missing env names, evidence files, and verification commands only.",
+    "",
+    "## Summary",
+    "",
+    `- Overall status: ${readiness.status}`,
+    `- Readiness checks: ${readiness.summary.passing}/${readiness.summary.total} passing, ${readiness.summary.failing} failing, ${readiness.summary.warnings} warnings`,
+    `- Providers: ${readiness.providerSummary.ready}/${readiness.providerSummary.total} ready, ${readiness.providerSummary.needsConfiguration} need configuration, ${readiness.providerSummary.unmapped} unmapped`,
+    "",
+    "## Immediate Critical Actions",
+    "",
+    ...(criticalFailures.length
+      ? criticalFailures.map((check, index) => `${index + 1}. ${check.label}: ${formatMissing(check.missingEnv)}. ${check.advice || ""}`.trim())
+      : ["All critical readiness checks are passing."]),
+    "",
+    "## Warning Actions",
+    "",
+    ...(warnings.length
+      ? warnings.map((check, index) => `${index + 1}. ${check.label}: ${formatMissing(check.missingEnv)}. ${check.advice || ""}`.trim())
+      : ["No warning-level readiness actions are currently open."]),
+    "",
+    "## Provider Setup Table",
+    "",
+    "| Provider | Status | Missing / Evidence | Verify |",
+    "| --- | --- | --- | --- |",
+    ...providers.map((provider) => {
+      const evidence = provider.missingEnv.length
+        ? formatMissing(provider.missingEnv)
+        : provider.missingCheckIds.length
+          ? `Unmapped checks: ${provider.missingCheckIds.map((id) => `\`${id}\``).join(", ")}`
+          : provider.artifacts.map((artifact) => `\`${artifact}\``).join(", ");
+      const commands = provider.commands.map((command) => `\`${command}\``).join("<br>");
+      return `| ${provider.name} | ${provider.status} | ${evidence} | ${commands} |`;
+    }),
+    "",
+    "## Final Launch Verification",
+    "",
+    "Run these after the provider setup table shows ready:",
+    "",
+    "```sh",
+    "npm run production:check -- --strict",
+    "npm run production:domain:smoke -- --expect-ready",
+    "npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready",
+    "npm run release:check -- --url=https://your-production-domain.app --include-ai --include-android-signing",
+    "npm run android:apk:backend",
+    "```",
+    ""
+  ].join("\n");
+}
+
+function formatMissing(items = []) {
+  return items.length ? items.map((item) => `\`${item}\``).join(", ") : "none";
 }
 
 function buildGeneratedAt() {
