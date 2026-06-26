@@ -36,6 +36,7 @@ function checkRequiredCommands(workflowText) {
     "npm run env:check",
     "npm run production:env:checklist",
     "npm run production:env:template",
+    "npm run production:actions",
     "npm run production:launch-plan",
     "npm run production:launch-pack",
     "npm run deployment:check",

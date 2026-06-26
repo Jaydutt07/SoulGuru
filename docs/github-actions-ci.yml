@@ -62,6 +62,9 @@ jobs:
       - name: Print production env template
         run: npm run production:env:template
 
+      - name: Print production action report
+        run: npm run production:actions
+
       - name: Print provider launch plan
         run: npm run production:launch-plan
 
