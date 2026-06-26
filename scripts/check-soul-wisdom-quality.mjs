@@ -4,6 +4,7 @@ import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrology
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
 import { buildParagraphArchitecture, firstName, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "../src/soulWisdomVersion.js";
 import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
 const includeAi = process.argv.includes("--include-ai");
@@ -15,8 +16,8 @@ const env = {
   ...process.env
 };
 const date = getArgValue("--date") || new Date().toISOString().slice(0, 10);
-const minWords = Number(getArgValue("--min-words") || 65);
-const maxWords = Number(getArgValue("--max-words") || 98);
+const minWords = Number(getArgValue("--min-words") || SOUL_WISDOM_MIN_WORDS);
+const maxWords = Number(getArgValue("--max-words") || SOUL_WISDOM_MAX_WORDS);
 const maxSimilarity = Number(getArgValue("--max-similarity") || 0.24);
 const cases = getSoulWisdomQualityCases(caseSet);
 const maxSceneRepeats = Number(getArgValue("--max-scene-repeats") || defaultMaxSceneRepeats(cases.length));

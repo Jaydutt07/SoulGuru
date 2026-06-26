@@ -13,9 +13,13 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
-import { SOUL_WISDOM_PROMPT_VERSION } from "../soulWisdomVersion.js";
+import {
+  SOUL_WISDOM_MAX_WORDS,
+  SOUL_WISDOM_MIN_WORDS,
+  SOUL_WISDOM_PROMPT_VERSION
+} from "../soulWisdomVersion.js";
 
-export { SOUL_WISDOM_PROMPT_VERSION };
+export { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS, SOUL_WISDOM_PROMPT_VERSION };
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
@@ -258,8 +262,8 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
   if (isLowQualityWisdom(text)) {
     issues.push("matched low-quality or repeated phrasing rules");
   }
-  if (wordCount < 72 || wordCount > 98) {
-    issues.push(`expected 72-98 words, got ${wordCount}`);
+  if (wordCount < SOUL_WISDOM_MIN_WORDS || wordCount > SOUL_WISDOM_MAX_WORDS) {
+    issues.push(`expected ${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS} words, got ${wordCount}`);
   }
   const nameCount = countWord(text, firstName(user.name));
   if (nameCount !== 1) {

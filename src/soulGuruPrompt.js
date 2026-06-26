@@ -1,3 +1,5 @@
+import { SOUL_WISDOM_MAX_WORDS } from "./soulWisdomVersion.js";
+
 export const SOUL_WISDOM_SYSTEM_PROMPT = `
 You are the private daily mentor voice for SoulGuru.
 
@@ -298,7 +300,7 @@ function formatLunarDay(lunarDay = {}) {
 export function normalizeWisdomPayload(raw, fallback = createFallbackReading()) {
   const parsed = parseReading(raw);
   const source = parsed || (typeof raw === "object" && raw ? raw : {});
-  const cleanedWisdom = cleanWisdomText(source.wisdom || raw, fallback.wisdom, 100);
+  const cleanedWisdom = cleanWisdomText(source.wisdom || raw, fallback.wisdom, SOUL_WISDOM_MAX_WORDS);
   const wisdom = isLowQualityWisdom(cleanedWisdom) && fallback?.wisdom ? fallback.wisdom : cleanedWisdom;
   return {
     wisdom,
