@@ -363,6 +363,12 @@ Run the same quality gate with live OpenAI Soul Guru readings:
 npm run soul:quality:ai
 ```
 
+Summarize privacy-safe Soul Guru feedback for prompt tuning after Supabase is connected:
+
+```bash
+npm run soul:feedback:report
+```
+
 Check paid More Guidance word counts, concrete cues, banned generic phrasing, and five-profile overview diversity:
 
 ```bash
@@ -491,6 +497,8 @@ Requests and verifies backend-controlled OTP challenges. With Supabase configure
 Creates or returns the cached daily Soul Guru reading for a user/date. Production requires Supabase-backed caching in `daily_soul_readings`, checks the cache first, and only calls OpenAI on cache miss. `SOUL_WISDOM_ALLOW_UNCACHED=true` is only for isolated local quality testing. The reading context uses the user's resolved birth place, coordinates, and timezone silently so the final Words of Wisdom stay personal without mentioning astrology. If Upstash is configured, this endpoint is rate-limited server-side.
 
 The production client only displays and locally caches Soul Guru readings that came from the backend daily-reading contract. Development builds can use local fallback guidance, but production builds reject unstored or local-fallback readings so users do not mistake demo text for the real daily guidance.
+
+`npm run soul:feedback:report` reads only `prompt_version`, `rating`, bounded `reason`, and dates from Supabase to summarize miss rate and missed-reason themes for prompt tuning. It does not print user keys, reading hashes, full readings, phone numbers, emails, or server secrets; optional samples are redacted.
 
 `POST /api/user-profile`
 

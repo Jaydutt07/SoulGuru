@@ -136,6 +136,7 @@ This project is being built toward the stack shown in the product planning image
 - Supabase-backed Soul Guru generation locks to prevent duplicate OpenAI calls during concurrent same-day requests
 - Supabase-backed More Guidance generation locks to prevent duplicate paid OpenAI calls during concurrent same-day requests
 - Supabase-backed Soul Guru feedback storage for privacy-safe prompt tuning signals on daily readings
+- Secret-safe Soul Guru feedback report for miss-rate, prompt-version, and missed-reason-theme tuning without printing user keys, reading hashes, readings, emails, or phone numbers
 - Vercel deployment contract checker for build settings, API route duration, CSP/security/cache headers, SPA rewrites, and upload exclusions
 - Production domain and Cloudflare DNS readiness gate for the Namecheap/Cloudflare launch path
 - Secret-safe production provider launch plan grouped by source/AI, data/auth, deployment/DNS, payments, and reliability phases
