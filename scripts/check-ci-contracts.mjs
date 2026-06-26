@@ -29,6 +29,10 @@ function checkRequiredCommands(workflowText) {
     "npm run ci:check",
     "npm run soul:quality",
     "npm run soul:quality:extended",
+    "npm run astro:quality",
+    "npm run more-guidance:quality",
+    "npm run more-guidance:quality:extended",
+    "npm run shani:quality",
     "npm run env:check",
     "npm run production:env:checklist",
     "npm run production:env:template",
@@ -64,7 +68,11 @@ function checkRequiredCommands(workflowText) {
     "npm audit --omit dev",
     "npm run production:check -- --allow-fail",
     "npm run android:apk",
-    "npm run android:artifact:check"
+    "npm run android:artifact:check",
+    "npm run soul:quality:ai",
+    "npm run astro:quality:ai",
+    "npm run more-guidance:quality:ai",
+    "npm run shani:quality:ai"
   ];
   const missing = requiredCommands.filter((command) => !workflowText.includes(command));
   pushCheck("CI template runs the required release and mobile gates", missing.length === 0, missing);

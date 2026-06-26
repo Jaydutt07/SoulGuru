@@ -41,6 +41,18 @@ jobs:
       - name: Soul Guru extended diversity gate
         run: npm run soul:quality:extended
 
+      - name: Astro Solves local answer quality gate
+        run: npm run astro:quality
+
+      - name: More Guidance paid reading quality gate
+        run: npm run more-guidance:quality
+
+      - name: More Guidance extended diversity gate
+        run: npm run more-guidance:quality:extended
+
+      - name: Shani Pandit local answer quality gate
+        run: npm run shani:quality
+
       - name: Verify env manifest contracts
         run: npm run env:check
 
@@ -154,15 +166,18 @@ jobs:
             echo "Skipping Supabase schema check because Supabase secrets are not configured."
           fi
 
-      - name: Soul Guru live OpenAI quality gate
+      - name: Live OpenAI quality gates
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.5' }}
         run: |
           if [ -n "$OPENAI_API_KEY" ]; then
             npm run soul:quality:ai
+            npm run astro:quality:ai
+            npm run more-guidance:quality:ai
+            npm run shani:quality:ai
           else
-            echo "Skipping live OpenAI quality gate because OPENAI_API_KEY is not configured."
+            echo "Skipping live OpenAI quality gates because OPENAI_API_KEY is not configured."
           fi
 
   android-debug:
