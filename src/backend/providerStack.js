@@ -18,6 +18,7 @@ export const PROVIDER_STACK = Object.freeze([
     envScope: ["OPENAI_API_KEY", "OPENAI_MODEL"],
     artifacts: [
       "src/backend/openaiClient.js",
+      "src/soulWisdomVersion.js",
       "src/backend/soulWisdomService.js",
       "src/backend/astroSolveService.js",
       "src/backend/guidanceService.js",

@@ -102,6 +102,7 @@ function checkOpenAIProviderCoversEveryAIRouteAndService() {
   const openai = PROVIDER_STACK.find((provider) => provider.id === "openai");
   const requiredArtifacts = [
     "src/backend/openaiClient.js",
+    "src/soulWisdomVersion.js",
     "src/backend/soulWisdomService.js",
     "src/backend/astroSolveService.js",
     "src/backend/guidanceService.js",
