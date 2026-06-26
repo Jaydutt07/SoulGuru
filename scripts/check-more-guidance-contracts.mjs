@@ -580,6 +580,8 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
 
   const paidWrites = supabase.state.calls.filter((call) => call.table === "more_guidance_readings" && call.operation === "upsert");
   const profileWrites = supabase.state.calls.filter((call) => call.table === "user_profiles" && call.operation === "upsert");
+  const lockInserts = supabase.state.calls.filter((call) => call.table === "more_guidance_generation_locks" && call.operation === "insert");
+  const lockDeletes = supabase.state.calls.filter((call) => call.table === "more_guidance_generation_locks" && call.operation === "delete");
   const storedReading = [...supabase.state.moreGuidanceReadings.values()][0];
 
   pushCheck("Paid cache miss calls backend OpenAI once", [
@@ -609,6 +611,18 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
     profileWrites[0].payload.email === user.email,
     profileWrites[0].payload.birth_place === user.birthPlace
   ].every(Boolean));
+  pushCheck("Paid cache miss acquires and releases one generation lock", [
+    lockInserts.length === 1,
+    lockInserts[0].payload.user_key === buildBackendUserKey(user),
+    lockInserts[0].payload.reading_date === date,
+    lockInserts[0].payload.prompt_version === DEEP_GUIDANCE_PROMPT_VERSION,
+    lockDeletes.some((call) => (
+      call.filters.user_key === buildBackendUserKey(user)
+      && call.filters.reading_date === date
+      && call.filters.prompt_version === DEEP_GUIDANCE_PROMPT_VERSION
+    )),
+    supabase.state.generationLocks.size === 0
+  ].every(Boolean));
   pushCheck("Second paid same-day read uses cache without OpenAI", [
     second.allowed === true,
     second.cached === true,
@@ -624,6 +638,63 @@ async function checkPaidCacheMissWritesAndSecondReadUsesCache() {
     memoryUpserts[0].sourceId === `${date}-${DEEP_GUIDANCE_PROMPT_VERSION}`,
     memoryUpserts[0].metadata?.source === "openai",
     memoryUpserts[0].metadata?.model === "gpt-paid-contract"
+  ].every(Boolean));
+}
+
+async function checkPaidGenerationLockContentionDoesNotCallOpenAI() {
+  const date = "2026-06-24";
+  const user = paidUser("concurrent-paid-member");
+  const userKey = buildBackendUserKey(user);
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    generationLocks: [{
+      user_key: userKey,
+      reading_date: date,
+      prompt_version: DEEP_GUIDANCE_PROMPT_VERSION,
+      lock_owner: "existing-paid-worker",
+      expires_at: "2099-01-01T00:00:00.000Z"
+    }]
+  });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+  let error = null;
+
+  try {
+    await createMoreGuidanceReading({
+      user,
+      date
+    }, {
+      OPENAI_API_KEY: "test-openai-key",
+      MORE_GUIDANCE_LOCK_POLL_ATTEMPTS: "0"
+    }, {
+      supabase,
+      searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+      upsertGuidanceMemory: async (payload) => {
+        memoryUpserts.push(payload);
+        return { configured: true, upserted: true };
+      },
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: JSON.stringify(paidGuidanceFixture()) };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("Concurrent paid More Guidance generation returns 409 without OpenAI", [
+    error?.statusCode === 409,
+    /already being prepared/.test(error?.message || ""),
+    openAiRequests.length === 0,
+    memoryUpserts.length === 0,
+    supabase.state.calls.filter((call) => call.table === "more_guidance_generation_locks" && call.operation === "insert").length === 1,
+    supabase.state.calls.filter((call) => call.table === "more_guidance_readings" && call.operation === "upsert").length === 0
   ].every(Boolean));
 }
 
@@ -807,6 +878,7 @@ function createFakeSupabase({
   subscriptions = [],
   moreGuidanceReadings = [],
   savedGuidance = [],
+  generationLocks = [],
   failReadingSelect = false,
   failReadingUpsert = false,
   failSubscriptionSelect = false,
@@ -818,6 +890,7 @@ function createFakeSupabase({
     subscriptions: new Map(),
     moreGuidanceReadings: new Map(),
     savedGuidance: [],
+    generationLocks: new Map(),
     profiles: new Map(),
     nextProfileId: 1,
     nextReadingId: 1,
@@ -837,6 +910,9 @@ function createFakeSupabase({
   }
   for (const saved of savedGuidance) {
     state.savedGuidance.push({ ...saved });
+  }
+  for (const lock of generationLocks) {
+    state.generationLocks.set(lockKey(lock), { ...lock });
   }
 
   return {
@@ -868,6 +944,11 @@ class FakeQuery {
 
   eq(column, value) {
     this.filters[column] = value;
+    return this;
+  }
+
+  lt(column, value) {
+    this.filters[column] = { operator: "lt", value };
     return this;
   }
 
@@ -941,6 +1022,41 @@ class FakeQuery {
       this.result = { data: saved, error: null };
     }
 
+    if (this.table === "more_guidance_generation_locks") {
+      const key = lockKey(payload);
+      if (this.state.generationLocks.has(key)) {
+        this.result = {
+          data: null,
+          error: {
+            code: "23505",
+            message: "duplicate key value violates unique constraint \"more_guidance_generation_locks_user_date_prompt_key\""
+          }
+        };
+        return this;
+      }
+
+      const lock = {
+        ...clone(payload),
+        id: `paid-lock-${this.state.generationLocks.size + 1}`,
+        created_at: "2026-06-24T00:00:00.000Z"
+      };
+      this.state.generationLocks.set(key, lock);
+      this.result = {
+        data: {
+          id: lock.id,
+          lock_owner: lock.lock_owner,
+          expires_at: lock.expires_at
+        },
+        error: null
+      };
+    }
+
+    return this;
+  }
+
+  delete() {
+    this.operation = "delete";
+    this.pendingDelete = true;
     return this;
   }
 
@@ -997,6 +1113,11 @@ class FakeQuery {
   }
 
   then(resolve, reject) {
+    if (this.pendingDelete) {
+      this.result = this.executeDelete();
+      this.pendingDelete = false;
+    }
+
     if (this.operation === "select" && this.table === "more_guidance_readings" && !this.filters.reading_date) {
       const result = this.state.failHistorySelect
         ? { data: null, error: { message: "contract history read failure" } }
@@ -1027,6 +1148,28 @@ class FakeQuery {
     }
 
     return Promise.resolve(this.result).then(resolve, reject);
+  }
+
+  executeDelete() {
+    this.state.calls.push({
+      table: this.table,
+      operation: "delete",
+      filters: clone(this.filters)
+    });
+
+    if (this.table !== "more_guidance_generation_locks") {
+      return { data: null, error: null };
+    }
+
+    let deleted = 0;
+    for (const [key, lock] of [...this.state.generationLocks.entries()]) {
+      if (matchesFilters(lock, this.filters)) {
+        this.state.generationLocks.delete(key);
+        deleted += 1;
+      }
+    }
+
+    return { data: { deleted }, error: null };
   }
 }
 
@@ -1081,6 +1224,25 @@ function readingKey(reading) {
   ].join("|");
 }
 
+function lockKey(lock) {
+  return [
+    lock.user_key,
+    lock.reading_date,
+    lock.prompt_version
+  ].join("|");
+}
+
+function matchesFilters(row, filters) {
+  for (const [column, expected] of Object.entries(filters)) {
+    if (expected && typeof expected === "object" && expected.operator === "lt") {
+      if (!(String(row[column] || "") < String(expected.value || ""))) return false;
+      continue;
+    }
+    if (row[column] !== expected) return false;
+  }
+  return true;
+}
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -1116,6 +1278,7 @@ async function main() {
   await checkCachedPaidReadingBypassesOpenAI();
   await checkPaidCacheReadFailureDoesNotCallOpenAI();
   await checkPaidCacheMissWritesAndSecondReadUsesCache();
+  await checkPaidGenerationLockContentionDoesNotCallOpenAI();
   await checkPaidGuidanceRepairsLowQualityDraftBeforeCaching();
   await checkPaidGuidanceUsesQualityFallbackAfterFailedRepair();
   await checkPaidCacheWriteFailureDoesNotReturnReading();

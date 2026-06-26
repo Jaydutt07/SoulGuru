@@ -16,12 +16,14 @@ const requiredMigrationFiles = [
   "011_schema_contract_constraints.sql",
   "012_shani_membership.sql",
   "013_hashed_user_keys.sql",
-  "014_soul_wisdom_generation_locks.sql"
+  "014_soul_wisdom_generation_locks.sql",
+  "015_more_guidance_generation_locks.sql"
 ];
 
 const hashedUserKeyTables = [
   "daily_soul_readings",
   "soul_wisdom_generation_locks",
+  "more_guidance_generation_locks",
   "more_guidance_subscriptions",
   "saved_guidance",
   "astro_solve_questions",
@@ -69,6 +71,18 @@ const schemaContract = [
   },
   {
     table: "soul_wisdom_generation_locks",
+    columns: [
+      "id",
+      "user_key",
+      "reading_date",
+      "prompt_version",
+      "lock_owner",
+      "expires_at",
+      "created_at"
+    ]
+  },
+  {
+    table: "more_guidance_generation_locks",
     columns: [
       "id",
       "user_key",
@@ -205,6 +219,7 @@ const schemaContract = [
 const requiredIndexes = [
   "daily_soul_readings_user_date_idx",
   "soul_wisdom_generation_locks_expiry_idx",
+  "more_guidance_generation_locks_expiry_idx",
   "subscriptions_user_status_idx",
   "saved_guidance_user_created_idx",
   "astro_questions_user_created_idx",
@@ -293,6 +308,7 @@ function checkIndexesAndIdempotency() {
   pushCheck("Daily Soul Guru cache is unique per user/date/prompt", hasUniqueTuple("daily_soul_readings", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("Daily Soul Guru generation lock is unique per user/date/prompt", hasUniqueTuple("soul_wisdom_generation_locks", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("More Guidance cache is unique per user/date/prompt", hasUniqueTuple("more_guidance_readings", ["user_key", "reading_date", "prompt_version"]));
+  pushCheck("More Guidance generation lock is unique per user/date/prompt", hasUniqueTuple("more_guidance_generation_locks", ["user_key", "reading_date", "prompt_version"]));
   pushCheck("Razorpay payment activation is idempotent", [
     contains("create unique index if not exists subscriptions_provider_payment_unique_idx"),
     contains("where provider_payment_id is not null")

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { buildFallbackDeepGuidance, buildPaidGuidanceFingerprint } from "../deepGuidance.js";
 import { buildServerAstrologyContext } from "./astrologyContextService.js";
 import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "./memoryService.js";
@@ -161,6 +162,7 @@ export async function saveGuidance(payload, env = process.env, deps = {}) {
 
 export async function createMoreGuidanceReading(payload, env = process.env, deps = {}) {
   let user = payload.user || {};
+  let generationLock = null;
   const userKey = buildBackendUserKey(user);
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || user.birthTimezone || "Asia/Kolkata";
@@ -193,133 +195,155 @@ export async function createMoreGuidanceReading(payload, env = process.env, deps
     if (cached) {
       return { ...cached, allowed: true, cached: true, source: "supabase", stored: true };
     }
-  }
 
-  const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
-  user = serverContext.user;
-  const astrologyContext = serverContext.astrologyContext;
-  const fallback = normalizeDeepGuidance(payload.fallback || buildFallbackDeepGuidance(user, astrologyContext));
-  let guidance = fallback;
-  let source = "local-fallback";
-  let quality = {
-    attempts: 0,
-    repaired: false,
-    passed: getDeepGuidanceContractIssues(fallback, user).length === 0
-  };
-
-  const openAiDisabled = String(env.MORE_GUIDANCE_DISABLE_OPENAI || "false").toLowerCase() === "true";
-  if (env.OPENAI_API_KEY && !openAiDisabled) {
-    const memory = await searchMemory({
-      user,
-      query: [
-        "more guidance",
-        date,
-        astrologyContext.dailyArea,
-        astrologyContext.emotionalKnot,
-        astrologyContext.decisionGate,
-        astrologyContext.attentionAnchor
-      ].filter(Boolean).join(" | "),
-      topK: Number(env.PINECONE_TOP_K || 4)
-    }, env);
-    const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
-    const firstInput = buildMoreGuidanceInput({
-      user,
-      context: astrologyContext,
-      date,
-      memoryContext: buildMemoryContext(memory)
-    });
-    let outputText = await requestMoreGuidance(client, model, firstInput, env);
-    let attempts = 1;
-    let candidate = normalizeDeepGuidance(outputText, fallback);
-    let candidateIssues = getDeepGuidanceContractIssues(candidate, user);
-
-    if (candidateIssues.length) {
-      outputText = await requestMoreGuidance(
-        client,
-        model,
-        buildMoreGuidanceRepairInput({
-          user,
-          context: astrologyContext,
-          date,
-          memoryContext: buildMemoryContext(memory),
-          rejectedGuidance: candidate,
-          rejectionReason: candidateIssues.join("; ")
-        }),
-        env
-      );
-      attempts = 2;
-      candidate = normalizeDeepGuidance(outputText, fallback);
-      candidateIssues = getDeepGuidanceContractIssues(candidate, user);
+    generationLock = await acquirePaidGuidanceLock(supabase, { userKey, date, env });
+    if (!generationLock.acquired) {
+      const preparedGuidance = await waitForCachedDeepGuidance(supabase, userKey, date, env);
+      if (preparedGuidance) {
+        return { ...preparedGuidance, allowed: true, cached: true, source: "supabase", stored: true };
+      }
+      throwHttpError("More Guidance reading is already being prepared. Please try again in a moment.", 409);
     }
 
-    guidance = candidateIssues.length ? fallback : candidate;
-    source = candidateIssues.length ? "quality-fallback" : "openai";
-    quality = {
-      attempts,
-      repaired: attempts > 1,
-      passed: getDeepGuidanceContractIssues(guidance, user).length === 0,
-      fallbackUsed: candidateIssues.length > 0
-    };
+    const cachedAfterLock = await readCachedDeepGuidance(supabase, userKey, date);
+    if (cachedAfterLock) {
+      await releasePaidGuidanceLock(supabase, generationLock);
+      generationLock = null;
+      return { ...cachedAfterLock, allowed: true, cached: true, source: "supabase", stored: true };
+    }
   }
 
-  if (getDeepGuidanceContractIssues(guidance, user).length) {
-    guidance = normalizeDeepGuidance(buildFallbackDeepGuidance(user, astrologyContext));
-    source = source === "openai" ? "quality-fallback" : source;
-    quality = {
-      ...quality,
-      passed: getDeepGuidanceContractIssues(guidance, user).length === 0,
-      fallbackUsed: true
+  try {
+    const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
+    user = serverContext.user;
+    const astrologyContext = serverContext.astrologyContext;
+    const fallback = normalizeDeepGuidance(payload.fallback || buildFallbackDeepGuidance(user, astrologyContext));
+    let guidance = fallback;
+    let source = "local-fallback";
+    let quality = {
+      attempts: 0,
+      repaired: false,
+      passed: getDeepGuidanceContractIssues(fallback, user).length === 0
     };
-  }
 
-  const result = {
-    allowed: true,
-    guidance,
-    astrologyContext,
-    cached: false,
-    stored: false,
-    source,
-    model,
-    promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
-    readingDate: date,
-    quality
-  };
+    const openAiDisabled = String(env.MORE_GUIDANCE_DISABLE_OPENAI || "false").toLowerCase() === "true";
+    if (env.OPENAI_API_KEY && !openAiDisabled) {
+      const memory = await searchMemory({
+        user,
+        query: [
+          "more guidance",
+          date,
+          astrologyContext.dailyArea,
+          astrologyContext.emotionalKnot,
+          astrologyContext.decisionGate,
+          astrologyContext.attentionAnchor
+        ].filter(Boolean).join(" | "),
+        topK: Number(env.PINECONE_TOP_K || 4)
+      }, env);
+      const client = makeOpenAIClient(env.OPENAI_API_KEY, env);
+      const firstInput = buildMoreGuidanceInput({
+        user,
+        context: astrologyContext,
+        date,
+        memoryContext: buildMemoryContext(memory)
+      });
+      let outputText = await requestMoreGuidance(client, model, firstInput, env);
+      let attempts = 1;
+      let candidate = normalizeDeepGuidance(outputText, fallback);
+      let candidateIssues = getDeepGuidanceContractIssues(candidate, user);
 
-  if (supabase) {
-    const cacheResult = await writeCachedDeepGuidance(supabase, {
-      user,
-      userKey,
-      date,
-      timezone,
+      if (candidateIssues.length) {
+        outputText = await requestMoreGuidance(
+          client,
+          model,
+          buildMoreGuidanceRepairInput({
+            user,
+            context: astrologyContext,
+            date,
+            memoryContext: buildMemoryContext(memory),
+            rejectedGuidance: candidate,
+            rejectionReason: candidateIssues.join("; ")
+          }),
+          env
+        );
+        attempts = 2;
+        candidate = normalizeDeepGuidance(outputText, fallback);
+        candidateIssues = getDeepGuidanceContractIssues(candidate, user);
+      }
+
+      guidance = candidateIssues.length ? fallback : candidate;
+      source = candidateIssues.length ? "quality-fallback" : "openai";
+      quality = {
+        attempts,
+        repaired: attempts > 1,
+        passed: getDeepGuidanceContractIssues(guidance, user).length === 0,
+        fallbackUsed: candidateIssues.length > 0
+      };
+    }
+
+    if (getDeepGuidanceContractIssues(guidance, user).length) {
+      guidance = normalizeDeepGuidance(buildFallbackDeepGuidance(user, astrologyContext));
+      source = source === "openai" ? "quality-fallback" : source;
+      quality = {
+        ...quality,
+        passed: getDeepGuidanceContractIssues(guidance, user).length === 0,
+        fallbackUsed: true
+      };
+    }
+
+    const result = {
+      allowed: true,
       guidance,
       astrologyContext,
-      model
-    });
-    if (!cacheResult.stored) {
-      throwHttpError("More Guidance reading could not be cached. Please try again.", 503);
-    }
-    result.stored = true;
-  }
-
-  await upsertMemory({
-    user,
-    kind: "more-guidance-reading",
-    sourceId: `${date}-${DEEP_GUIDANCE_PROMPT_VERSION}`,
-    text: [
-      guidance.overview,
-      guidance.thisWeek,
-      guidance.thisMonth,
-      guidance.practice
-    ].filter(Boolean).join("\n"),
-    metadata: {
-      readingDate: date,
-      promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
+      cached: false,
+      stored: false,
       source,
-      model
-    }
-  }, env);
+      model,
+      promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
+      readingDate: date,
+      quality
+    };
 
-  return result;
+    if (supabase) {
+      const cacheResult = await writeCachedDeepGuidance(supabase, {
+        user,
+        userKey,
+        date,
+        timezone,
+        guidance,
+        astrologyContext,
+        model
+      });
+      if (!cacheResult.stored) {
+        throwHttpError("More Guidance reading could not be cached. Please try again.", 503);
+      }
+      result.stored = true;
+    }
+
+    await upsertMemory({
+      user,
+      kind: "more-guidance-reading",
+      sourceId: `${date}-${DEEP_GUIDANCE_PROMPT_VERSION}`,
+      text: [
+        guidance.overview,
+        guidance.thisWeek,
+        guidance.thisMonth,
+        guidance.practice
+      ].filter(Boolean).join("\n"),
+      metadata: {
+        readingDate: date,
+        promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
+        source,
+        model
+      }
+    }, env);
+
+    return result;
+  } finally {
+    if (generationLock?.acquired) {
+      await releasePaidGuidanceLock(supabase, generationLock);
+    }
+  }
 }
 
 async function requestMoreGuidance(client, model, input, env = process.env) {
@@ -476,6 +500,83 @@ async function readCachedDeepGuidance(supabase, userKey, date) {
     readingDate: data.reading_date,
     createdAt: data.created_at
   };
+}
+
+async function acquirePaidGuidanceLock(supabase, { userKey, date, env }) {
+  const now = new Date();
+  const lockOwner = buildLockOwner();
+  const ttlMs = parseBoundedInteger(env.MORE_GUIDANCE_LOCK_TTL_MS, 90000, 15000, 600000);
+  const expiresAt = new Date(now.getTime() + ttlMs).toISOString();
+
+  const { error: cleanupError } = await supabase
+    .from("more_guidance_generation_locks")
+    .delete()
+    .lt("expires_at", now.toISOString());
+
+  if (cleanupError) {
+    console.warn("Unable to clean expired More Guidance generation locks", cleanupError.message);
+    throwHttpError("More Guidance generation lock could not be prepared. Please try again.", 503);
+  }
+
+  const { data, error } = await supabase
+    .from("more_guidance_generation_locks")
+    .insert({
+      user_key: userKey,
+      reading_date: date,
+      prompt_version: DEEP_GUIDANCE_PROMPT_VERSION,
+      lock_owner: lockOwner,
+      expires_at: expiresAt
+    })
+    .select("id, lock_owner, expires_at")
+    .single();
+
+  if (isUniqueViolation(error)) {
+    return { acquired: false };
+  }
+
+  if (error) {
+    console.warn("Unable to acquire More Guidance generation lock", error.message);
+    throwHttpError("More Guidance generation lock could not be acquired. Please try again.", 503);
+  }
+
+  return {
+    acquired: true,
+    id: data?.id || null,
+    userKey,
+    date,
+    promptVersion: DEEP_GUIDANCE_PROMPT_VERSION,
+    lockOwner,
+    expiresAt: data?.expires_at || expiresAt
+  };
+}
+
+async function releasePaidGuidanceLock(supabase, lock) {
+  const { error } = await supabase
+    .from("more_guidance_generation_locks")
+    .delete()
+    .eq("user_key", lock.userKey)
+    .eq("reading_date", lock.date)
+    .eq("prompt_version", lock.promptVersion)
+    .eq("lock_owner", lock.lockOwner);
+
+  if (error) {
+    console.warn("Unable to release More Guidance generation lock", error.message);
+  }
+}
+
+async function waitForCachedDeepGuidance(supabase, userKey, date, env) {
+  const attempts = parseBoundedInteger(env.MORE_GUIDANCE_LOCK_POLL_ATTEMPTS, 4, 0, 20);
+  const intervalMs = parseBoundedInteger(env.MORE_GUIDANCE_LOCK_POLL_INTERVAL_MS, 300, 0, 3000);
+
+  for (let attempt = 0; attempt <= attempts; attempt += 1) {
+    const cached = await readCachedDeepGuidance(supabase, userKey, date);
+    if (cached) return cached;
+    if (attempt < attempts && intervalMs > 0) {
+      await delay(intervalMs);
+    }
+  }
+
+  return null;
 }
 
 async function writeCachedDeepGuidance(supabase, { user, userKey, date, timezone, guidance, astrologyContext, model }) {
@@ -881,6 +982,26 @@ function words(text) {
 
 function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildLockOwner() {
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isUniqueViolation(error) {
+  return error?.code === "23505" || /duplicate key|unique/i.test(error?.message || "");
+}
+
+function parseBoundedInteger(value, fallback, min, max) {
+  const parsed = Number.parseInt(String(value || ""), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function throwHttpError(message, statusCode) {
