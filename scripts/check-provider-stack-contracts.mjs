@@ -16,6 +16,8 @@ checkSupabaseProviderCoversEveryMigration();
 checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
+checkResendProviderCoversEmailContracts();
+checkObservabilityProvidersCoverPrivacyAndErrorContracts();
 checkUpstashProviderCoversRouteRateLimitMatrix();
 checkClerkProviderCoversClientAndApiAuthContracts();
 checkPineconeProviderCoversMemoryContracts();
@@ -139,6 +141,51 @@ function checkRazorpayProviderCoversEveryPaidAccessRoute() {
   const missing = requiredArtifacts.filter((artifact) => !razorpay?.artifacts?.includes(artifact));
 
   pushCheck("Razorpay provider evidence covers More Guidance and Shani paid routes", missing.length === 0, missing);
+}
+
+function checkResendProviderCoversEmailContracts() {
+  const resend = PROVIDER_STACK.find((provider) => provider.id === "resend");
+  const requiredArtifacts = [
+    "src/backend/emailService.js",
+    "scripts/check-email-contracts.mjs"
+  ];
+  const missingArtifacts = requiredArtifacts.filter((artifact) => !resend?.artifacts?.includes(artifact));
+  const missingCommands = ["npm run email:check"].filter((command) => !resend?.commands?.includes(command));
+
+  pushCheck("Resend provider evidence covers transactional email contracts", [
+    missingArtifacts.length === 0,
+    missingCommands.length === 0
+  ].every(Boolean), [...missingArtifacts, ...missingCommands]);
+}
+
+function checkObservabilityProvidersCoverPrivacyAndErrorContracts() {
+  const posthog = PROVIDER_STACK.find((provider) => provider.id === "posthog");
+  const sentry = PROVIDER_STACK.find((provider) => provider.id === "sentry");
+  const posthogRequiredArtifacts = [
+    "src/observability.js",
+    "scripts/check-observability-contracts.mjs"
+  ];
+  const sentryRequiredArtifacts = [
+    "src/observability.js",
+    "src/backend/observabilityService.js",
+    "scripts/check-observability-contracts.mjs"
+  ];
+  const missing = [
+    ...posthogRequiredArtifacts
+      .filter((artifact) => !posthog?.artifacts?.includes(artifact))
+      .map((artifact) => `posthog:${artifact}`),
+    ...sentryRequiredArtifacts
+      .filter((artifact) => !sentry?.artifacts?.includes(artifact))
+      .map((artifact) => `sentry:${artifact}`),
+    ...["npm run observability:check"]
+      .filter((command) => !posthog?.commands?.includes(command))
+      .map((command) => `posthog:${command}`),
+    ...["npm run observability:check"]
+      .filter((command) => !sentry?.commands?.includes(command))
+      .map((command) => `sentry:${command}`)
+  ];
+
+  pushCheck("PostHog and Sentry provider evidence covers privacy and error observability contracts", missing.length === 0, missing);
 }
 
 function checkUpstashProviderCoversRouteRateLimitMatrix() {

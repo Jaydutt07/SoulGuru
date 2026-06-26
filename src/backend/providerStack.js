@@ -150,7 +150,10 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Transactional membership and fallback delivery email",
     readinessChecks: ["transactionalEmail"],
     envScope: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
-    artifacts: ["src/backend/emailService.js"],
+    artifacts: [
+      "src/backend/emailService.js",
+      "scripts/check-email-contracts.mjs"
+    ],
     commands: ["npm run email:check"],
     notes: "Use a verified sender on the production domain."
   },
@@ -178,7 +181,10 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Privacy-safe product analytics",
     readinessChecks: ["observability"],
     envScope: ["VITE_POSTHOG_KEY", "VITE_POSTHOG_HOST"],
-    artifacts: ["src/observability.js"],
+    artifacts: [
+      "src/observability.js",
+      "scripts/check-observability-contracts.mjs"
+    ],
     commands: ["npm run observability:check"],
     notes: "Analytics identity must avoid raw phone numbers and emails."
   },
@@ -189,7 +195,11 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Frontend and backend error monitoring",
     readinessChecks: ["observability"],
     envScope: ["SENTRY_DSN", "VITE_SENTRY_DSN", "VITE_SENTRY_TRACES_SAMPLE_RATE"],
-    artifacts: ["src/observability.js", "src/backend/observabilityService.js"],
+    artifacts: [
+      "src/observability.js",
+      "src/backend/observabilityService.js",
+      "scripts/check-observability-contracts.mjs"
+    ],
     commands: ["npm run observability:check"],
     notes: "Backend errors are sanitized before capture."
   },
