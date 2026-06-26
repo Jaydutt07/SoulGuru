@@ -122,8 +122,10 @@ function checkAstroSolvesSurface() {
   ]));
 
   pushCheck("Astro Solves enforces free allowance and points upgrade copy to More Guidance", includesAll(blocks.astro, [
-    "const allowance = getAstroQuestionAllowance(user);",
-    "const remaining = Math.max(0, allowance - solvedProblems.length);",
+    "const [serverAllowance, setServerAllowance] = useState(null);",
+    "const localAllowance = getAstroQuestionAllowance(user);",
+    "const allowance = serverAllowance?.limit ?? localAllowance;",
+    "serverAllowance?.remaining",
     "remaining <= 0",
     "More Guidance adds 15 more questions.",
     "More Guidance can continue from here."

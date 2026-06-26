@@ -8,7 +8,7 @@ const protectedRoutes = [
   {
     file: "astro-solve.js",
     label: "Astro Solves",
-    downstream: ["createAstroSolve"]
+    downstream: ["getAstroSolveAllowanceStatus", "createAstroSolve"]
   },
   {
     file: "create-razorpay-order.js",

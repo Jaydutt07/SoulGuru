@@ -529,7 +529,7 @@ Set `RAZORPAY_WEBHOOK_URL` to the exact production HTTPS webhook URL and set `RA
 
 `POST /api/astro-solve`
 
-Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. The backend uses a v2 quality guard that repairs generic answers once, then falls back to a chart-specific local answer rather than returning vague filler. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
+Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. Send `{"action":"allowance"}` to the same route to read the persisted quota without generating an answer or calling OpenAI; those reads use the separate `ASTRO_SOLVE_ALLOWANCE_RATE_LIMIT` default of 120/day so page loads do not consume the answer-generation limit. The backend uses a v2 quality guard that repairs generic answers once, then falls back to a chart-specific local answer rather than returning vague filler. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
 
 `POST /api/guidance-memory`
 

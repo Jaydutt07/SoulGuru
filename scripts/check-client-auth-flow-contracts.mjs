@@ -15,6 +15,7 @@ checkLoginAnalyticsDistinguishesOtpSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionSoulGuruRetriesPendingBackendReading();
 checkSoulGuruCacheUsesCurrentPromptVersion();
+checkProductionAstroSolvesSyncsBackendAllowance();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
 checkProductionMoreGuidanceRequiresStoredBackendAnswer();
 checkProductionSaveAdviceRequiresStoredBackendAnswer();
@@ -138,6 +139,19 @@ function checkProductionAstroSolvesRequiresStoredBackendAnswer() {
     source.includes("if (response.ok && data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
     source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n        setSolveStatus(\"Astro Solves is unavailable. Please try again shortly.\");"),
     source.includes("trackEvent(\"astro_solve_failed\", { reason: \"not_stored\" });")
+  ].every(Boolean));
+}
+
+function checkProductionAstroSolvesSyncsBackendAllowance() {
+  pushCheck("Production Astro Solves syncs allowance from backend before trusting local counts", [
+    source.includes("const [serverAllowance, setServerAllowance] = useState(null);"),
+    source.includes("const allowance = serverAllowance?.limit ?? localAllowance;"),
+    source.includes("const remaining = Number.isFinite(serverAllowance?.remaining)"),
+    source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n        setServerAllowance(null);"),
+    source.includes("action: \"allowance\","),
+    source.includes("user: buildAstroSolveUserPayload(user)"),
+    source.includes("setServerAllowance(response.ok && data.allowance ? data.allowance : null);"),
+    source.includes("if (data.allowance) {\n        setServerAllowance(data.allowance);")
   ].every(Boolean));
 }
 

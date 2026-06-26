@@ -5,6 +5,7 @@ import {
   ASTRO_SOLVE_PROMPT_VERSION,
   ASTRO_SOLVE_SYSTEM_PROMPT,
   createAstroSolve,
+  getAstroSolveAllowanceStatus,
   isLocalAstroSolveQuotaAllowed
 } from "../src/backend/astroSolveService.js";
 import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
@@ -106,6 +107,91 @@ async function checkExplicitLocalQuotaModeReturnsUnstoredAnswer() {
     result.generationSource === "openai",
     result.quality?.passed === true,
     openAiRequests.length === 1
+  ].every(Boolean));
+}
+
+async function checkAllowanceStatusRequiresExplicitLocalFlag() {
+  const user = astroUser("allowance-local-default");
+  let error = null;
+
+  try {
+    await getAstroSolveAllowanceStatus({
+      user,
+      priorCount: 1
+    }, {}, {
+      supabase: null
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  const localStatus = await getAstroSolveAllowanceStatus({
+    user,
+    priorCount: 1
+  }, {
+    ASTRO_SOLVES_ALLOW_LOCAL_QUOTA: "true"
+  }, {
+    supabase: null
+  });
+
+  pushCheck("Astro Solves allowance status requires Supabase unless local quota mode is explicit", [
+    error?.statusCode === 503,
+    /Supabase is required to read Astro Solves allowance/.test(error?.message || ""),
+    localStatus.configured === false,
+    localStatus.allowance?.limit === ASTRO_SOLVE_FREE_ALLOWANCE,
+    localStatus.allowance?.used === 1,
+    localStatus.allowance?.remaining === ASTRO_SOLVE_FREE_ALLOWANCE - 1,
+    localStatus.allowance?.isMember === false
+  ].every(Boolean));
+}
+
+async function checkAllowanceStatusUsesPersistedMoreGuidanceSubscription() {
+  const user = astroUser("allowance-active-member");
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)],
+    questions: makeQuestions(user.id, ASTRO_SOLVE_FREE_ALLOWANCE)
+  });
+
+  const result = await getAstroSolveAllowanceStatus({
+    user,
+    subscription: {
+      active: false,
+      astroBonusQuestions: 99
+    }
+  }, {}, {
+    supabase
+  });
+
+  pushCheck("Astro Solves allowance status reads the persisted 15-question More Guidance bonus", [
+    result.configured === true,
+    result.allowance?.limit === ASTRO_SOLVE_FREE_ALLOWANCE + ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
+    result.allowance?.used === ASTRO_SOLVE_FREE_ALLOWANCE,
+    result.allowance?.remaining === ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
+    result.allowance?.isMember === true,
+    supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert").length === 0
+  ].every(Boolean));
+}
+
+async function checkExpiredSubscriptionDoesNotExtendAllowance() {
+  const user = astroUser("allowance-expired-member");
+  const supabase = createFakeSupabase({
+    subscriptions: [expiredSubscription(user.id)],
+    questions: makeQuestions(user.id, ASTRO_SOLVE_FREE_ALLOWANCE)
+  });
+
+  const result = await getAstroSolveAllowanceStatus({
+    user
+  }, {}, {
+    supabase
+  });
+
+  pushCheck("Expired More Guidance subscription does not add Astro Solves bonus questions", [
+    result.configured === true,
+    result.allowance?.limit === ASTRO_SOLVE_FREE_ALLOWANCE,
+    result.allowance?.used === ASTRO_SOLVE_FREE_ALLOWANCE,
+    result.allowance?.remaining === 0,
+    result.allowance?.isMember === false,
+    supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert").length === 0
   ].every(Boolean));
 }
 
@@ -578,6 +664,14 @@ function activeSubscription(userKey) {
   };
 }
 
+function expiredSubscription(userKey) {
+  return {
+    ...activeSubscription(userKey),
+    id: `expired-subscription-${userKey}`,
+    ends_at: "2020-01-01T00:00:00.000Z"
+  };
+}
+
 function makeQuestions(userKey, count) {
   const normalizedUserKey = isBackendUserKey(userKey) ? userKey : buildBackendUserKey({ id: userKey });
   return Array.from({ length: count }, (_, index) => ({
@@ -630,6 +724,9 @@ async function main() {
   checkPromptRepairKeepsProfessionalHelpDirect();
   await checkLocalQuotaModeRequiresExplicitFlag();
   await checkExplicitLocalQuotaModeReturnsUnstoredAnswer();
+  await checkAllowanceStatusRequiresExplicitLocalFlag();
+  await checkAllowanceStatusUsesPersistedMoreGuidanceSubscription();
+  await checkExpiredSubscriptionDoesNotExtendAllowance();
   await checkClientOnlySubscriptionDoesNotExtendSupabaseQuota();
   await checkPersistedMemberGetsBonusAndStoresAnswer();
   await checkSubscriptionReadFailureDoesNotCallOpenAI();

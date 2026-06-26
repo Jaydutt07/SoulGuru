@@ -191,6 +191,25 @@ export function isLocalAstroSolveQuotaAllowed(env = process.env) {
   return String(env.ASTRO_SOLVES_ALLOW_LOCAL_QUOTA || "false").toLowerCase() === "true";
 }
 
+export async function getAstroSolveAllowanceStatus(payload = {}, env = process.env, deps = {}) {
+  const user = payload.user || {};
+  const userKey = buildBackendUserKey(user);
+  const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
+
+  if (!supabase && !isLocalAstroSolveQuotaAllowed(env)) {
+    throwHttpError(
+      "Supabase is required to read Astro Solves allowance. Set ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true only for isolated local testing.",
+      503
+    );
+  }
+
+  const allowance = await getAstroSolveAllowance({ supabase, userKey, payload });
+  return {
+    configured: Boolean(supabase),
+    allowance
+  };
+}
+
 function buildAstroSolveInput({ user, question, context, today }) {
   return `
 User:

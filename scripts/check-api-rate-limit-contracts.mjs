@@ -13,7 +13,7 @@ const rateLimitedRoutes = [
     defaultLimit: 20,
     windowExpression: "24 * 60 * 60",
     subject: "payload.user",
-    downstream: ["createAstroSolve"]
+    downstream: ["getAstroSolveAllowanceStatus", "createAstroSolve"]
   },
   {
     file: "auth-otp.js",
@@ -178,8 +178,18 @@ function checkRoute(route) {
   requireCondition(details, rateStart > parseIndex, "rate limit must run after parsing");
   requireCondition(details, text.includes("env: process.env"), "rate limit must use production env");
   requireCondition(details, text.includes(`key: buildRateLimitKey(req, ${route.subject})`), `rate limit subject must be ${route.subject}`);
-  requireCondition(details, text.includes(`route: "${route.route}"`), `rate limit route must be "${route.route}"`);
-  requireCondition(details, text.includes(`limit: Number(process.env.${route.limitEnv} || ${route.defaultLimit})`), `rate limit must use ${route.limitEnv} with default ${route.defaultLimit}`);
+  if (route.file === "astro-solve.js") {
+    requireCondition(details, text.includes('const isAllowanceStatus = payload.action === "allowance";'), "Astro Solves route must detect allowance-status reads");
+    requireCondition(details, text.includes('route: isAllowanceStatus ? "astro-solve-allowance" : "astro-solve"'), "Astro Solves status reads must use a separate rate-limit route key");
+    requireCondition(
+      details,
+      text.includes("limit: Number(isAllowanceStatus ? process.env.ASTRO_SOLVE_ALLOWANCE_RATE_LIMIT || 120 : process.env.ASTRO_SOLVE_RATE_LIMIT || 20)"),
+      "Astro Solves status reads must use ASTRO_SOLVE_ALLOWANCE_RATE_LIMIT with default 120"
+    );
+  } else {
+    requireCondition(details, text.includes(`route: "${route.route}"`), `rate limit route must be "${route.route}"`);
+    requireCondition(details, text.includes(`limit: Number(process.env.${route.limitEnv} || ${route.defaultLimit})`), `rate limit must use ${route.limitEnv} with default ${route.defaultLimit}`);
+  }
   requireCondition(details, text.includes(`windowSeconds: ${route.windowExpression}`), `rate-limit window must be ${route.windowExpression}`);
   requireCondition(details, blockedIndex > rateStart, "route must check rate.allowed before business logic");
   requireCondition(details, /sendJson\(res,\s*429,[\s\S]{0,180}?\brate\b[\s\S]{0,60}?\);/.test(text.slice(blockedIndex)), "blocked requests must return 429 with rate metadata");

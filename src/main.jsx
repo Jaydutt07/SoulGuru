@@ -790,9 +790,64 @@ function AstroSolvesTab({ user, updateUser }) {
   const [selectedSections, setSelectedSections] = useState({});
   const [isSolving, setIsSolving] = useState(false);
   const [solveStatus, setSolveStatus] = useState("");
+  const [serverAllowance, setServerAllowance] = useState(null);
   const solvedProblems = user.solvedProblems || [];
-  const allowance = getAstroQuestionAllowance(user);
-  const remaining = Math.max(0, allowance - solvedProblems.length);
+  const localAllowance = getAstroQuestionAllowance(user);
+  const allowance = serverAllowance?.limit ?? localAllowance;
+  const remaining = Number.isFinite(serverAllowance?.remaining)
+    ? serverAllowance.remaining
+    : Math.max(0, allowance - solvedProblems.length);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncAstroAllowance() {
+      if (LOCAL_AUTH_FALLBACK_ENABLED) {
+        setServerAllowance(null);
+        return;
+      }
+
+      try {
+        const response = await authFetch(getApiUrl("/api/astro-solve"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "allowance",
+            priorCount: solvedProblems.length,
+            subscription: user.soulGuruSubscription,
+            user: buildAstroSolveUserPayload(user)
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (cancelled) return;
+        setServerAllowance(response.ok && data.allowance ? data.allowance : null);
+      } catch {
+        if (!cancelled) setServerAllowance(null);
+      }
+    }
+
+    syncAstroAllowance();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    solvedProblems.length,
+    user.birthDate,
+    user.birthLatitude,
+    user.birthLongitude,
+    user.birthPlace,
+    user.birthPlaceResolutionSource,
+    user.birthPlaceResolvedLabel,
+    user.birthTime,
+    user.birthTimezone,
+    user.birthTimezoneOffsetMinutes,
+    user.email,
+    user.id,
+    user.name,
+    user.phone,
+    user.soulGuruSubscription?.active,
+    user.soulGuruSubscription?.astroBonusQuestions
+  ]);
 
   async function submitProblem(event) {
     event.preventDefault();
@@ -813,22 +868,7 @@ function AstroSolvesTab({ user, updateUser }) {
           question,
           priorCount: solvedProblems.length,
           subscription: user.soulGuruSubscription,
-          user: {
-            id: user.id,
-            name: user.name,
-            phone: user.phone,
-            email: user.email,
-            birthDate: user.birthDate,
-            birthTime: user.birthTime,
-            birthPlace: user.birthPlace,
-            birthLatitude: user.birthLatitude,
-            birthLongitude: user.birthLongitude,
-            birthTimezone: user.birthTimezone,
-            birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
-            birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-            birthPlaceResolutionSource: user.birthPlaceResolutionSource,
-            soulGuruSubscription: user.soulGuruSubscription
-          },
+          user: buildAstroSolveUserPayload(user),
           context,
           today: new Date().toLocaleDateString(undefined, {
             weekday: "long",
@@ -841,6 +881,9 @@ function AstroSolvesTab({ user, updateUser }) {
       });
 
       const data = await response.json().catch(() => ({}));
+      if (data.allowance) {
+        setServerAllowance(data.allowance);
+      }
       if (response.status === 402 || data.allowed === false) {
         setSolveStatus("Your Astro Solves allowance is complete. More Guidance adds 15 more questions.");
         return;
@@ -2703,6 +2746,25 @@ function getAstroQuestionAllowance(user) {
   const baseAllowance = 3;
   const bonus = user.soulGuruSubscription?.active ? user.soulGuruSubscription.astroBonusQuestions || 15 : 0;
   return baseAllowance + bonus;
+}
+
+function buildAstroSolveUserPayload(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    phone: user.phone,
+    email: user.email,
+    birthDate: user.birthDate,
+    birthTime: user.birthTime,
+    birthPlace: user.birthPlace,
+    birthLatitude: user.birthLatitude,
+    birthLongitude: user.birthLongitude,
+    birthTimezone: user.birthTimezone,
+    birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+    birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+    birthPlaceResolutionSource: user.birthPlaceResolutionSource,
+    soulGuruSubscription: user.soulGuruSubscription
+  };
 }
 
 function upsertHistory(history, reading) {
