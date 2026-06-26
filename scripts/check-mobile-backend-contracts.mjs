@@ -7,6 +7,8 @@ import { PROVIDER_STACK } from "../src/backend/providerStack.js";
 const checks = [];
 
 checkLocalApkBuildEnablesPreviewFlags();
+checkLocalApkBuildRunsArtifactAudit();
+checkReleaseBuildRunsArtifactAudit();
 await checkReadyBackendPasses();
 await checkNotReadyBackendFailsByDefault();
 await checkNotReadyBackendCanBeAllowedForStaging();
@@ -27,6 +29,35 @@ function checkLocalApkBuildEnablesPreviewFlags() {
     source.includes('VITE_DEMO_PAYMENTS: "true"'),
     source.includes("Local preview flags enabled"),
     source.includes('VITE_API_BASE_URL: apiBaseUrl')
+  ].every(Boolean));
+}
+
+function checkLocalApkBuildRunsArtifactAudit() {
+  const source = fs.readFileSync("scripts/build-local-mobile-apk.mjs", "utf8");
+  const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const artifactChecker = fs.readFileSync("scripts/check-android-artifact.mjs", "utf8");
+
+  pushCheck("Local phone APK build audits generated artifact URL, chunks, and secrets", [
+    packageJson.scripts["android:artifact:check"] === "node scripts/check-android-artifact.mjs",
+    source.includes("\"scripts/check-android-artifact.mjs\""),
+    source.includes("`--expect-url=${apiBaseUrl}`"),
+    source.includes("--allow-lan"),
+    artifactChecker.includes("SERVER_ONLY_ENV_KEYS"),
+    artifactChecker.includes("react-vendor-"),
+    artifactChecker.includes("sentry-vendor-"),
+    artifactChecker.includes("posthog-vendor-"),
+    artifactChecker.includes("Android artifact does not expose server-only env names or secret-shaped tokens")
+  ].every(Boolean));
+}
+
+function checkReleaseBuildRunsArtifactAudit() {
+  const source = fs.readFileSync("scripts/build-android-release.mjs", "utf8");
+  pushCheck("Android release build audits signed artifact against production backend URL", [
+    source.includes("\"scripts/check-android-artifact.mjs\""),
+    source.includes("`--artifact=${target}`"),
+    source.includes("`--expect-url=${env.VITE_API_BASE_URL || \"\"}`"),
+    !source.includes("--allow-lan"),
+    !source.includes("--allow-localhost")
   ].every(Boolean));
 }
 

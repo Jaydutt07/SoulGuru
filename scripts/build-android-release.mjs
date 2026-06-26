@@ -41,6 +41,11 @@ if (!fs.existsSync(source)) {
 }
 
 fs.copyFileSync(source, target);
+run("node", [
+  "scripts/check-android-artifact.mjs",
+  `--artifact=${target}`,
+  `--expect-url=${env.VITE_API_BASE_URL || ""}`
+], { cwd: root, env });
 console.log(`Android release ${format.toUpperCase()} created: ${target}`);
 
 function run(command, args, options) {

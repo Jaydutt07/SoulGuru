@@ -28,6 +28,7 @@
     "android:apk": "node scripts/build-android-debug.mjs",
     "android:apk:backend": "node scripts/validate-mobile-backend.mjs && npm run android:apk",
     "android:apk:local": "node scripts/build-local-mobile-apk.mjs",
+    "android:artifact:check": "node scripts/check-android-artifact.mjs",
     "android:security:check": "node scripts/check-android-security-contracts.mjs",
     "android:release:check": "node scripts/check-public-env.mjs --strict && npm run android:security:check && node scripts/validate-mobile-backend.mjs && node scripts/validate-android-release-signing.mjs",
     "android:apk:release": "node scripts/build-android-release.mjs --format=apk",

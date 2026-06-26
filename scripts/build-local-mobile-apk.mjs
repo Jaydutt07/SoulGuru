@@ -39,7 +39,24 @@ const result = spawnSync("npm", ["run", "android:apk"], {
   stdio: "inherit"
 });
 
-process.exit(result.status ?? 1);
+if (result.status !== 0) {
+  process.exit(result.status ?? 1);
+}
+
+const artifactArgs = [
+  "scripts/check-android-artifact.mjs",
+  `--expect-url=${apiBaseUrl}`
+];
+if (isLanBackendUrl(apiBaseUrl)) artifactArgs.push("--allow-lan");
+if (isLocalhostBackendUrl(apiBaseUrl)) artifactArgs.push("--allow-localhost");
+
+const artifactResult = spawnSync("node", artifactArgs, {
+  cwd: process.cwd(),
+  env,
+  stdio: "inherit"
+});
+
+process.exit(artifactResult.status ?? 1);
 
 async function ensureBackendHealth(url, { skipHealth: shouldSkip }) {
   if (shouldSkip) return;
@@ -87,6 +104,22 @@ function isPrivateIpv4(address) {
     (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
     (parts[0] === 192 && parts[1] === 168)
   );
+}
+
+function isLanBackendUrl(value) {
+  try {
+    return isPrivateIpv4(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLocalhostBackendUrl(value) {
+  try {
+    return ["localhost", "127.0.0.1", "::1"].includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
 }
 
 function getArgValue(name) {
