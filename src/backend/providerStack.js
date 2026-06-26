@@ -74,8 +74,14 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Hosted web app and serverless API routes",
     readinessChecks: ["domainDns"],
     envScope: ["VITE_API_BASE_URL"],
-    artifacts: ["vercel.json", "api/readiness.js", "scripts/smoke-deployed-backend.mjs"],
-    commands: ["npm run deployment:check", "npm run deployment:smoke"],
+    artifacts: [
+      "vercel.json",
+      "api/readiness.js",
+      "scripts/check-deployment-contracts.mjs",
+      "scripts/check-deployment-smoke-contracts.mjs",
+      "scripts/smoke-deployed-backend.mjs"
+    ],
+    commands: ["npm run deployment:check", "npm run deployment:smoke:check", "npm run deployment:smoke"],
     notes: "Production mobile builds must point at the deployed HTTPS API base URL."
   },
   {
@@ -85,8 +91,11 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "Registered production domain",
     readinessChecks: ["domainDns"],
     envScope: ["PRODUCTION_DOMAIN"],
-    artifacts: ["scripts/smoke-production-domain.mjs"],
-    commands: ["npm run production:domain:smoke"],
+    artifacts: [
+      "scripts/check-production-domain-smoke-contracts.mjs",
+      "scripts/smoke-production-domain.mjs"
+    ],
+    commands: ["npm run production:domain:check", "npm run production:domain:smoke"],
     notes: "Use a real production domain, not localhost, preview, example, or test hosts."
   },
   {
@@ -96,7 +105,10 @@ export const PROVIDER_STACK = Object.freeze([
     purpose: "DNS and HTTPS launch gate for the production domain",
     readinessChecks: ["domainDns"],
     envScope: ["CLOUDFLARE_ZONE_ID", "CLOUDFLARE_DNS_READY"],
-    artifacts: ["scripts/smoke-production-domain.mjs"],
+    artifacts: [
+      "scripts/check-production-domain-smoke-contracts.mjs",
+      "scripts/smoke-production-domain.mjs"
+    ],
     commands: ["npm run production:domain:check", "npm run production:domain:smoke"],
     notes: "Set CLOUDFLARE_DNS_READY only after the custom domain resolves to production."
   },

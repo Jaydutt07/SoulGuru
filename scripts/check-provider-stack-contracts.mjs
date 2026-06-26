@@ -15,6 +15,8 @@ checkProviderArtifactsExist();
 checkSupabaseProviderCoversEveryMigration();
 checkOpenAIProviderCoversEveryAIRouteAndService();
 checkOpenAIProviderCoversEveryLiveQualityGate();
+checkVercelProviderCoversDeploymentContracts();
+checkDomainProvidersCoverCustomDomainContracts();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
 checkResendProviderCoversEmailContracts();
 checkObservabilityProvidersCoverPrivacyAndErrorContracts();
@@ -124,6 +126,52 @@ function checkOpenAIProviderCoversEveryLiveQualityGate() {
   const missing = requiredCommands.filter((command) => !openai?.commands?.includes(command));
 
   pushCheck("OpenAI provider verifies every live AI reading surface", missing.length === 0, missing);
+}
+
+function checkVercelProviderCoversDeploymentContracts() {
+  const vercel = PROVIDER_STACK.find((provider) => provider.id === "vercel");
+  const requiredArtifacts = [
+    "vercel.json",
+    "api/readiness.js",
+    "scripts/check-deployment-contracts.mjs",
+    "scripts/check-deployment-smoke-contracts.mjs",
+    "scripts/smoke-deployed-backend.mjs"
+  ];
+  const requiredCommands = [
+    "npm run deployment:check",
+    "npm run deployment:smoke:check",
+    "npm run deployment:smoke"
+  ];
+  const missing = [
+    ...requiredArtifacts.filter((artifact) => !vercel?.artifacts?.includes(artifact)),
+    ...requiredCommands.filter((command) => !vercel?.commands?.includes(command))
+  ];
+
+  pushCheck("Vercel provider evidence covers deployment config and backend smoke contracts", missing.length === 0, missing);
+}
+
+function checkDomainProvidersCoverCustomDomainContracts() {
+  const requiredArtifacts = [
+    "scripts/check-production-domain-smoke-contracts.mjs",
+    "scripts/smoke-production-domain.mjs"
+  ];
+  const requiredCommands = [
+    "npm run production:domain:check",
+    "npm run production:domain:smoke"
+  ];
+  const missing = ["namecheap", "cloudflare"].flatMap((providerId) => {
+    const provider = PROVIDER_STACK.find((entry) => entry.id === providerId);
+    return [
+      ...requiredArtifacts
+        .filter((artifact) => !provider?.artifacts?.includes(artifact))
+        .map((artifact) => `${providerId}:${artifact}`),
+      ...requiredCommands
+        .filter((command) => !provider?.commands?.includes(command))
+        .map((command) => `${providerId}:${command}`)
+    ];
+  });
+
+  pushCheck("Namecheap and Cloudflare provider evidence covers custom-domain launch contracts", missing.length === 0, missing);
 }
 
 function checkRazorpayProviderCoversEveryPaidAccessRoute() {
