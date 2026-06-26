@@ -32,6 +32,7 @@ const report = {
 await checkHealth();
 await checkReadiness();
 await checkProfileLookup();
+await checkSoulWisdomFeedbackContract();
 await checkMoreGuidanceDashboard();
 await checkShaniDashboard();
 
@@ -140,6 +141,38 @@ async function checkMoreGuidanceDashboard() {
       : expectReady
         ? "Expected More Guidance dashboard to be backed by configured Supabase."
         : "Expected dashboard to return 200 with guidanceHistory and savedGuidance arrays."
+  });
+}
+
+async function checkSoulWisdomFeedbackContract() {
+  const result = await requestJson("/api/soul-wisdom-feedback", {
+    method: "POST",
+    body: {
+      user: smokeUser(),
+      rating: "deployment-smoke-validation-only",
+      readingDate: "2026-06-26",
+      promptVersion: "soul-wisdom-v21",
+      wisdom: "Deployment smoke validates feedback auth and input handling without storing a reading."
+    }
+  });
+
+  if (handleAuthRequired(result, {
+    id: "soul-wisdom-feedback-auth",
+    label: "Soul Guru feedback API",
+    contract: "Soul Guru feedback validation"
+  })) {
+    return;
+  }
+
+  const validationOnly = result.status === 400 && /feedback rating/i.test(String(result.body?.error || ""));
+  pushCheck({
+    id: "soul-wisdom-feedback",
+    label: "Soul Guru feedback API",
+    passed: validationOnly,
+    status: result.status,
+    detail: validationOnly
+      ? "Feedback route accepted authentication and rejected the no-write validation payload."
+      : "Expected feedback route to reject the no-write validation payload with a rating contract error."
   });
 }
 

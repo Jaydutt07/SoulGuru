@@ -87,7 +87,7 @@ This project is being built toward the stack shown in the product planning image
 - Live Supabase schema checker for migration/table/column/index/constraint contract verification
 - Public Vite env safety checker to keep server secrets out of browser/APK builds
 - Local backend smoke-test script for API contract checks before APK testing
-- Vercel deployment config plus deployed backend smoke-test script for health, readiness, profile lookup, More Guidance dashboard, and Shani dashboard
+- Vercel deployment config plus deployed backend smoke-test script for health, readiness, profile lookup, no-write Soul Guru feedback validation, More Guidance dashboard, and Shani dashboard
 - Vercel CSP/security/cache headers for browser hardening, no-store API responses, and immutable asset caching
 - Strict deployed backend smoke contract so production-ready checks require authenticated protected POST routes
 - Combined release readiness runner for local and strict production preflight checks

@@ -30,9 +30,11 @@ async function checkReadySmokeFailsWhenProtectedRoutesRequireAuth() {
     pushCheck("Ready deployment smoke fails protected 401 routes without a valid token", [
       result.status !== 0,
       result.stdout.includes("FAIL User profile API (401)"),
+      result.stdout.includes("FAIL Soul Guru feedback API (401)"),
       result.stdout.includes("FAIL More Guidance dashboard API (401)"),
       result.stdout.includes("FAIL Shani dashboard API (401)"),
       result.stdout.includes("Production-ready smoke requires authenticated profile lookup"),
+      result.stdout.includes("Production-ready smoke requires authenticated Soul Guru feedback validation"),
       result.stdout.includes("DEPLOYMENT_SMOKE_AUTH_TOKEN")
     ].every(Boolean));
   } finally {
@@ -54,6 +56,7 @@ async function checkReachabilitySmokeAllowsProtectedRoutesWithoutReadyExpectatio
     pushCheck("Non-ready deployment smoke treats protected 401 routes as reachability only", [
       result.status === 0,
       result.stdout.includes("PASS User profile API (401)"),
+      result.stdout.includes("PASS Soul Guru feedback API (401)"),
       result.stdout.includes("PASS More Guidance dashboard API (401)"),
       result.stdout.includes("PASS Shani dashboard API (401)"),
       result.stdout.includes("Route is reachable and requires authentication")
@@ -88,6 +91,11 @@ async function checkReadySmokePassesWithProtectedPostContracts() {
       return;
     }
 
+    if (req.url === "/api/soul-wisdom-feedback") {
+      writeJson(res, 400, { error: "Feedback rating must be accurate or missed" });
+      return;
+    }
+
     if (req.url === "/api/shani-guidance") {
       writeJson(res, 200, {
         configured: true,
@@ -105,6 +113,8 @@ async function checkReadySmokePassesWithProtectedPostContracts() {
     pushCheck("Ready deployment smoke passes when protected contracts are authenticated", [
       result.status === 0,
       result.stdout.includes("PASS User profile API (200)"),
+      result.stdout.includes("PASS Soul Guru feedback API (400)"),
+      result.stdout.includes("Feedback route accepted authentication and rejected the no-write validation payload."),
       result.stdout.includes("PASS More Guidance dashboard API (200)"),
       result.stdout.includes("PASS Shani dashboard API (200)")
     ].every(Boolean));

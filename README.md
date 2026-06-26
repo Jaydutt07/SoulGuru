@@ -388,7 +388,7 @@ npm run deployment:smoke -- --url=https://your-production-domain.app
 npm run deployment:smoke -- --url=https://your-production-domain.app --expect-ready
 ```
 
-The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, More Guidance dashboard, and Shani dashboard contracts without sending OTPs, creating payments, writing saved guidance, or spending OpenAI tokens. In non-ready smoke runs, protected `401` responses prove route reachability. In `--expect-ready` runs, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN`; protected POST routes must validate with real authentication before the smoke can pass.
+The deployed smoke checks `/api/health`, `/api/readiness`, profile lookup, Soul Guru feedback validation, More Guidance dashboard, and Shani dashboard contracts without sending OTPs, creating payments, writing feedback/saved-guidance rows, or spending OpenAI tokens. In non-ready smoke runs, protected `401` responses prove route reachability. In `--expect-ready` runs, pass `--auth-token=...` or set `DEPLOYMENT_SMOKE_AUTH_TOKEN`; protected POST routes must validate with real authentication before the smoke can pass.
 
 ## Continuous Integration
 
