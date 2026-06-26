@@ -53,6 +53,9 @@ jobs:
       - name: Print provider launch plan
         run: npm run production:launch-plan
 
+      - name: Generate production launch pack
+        run: npm run production:launch-pack
+
       - name: Verify deployment config contracts
         run: npm run deployment:check
 
