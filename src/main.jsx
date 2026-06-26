@@ -50,6 +50,8 @@ const SOUL_READING_CACHE_PREFIX = `soulguru.dailySoulReading.${SOUL_READING_CACH
 const SOUL_READING_HISTORY_PREFIX = `soulguru.dailySoulReadingHistory.${SOUL_READING_CACHE_VERSION}`;
 const SOUL_WISDOM_PENDING_RETRY_LIMIT = 4;
 const SOUL_WISDOM_PENDING_RETRY_MS = 3500;
+const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 4;
+const MORE_GUIDANCE_PENDING_RETRY_MS = 3500;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
@@ -961,78 +963,90 @@ function SubscriptionPage({ user, updateUser, onBack }) {
     }
 
     let cancelled = false;
+    let retryTimer = null;
     const dateKey = getTodayKey(new Date(), user.birthTimezone || undefined);
     const context = buildAstrologyContext(user, buildDateFromKey(dateKey, user));
     setDeepGuidanceStatus("Preparing deeper guidance...");
 
-    authFetch(getApiUrl("/api/more-guidance"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "deep-guidance",
-        date: dateKey,
-        timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
-        subscription,
-        user: {
-          id: user.id,
-          name: user.name,
-          phone: user.phone,
-          email: user.email,
-          birthDate: user.birthDate,
-          birthTime: user.birthTime,
-          birthPlace: user.birthPlace,
-          birthLatitude: user.birthLatitude,
-          birthLongitude: user.birthLongitude,
-          birthTimezone: user.birthTimezone,
-          birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
-          birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-          birthPlaceResolutionSource: user.birthPlaceResolutionSource,
-          soulGuruSubscription: subscription
-        },
-        context,
-        fallback: LOCAL_PAID_FALLBACK_ENABLED ? fallbackDeepGuidance : undefined
+    const payload = {
+      action: "deep-guidance",
+      date: dateKey,
+      timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
+      subscription,
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        birthDate: user.birthDate,
+        birthTime: user.birthTime,
+        birthPlace: user.birthPlace,
+        birthLatitude: user.birthLatitude,
+        birthLongitude: user.birthLongitude,
+        birthTimezone: user.birthTimezone,
+        birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+        birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+        birthPlaceResolutionSource: user.birthPlaceResolutionSource,
+        soulGuruSubscription: subscription
+      },
+      context,
+      fallback: LOCAL_PAID_FALLBACK_ENABLED ? fallbackDeepGuidance : undefined
+    };
+
+    const requestDeepGuidance = (attempt = 0) => {
+      authFetch(getApiUrl("/api/more-guidance"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       })
-    })
-      .then((response) => response.json().then((data) => ({ ok: response.ok, status: response.status, data })).catch(() => ({ ok: false, status: response.status, data: null })))
-      .then(({ ok, status, data }) => {
-        if (cancelled) return;
-        if (ok && data?.guidance && (data.stored !== false || LOCAL_PAID_FALLBACK_ENABLED)) {
-          setDeepGuidance(data.guidance);
-          setServerDashboard((current) => current ? {
-            ...current,
-            guidanceHistory: mergeGuidanceItems([
-              {
-                id: data.id || `more-guidance-${data.readingDate || dateKey}`,
-                date: data.createdAt || new Date().toISOString(),
-                dateKey: data.readingDate || dateKey,
-                promptVersion: data.promptVersion,
-                guidance: data.guidance,
-                wisdom: data.guidance.overview
-              }
-            ], current.guidanceHistory || [])
-          } : current);
-          setDeepGuidanceStatus(data.cached ? "Deeper guidance synced." : "Deeper guidance ready.");
-          return;
-        }
-        if (ok && data?.guidance && data.stored === false) {
-          setDeepGuidance(null);
-          setDeepGuidanceStatus("Deeper guidance could not be saved. Please try again shortly.");
-          return;
-        }
-        if (status === 402) {
-          setDeepGuidanceStatus("Activate More Guidance to unlock the deeper map.");
-          return;
-        }
-        if (LOCAL_PAID_FALLBACK_ENABLED) {
-          setDeepGuidance(fallbackDeepGuidance);
-          setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
-          return;
-        }
-        setDeepGuidance(null);
-        setDeepGuidanceStatus("Deeper guidance could not sync. Please try again shortly.");
-      })
-      .catch(() => {
-        if (!cancelled) {
+        .then((response) => response.json().then((data) => ({ ok: response.ok, status: response.status, data })).catch(() => ({ ok: false, status: response.status, data: null })))
+        .then(({ ok, status, data }) => {
+          if (cancelled) return;
+          if (ok && data?.guidance && (data.stored !== false || LOCAL_PAID_FALLBACK_ENABLED)) {
+            setDeepGuidance(data.guidance);
+            setServerDashboard((current) => current ? {
+              ...current,
+              guidanceHistory: mergeGuidanceItems([
+                {
+                  id: data.id || `more-guidance-${data.readingDate || dateKey}`,
+                  date: data.createdAt || new Date().toISOString(),
+                  dateKey: data.readingDate || dateKey,
+                  promptVersion: data.promptVersion,
+                  guidance: data.guidance,
+                  wisdom: data.guidance.overview
+                }
+              ], current.guidanceHistory || [])
+            } : current);
+            setDeepGuidanceStatus(data.cached ? "Deeper guidance synced." : "Deeper guidance ready.");
+            return;
+          }
+          if (ok && data?.guidance && data.stored === false) {
+            setDeepGuidance(null);
+            setDeepGuidanceStatus("Deeper guidance could not be saved. Please try again shortly.");
+            return;
+          }
+          if (status === 409 && /already being prepared/.test(data?.error || "")) {
+            if (LOCAL_PAID_FALLBACK_ENABLED) {
+              setDeepGuidance(fallbackDeepGuidance);
+              setDeepGuidanceStatus("Using local deeper guidance while the paid backend finishes.");
+              return;
+            }
+            if (attempt < MORE_GUIDANCE_PENDING_RETRY_LIMIT) {
+              setDeepGuidance(null);
+              setDeepGuidanceStatus("Soul Guru is finishing your deeper guidance...");
+              trackEvent("more_guidance_pending", { attempt });
+              retryTimer = window.setTimeout(() => requestDeepGuidance(attempt + 1), MORE_GUIDANCE_PENDING_RETRY_MS);
+              return;
+            }
+            setDeepGuidance(null);
+            setDeepGuidanceStatus("Soul Guru is still preparing your deeper guidance. Please reopen this page in a moment.");
+            trackEvent("more_guidance_failed", { reason: "pending_timeout" });
+            return;
+          }
+          if (status === 402) {
+            setDeepGuidanceStatus("Activate More Guidance to unlock the deeper map.");
+            return;
+          }
           if (LOCAL_PAID_FALLBACK_ENABLED) {
             setDeepGuidance(fallbackDeepGuidance);
             setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
@@ -1040,11 +1054,25 @@ function SubscriptionPage({ user, updateUser, onBack }) {
           }
           setDeepGuidance(null);
           setDeepGuidanceStatus("Deeper guidance could not sync. Please try again shortly.");
-        }
-      });
+        })
+        .catch(() => {
+          if (!cancelled) {
+            if (LOCAL_PAID_FALLBACK_ENABLED) {
+              setDeepGuidance(fallbackDeepGuidance);
+              setDeepGuidanceStatus("Using local deeper guidance until the backend is connected.");
+              return;
+            }
+            setDeepGuidance(null);
+            setDeepGuidanceStatus("Deeper guidance could not sync. Please try again shortly.");
+          }
+        });
+    };
+
+    requestDeepGuidance();
 
     return () => {
       cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
     };
   }, [fallbackDeepGuidance, isActive, subscription, user]);
 

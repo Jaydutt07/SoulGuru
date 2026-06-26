@@ -7,6 +7,7 @@ const checks = [];
 checkSoulGuruEntryPoint();
 checkDashboardSync();
 checkDeepGuidanceSync();
+checkDeepGuidancePendingRetry();
 checkSubscriptionUi();
 checkTrackingUi();
 checkGuidanceHistoryAndSavedAdvice();
@@ -68,6 +69,22 @@ function checkDeepGuidanceSync() {
     source.includes("if (ok && data?.guidance && data.stored === false) {"),
     source.includes("setDeepGuidance(null);"),
     source.includes("setDeepGuidanceStatus(\"Deeper guidance could not be saved. Please try again shortly.\");")
+  ].every(Boolean));
+}
+
+function checkDeepGuidancePendingRetry() {
+  pushCheck("Production More Guidance retries in-progress paid backend readings", [
+    source.includes("const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 4;"),
+    source.includes("const MORE_GUIDANCE_PENDING_RETRY_MS = 3500;"),
+    source.includes("let retryTimer = null;"),
+    source.includes("const requestDeepGuidance = (attempt = 0) => {"),
+    source.includes("status === 409 && /already being prepared/.test(data?.error || \"\")"),
+    source.includes("setDeepGuidanceStatus(\"Soul Guru is finishing your deeper guidance...\");"),
+    source.includes("trackEvent(\"more_guidance_pending\", { attempt });"),
+    source.includes("retryTimer = window.setTimeout(() => requestDeepGuidance(attempt + 1), MORE_GUIDANCE_PENDING_RETRY_MS);"),
+    source.includes("if (retryTimer) window.clearTimeout(retryTimer);"),
+    source.includes("setDeepGuidanceStatus(\"Soul Guru is still preparing your deeper guidance. Please reopen this page in a moment.\");"),
+    source.includes("trackEvent(\"more_guidance_failed\", { reason: \"pending_timeout\" });")
   ].every(Boolean));
 }
 
@@ -143,7 +160,8 @@ function checkProductionFallbackBoundaries() {
     source.includes("const localGuidanceHistory = LOCAL_PAID_FALLBACK_ENABLED ? getCachedGuidanceHistory(user) : [];"),
     source.includes("const localSavedGuidance = LOCAL_PAID_FALLBACK_ENABLED ? user.savedGuidance || [] : [];"),
     source.includes("const activeDeepGuidance = deepGuidance || (LOCAL_PAID_FALLBACK_ENABLED ? fallbackDeepGuidance : null);"),
-    source.includes("if (LOCAL_PAID_FALLBACK_ENABLED) {\n          setDeepGuidance(fallbackDeepGuidance);"),
+    source.includes("if (LOCAL_PAID_FALLBACK_ENABLED) {"),
+    source.includes("setDeepGuidance(fallbackDeepGuidance);"),
     source.includes("setDeepGuidanceStatus(\"Using local deeper guidance until the backend is connected.\");")
   ].every(Boolean));
 }
