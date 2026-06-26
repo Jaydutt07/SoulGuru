@@ -197,7 +197,7 @@ function compactOpeningLine(scene, preferredBucket = "", seed = 0) {
 }
 
 function compactNameLine(name, context, seed, imperative, usedLines = new Set()) {
-  const area = dailyAreaLabel(context.dailyArea);
+  const area = dailyAreaLabel(context.dailyArea, seed);
   const need = compactNeed(context.coreNeed || context.innerWeather, seed);
   const cost = compactAvoid(context.avoid || context.emotionalKnot);
   const lines = imperative ? [
@@ -213,7 +213,7 @@ function compactNameLine(name, context, seed, imperative, usedLines = new Set())
 }
 
 function compactFillerLine(context, seed, imperative, usedLines = new Set()) {
-  const area = dailyAreaLabel(context.dailyArea);
+  const area = dailyAreaLabel(context.dailyArea, seed);
   const body = compactBodyAnchor(context.bodySignal);
   const avoid = compactAvoid(context.avoid || context.emotionalKnot);
   const window = timeBox(seed);
@@ -524,18 +524,34 @@ function timeBox(seed = 0) {
 }
 
 function closingEvidence(context, seed = 0) {
-  const area = dailyAreaLabel(context.dailyArea);
+  const area = dailyAreaLabel(context.dailyArea, seed);
   const details = [
     "the calendar slot kept",
     "the reply left short and true",
     "the oldest task named and closed",
     "the payment checked without self-punishment",
-    "the first meal, water, or rest protected",
+    "one protected meal, water break, or rest cue",
+    "the body cue protected before the reply",
+    "food, water, or rest handled before interpretation",
+    bodyEvidenceLine(seed, context),
     "the draft made real before it was judged",
     "the limit stated without a speech",
     `the visible edge around ${area}`
   ];
   return pickLine(details, seed, area, context.stabilizer, context.workSignal);
+}
+
+function bodyEvidenceLine(seed = 0, context = {}) {
+  return pickLine([
+    "one physical need handled before interpretation",
+    "a water, food, or rest cue answered early",
+    "the body given facts before the mood votes",
+    "one tired-body demand removed from the decision",
+    "a small care cue handled without negotiation",
+    "the first body need answered before meaning grows",
+    "one meal, sip, or rest cue kept practical",
+    "the body supported before the reply gets chosen"
+  ], seed, context.bodySignal, context.dailyArea, context.openingScene);
 }
 
 function buildTaskFirstWisdom(user, context) {
@@ -638,7 +654,7 @@ function openingLine(scene, context, seed, salt = "", preferredBucket = "") {
 function nameLine(name, context, seed) {
   const edge = edgePhrase(context.personalEdge || context.emotionalKnot || "turning a workable moment into a verdict", seed);
   const need = needPhrase(context.coreNeed || context.innerWeather || "room to move slowly", seed);
-  const area = dailyAreaLabel(context.dailyArea);
+  const area = dailyAreaLabel(context.dailyArea, seed);
   const edgeInstruction = lowerFirst(edge);
   const cost = compactAvoid(context.avoid || context.emotionalKnot);
   const lines = [
@@ -656,7 +672,7 @@ function nameLine(name, context, seed) {
     `Before ${area} becomes heavier than it has to be, ${name} needs to ${edgeInstruction}.`,
     `The real pressure around ${area}, ${name}, is ${cost}; give it a limit that can be checked.`,
     solveAreaLine(name, area, need, seed),
-    `Under ${area}, ${name} is paying for ${cost}; put the cost where it can be seen.`,
+    areaCostLine(area, name, cost, seed),
     areaImperfectionLine(name, area, need, seed),
     `The honest work for ${name} is not a bigger mood; it is ${need} with a visible next use.`,
     `When ${area} gets noisy, ${name} needs ${need} before the next promise is made.`
@@ -664,7 +680,7 @@ function nameLine(name, context, seed) {
   return pickLine(lines, seed, name, need, edge, area);
 }
 
-function dailyAreaLabel(area) {
+function dailyAreaLabel(area, seed = 0) {
   const lower = String(area || "").toLowerCase();
   if (lower.includes("money")) return "a money choice";
   if (lower.includes("relationship")) return "relationship timing";
@@ -676,8 +692,25 @@ function dailyAreaLabel(area) {
   if (lower.includes("sleep") || lower.includes("closure")) return "private closure";
   if (lower.includes("learning") || lower.includes("discipline")) return "scattered attention";
   if (lower.includes("home")) return "home rhythm";
-  if (lower.includes("conversation")) return "the repeated inner conversation";
+  if (lower.includes("conversation")) return pickLine([
+    "the repeated inner conversation",
+    "the private conversation loop",
+    "the thought that keeps reopening",
+    "the recurring inner dialogue",
+    "the conversation you keep having alone",
+    "the unfinished inner sentence"
+  ], seed, area);
   return "this part of life";
+}
+
+function areaCostLine(area, name, cost, seed = 0) {
+  return pickLine([
+    `Under ${area}, ${name} is paying for ${cost}; put the cost where it can be seen.`,
+    `Around ${area}, ${cost} is charging attention for ${name}; name the price before answering.`,
+    `${capitalize(area)} gets expensive when ${cost} leads; ${name} needs the cost written before the next move.`,
+    `The hidden price for ${name} is ${cost}; keep ${area} close to one visible repair.`,
+    `When ${area} starts carrying ${cost}, ${name} needs the cost on paper, not in the body.`
+  ], seed, area, name, cost);
 }
 
 function actionLine(context, seed, salt = "") {
@@ -763,11 +796,11 @@ function relationLine(name, context, seed) {
   const lines = [
     `With other people, ${relation}; affection does not require unlimited access.`,
     conversationPullLine(seed, relation, avoid),
-    `In the next conversation, ${lowerFirst(relation)}, so your pace softens without erasing your position.`,
+    relationPaceLine(seed, relation),
     nextExchangeLine(seed),
     `Respond from proportion: kind, brief, and clear enough that resentment has less room.`,
     `Do not confuse care with staying open to every demand that arrives without timing.`,
-    `If someone needs an answer, give one that respects both warmth and timing.`,
+    timedAnswerLine(seed, name),
     `Let the next reply be useful and short enough to remain true.`,
     `Let the relationship stay simple here: ${lowerFirst(relation)}, while everything else waits its turn.`,
     relationshipLimitLine(avoid, seed),
@@ -775,6 +808,27 @@ function relationLine(name, context, seed) {
     kinderAnswerLine(seed)
   ];
   return pickLine(lines, seed, name, relation, avoid, context.dailyArea);
+}
+
+function relationPaceLine(seed = 0, relation = "") {
+  const lowerRelation = lowerFirst(relation);
+  return pickLine([
+    `In the next conversation, ${lowerRelation}, so the answer keeps warmth without surrendering pace.`,
+    `Let the next exchange use ${lowerRelation}; the point is care with a visible edge.`,
+    `When the next conversation opens, ${lowerRelation}, then stop before the reply becomes a performance.`,
+    `Use ${lowerRelation} in the next exchange, and let timing protect the position you already know.`,
+    `The next conversation can stay kind when ${lowerRelation} carries only the part that belongs there.`
+  ], seed, relation);
+}
+
+function timedAnswerLine(seed = 0, name = "") {
+  return pickLine([
+    `If someone needs an answer, let ${name || "the reply"} carry warmth with a time edge.`,
+    `When a reply is needed, keep care present and make the timing unmistakable.`,
+    `Give the next answer a warm tone and a clear clock, not extra availability.`,
+    `Let the needed answer stay kind without becoming open-ended access.`,
+    `Answer the real request and let timing hold the rest.`
+  ], seed, name);
 }
 
 function relationCloseLine(context, seed, salt = "", preferredBucket = "") {

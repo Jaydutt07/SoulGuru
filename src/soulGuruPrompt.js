@@ -465,9 +465,16 @@ export function buildParagraphArchitecture(user, context, today) {
     user.birthPlace,
     today,
     context.openingScene,
+    classifyPromptScene(context.openingScene || context.dailyScene),
+    context.dailyLunarMansion?.name,
+    context.dailyLunarMansion?.pada,
+    context.dailyLunarDay?.name,
+    context.dailyLunarDay?.paksha,
     context.dailyArea,
     context.coreNeed,
-    context.personalEdge
+    context.personalEdge,
+    context.bodySignal,
+    context.workSignal
   ].filter(Boolean).join("|");
   const base = architectures[mod(stableHash(key), architectures.length)];
   return `${base} ${buildSurfaceRhythm(user, context, today)}`;
@@ -499,6 +506,11 @@ export function buildSurfaceRhythm(user, context, today) {
     user.birthPlace,
     today,
     context.openingScene,
+    classifyPromptScene(context.openingScene || context.dailyScene),
+    context.dailyLunarMansion?.name,
+    context.dailyLunarMansion?.pada,
+    context.dailyLunarDay?.name,
+    context.dailyLunarDay?.paksha,
     context.dailyArea,
     context.emotionalKnot,
     context.decisionGate,
@@ -506,6 +518,23 @@ export function buildSurfaceRhythm(user, context, today) {
     context.relationalCaution
   ].filter(Boolean).join("|");
   return rhythms[mod(stableHash(key), rhythms.length)];
+}
+
+function classifyPromptScene(text) {
+  const normalized = String(text || "").toLowerCase();
+  if (/\b(phone|message|text|unread|inbox|notification|screen|reply)\b/.test(normalized)) return "device";
+  if (/\b(water|glass|drink)\b/.test(normalized)) return "water";
+  if (/\b(calendar|appointment|deadline|time)\b/.test(normalized)) return "calendar";
+  if (/\b(notebook|page|pen|line|written|write)\b/.test(normalized)) return "notebook";
+  if (/\b(kitchen|counter|tea|cup|meal|food|breakfast|lunch)\b/.test(normalized)) return "kitchen";
+  if (/\b(wallet|receipt|payment|bill|price|money)\b/.test(normalized)) return "money";
+  if (/\b(conversation|sentence|call|answer|agree|yes|say|reply|word|words|unsent|send)\b/.test(normalized)) return "conversation";
+  if (/\b(chair|room|desk|workspace|drawer|laundry|bed|domestic)\b/.test(normalized)) return "room";
+  if (/\b(shoes|door|keys|bag|charger|errand)\b/.test(normalized)) return "door";
+  if (/\b(mirror|shoulder|shoulders|jaw|body|breath)\b/.test(normalized)) return "body";
+  if (/\b(list|task|item|draft|work|promise)\b/.test(normalized)) return "task";
+  if (/\b(tab|worry|thought|mind)\b/.test(normalized)) return "worry";
+  return "general";
 }
 
 function stableHash(value) {
