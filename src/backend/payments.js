@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { buildMembershipEmail, sendEmail } from "./emailService.js";
+import { buildMembershipEmail, buildShaniMembershipEmail, sendEmail } from "./emailService.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { buildShaniReport } from "./shaniService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
@@ -388,12 +388,20 @@ export async function verifyShaniRazorpayCheckoutPayment({
     startsAt,
     endsAt
   });
+  const emailResult = activation.created
+    ? await sendShaniMembershipConfirmation(user.email, {
+      name: user.name,
+      planName: activation.membership.planName,
+      endsAt: activation.membership.endsAt
+    }, env)
+    : { sent: false, skipped: true, reason: "Membership already active" };
 
   return {
     verified: true,
     stored: true,
     activated: activation.created,
-    membership: activation.membership
+    membership: activation.membership,
+    email: emailResult
   };
 }
 
@@ -436,12 +444,7 @@ export async function processRazorpayWebhook(rawBody, env = process.env, deps = 
     }
 
     const activation = await activateWebhookRequest(supabase, activationRequest);
-    const emailResult = activationRequest.type === "more-guidance" && activation.created
-      ? await sendMembershipConfirmation(activationRequest.user.email, {
-        name: activationRequest.user.name,
-        endsAt: activation.subscription.endsAt
-      }, env)
-      : { sent: false, skipped: true, reason: activation.created ? "Not a More Guidance membership" : "Duplicate event" };
+    const emailResult = await sendActivationConfirmationEmail(activationRequest, activation, env);
 
     return {
       ok: true,
@@ -461,12 +464,7 @@ export async function processRazorpayWebhook(rawBody, env = process.env, deps = 
 
   const activation = await activateWebhookRequest(supabase, activationRequest);
 
-  const emailResult = activationRequest.type === "more-guidance" && activation.created
-    ? await sendMembershipConfirmation(activationRequest.user.email, {
-      name: activationRequest.user.name,
-      endsAt: activation.subscription.endsAt
-    }, env)
-    : { sent: false, skipped: true, reason: activation.created ? "Not a More Guidance membership" : "Membership already active" };
+  const emailResult = await sendActivationConfirmationEmail(activationRequest, activation, env);
 
   return {
     ok: true,
@@ -866,6 +864,45 @@ async function sendMembershipConfirmation(to, details, env) {
     console.warn("Membership email failed", error.message);
     return { sent: false, degraded: true };
   }
+}
+
+async function sendShaniMembershipConfirmation(to, details, env) {
+  try {
+    const email = buildShaniMembershipEmail(details);
+    return await sendEmail({
+      to,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      tags: [{ name: "event", value: "shani_remedy_activated" }]
+    }, env);
+  } catch (error) {
+    console.warn("Shani membership email failed", error.message);
+    return { sent: false, degraded: true };
+  }
+}
+
+async function sendActivationConfirmationEmail(activationRequest, activation, env) {
+  if (!activation.created) {
+    return { sent: false, skipped: true, reason: "Membership already active" };
+  }
+
+  if (activationRequest.type === "more-guidance") {
+    return sendMembershipConfirmation(activationRequest.user.email, {
+      name: activationRequest.user.name,
+      endsAt: activation.subscription.endsAt
+    }, env);
+  }
+
+  if (activationRequest.type === "shani") {
+    return sendShaniMembershipConfirmation(activationRequest.user.email, {
+      name: activationRequest.user.name,
+      planName: activation.membership.planName,
+      endsAt: activation.membership.endsAt
+    }, env);
+  }
+
+  return { sent: false, skipped: true, reason: "Unknown membership type" };
 }
 
 function buildPaymentUserKey(user) {

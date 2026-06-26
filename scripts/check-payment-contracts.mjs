@@ -19,12 +19,14 @@ await checkCheckoutSignatureContract();
 await checkCheckoutVerificationContract();
 await checkShaniCheckoutVerificationContract();
 await checkCheckoutConfirmationEmailContract();
+await checkShaniCheckoutConfirmationEmailContract();
 await checkCheckoutSubscriptionRaceContract();
 await checkShaniCheckoutMembershipRaceContract();
 await checkWebhookSignatureContract();
 await checkWebhookProcessingContract();
 await checkWebhookDuplicateActivationRecoveryContract();
 await checkShaniWebhookActivationContract();
+await checkShaniWebhookConfirmationEmailContract();
 await checkWebhookSubscriptionRaceContract();
 await checkSubscriptionWebhookIdempotencyContract();
 checkRazorpayReadinessContract();
@@ -659,6 +661,77 @@ async function checkCheckoutConfirmationEmailContract() {
   }
 }
 
+async function checkShaniCheckoutConfirmationEmailContract() {
+  const secret = "checkout-secret";
+  const orderId = "order_shani_email";
+  const paymentId = "pay_shani_email";
+  const amount = 54900;
+  const currency = "INR";
+  const signature = hmac(`${orderId}|${paymentId}`, secret);
+  const user = {
+    id: "shani-email-user",
+    name: "Rohan Sen",
+    phone: "+15550000009",
+    email: "Rohan <rohan@soulguru.local>",
+    birthDate: "1995-02-11",
+    birthTime: "10:15",
+    birthPlace: "Jaipur"
+  };
+  const orderToken = hmac(`${orderId}|${buildBackendUserKey(user)}|${amount}|${currency}|shani_remedy_6m`, secret);
+  const supabase = createFakePaymentSupabase();
+  const fetchCalls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { id: "email_shani_checkout_contract_1" };
+      }
+    };
+  };
+
+  try {
+    const result = await verifyShaniRazorpayCheckoutPayment({
+      user,
+      planId: "6m",
+      orderId,
+      amount,
+      currency,
+      orderToken,
+      paymentId,
+      signature
+    }, {
+      RAZORPAY_KEY_SECRET: secret,
+      SHANI_PLAN_6M_PRICE_PAISE: "54900",
+      RESEND_API_KEY: "resend-shani-checkout",
+      RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    }, { supabase });
+    const emailBody = JSON.parse(fetchCalls[0]?.options?.body || "{}");
+
+    pushCheck("Shani checkout activation sends remedy confirmation email", [
+      result.verified === true,
+      result.stored === true,
+      result.activated === true,
+      result.membership?.planId === "6m",
+      result.email?.sent === true,
+      result.email?.id === "email_shani_checkout_contract_1",
+      fetchCalls.length === 1,
+      fetchCalls[0].url === "https://api.resend.com/emails",
+      fetchCalls[0].options.headers.Authorization === "Bearer resend-shani-checkout",
+      emailBody.to?.[0] === "rohan@soulguru.local",
+      emailBody.subject === "Your Shani remedy guidance is active",
+      emailBody.text.includes("6 months Shani remedy guidance is active"),
+      emailBody.text.includes("Pandit support"),
+      emailBody.tags?.[0]?.name === "event",
+      emailBody.tags?.[0]?.value === "shani_remedy_activated"
+    ].every(Boolean));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 async function checkCheckoutSubscriptionRaceContract() {
   const secret = "checkout-secret";
   const orderId = "order_contract_race";
@@ -858,6 +931,67 @@ async function checkShaniWebhookActivationContract() {
     supabase.state.paymentEvents.size === 1,
     supabase.state.shaniMemberships.size === 1
   ].every(Boolean));
+}
+
+async function checkShaniWebhookConfirmationEmailContract() {
+  const supabase = createFakePaymentSupabase();
+  const fetchCalls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { id: "email_shani_webhook_contract_1" };
+      }
+    };
+  };
+
+  try {
+    const first = await processRazorpayWebhook(JSON.stringify(shaniWebhookPayload({
+      id: "evt_shani_email",
+      paymentId: "pay_shani_email_webhook",
+      orderId: "order_shani_email_webhook",
+      planId: "3m",
+      email: "shani-email@soulguru.local"
+    })), {
+      SHANI_PLAN_3M_PRICE_PAISE: "29900",
+      RESEND_API_KEY: "resend-shani-webhook",
+      RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    }, { supabase });
+    const duplicate = await processRazorpayWebhook(JSON.stringify(shaniWebhookPayload({
+      id: "evt_shani_email",
+      paymentId: "pay_shani_email_webhook",
+      orderId: "order_shani_email_webhook",
+      planId: "3m",
+      email: "shani-email@soulguru.local"
+    })), {
+      SHANI_PLAN_3M_PRICE_PAISE: "29900",
+      RESEND_API_KEY: "resend-shani-webhook",
+      RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
+    }, { supabase });
+    const emailBody = JSON.parse(fetchCalls[0]?.options?.body || "{}");
+
+    pushCheck("Shani webhook activation sends one remedy confirmation email", [
+      first.ok === true,
+      first.activated === true,
+      first.email?.sent === true,
+      first.email?.id === "email_shani_webhook_contract_1",
+      duplicate.ok === true,
+      duplicate.duplicate === true,
+      duplicate.activated === false,
+      duplicate.email?.skipped === true,
+      fetchCalls.length === 1,
+      fetchCalls[0].url === "https://api.resend.com/emails",
+      fetchCalls[0].options.headers.Authorization === "Bearer resend-shani-webhook",
+      emailBody.to?.[0] === "shani-email@soulguru.local",
+      emailBody.subject === "Your Shani remedy guidance is active",
+      emailBody.tags?.[0]?.value === "shani_remedy_activated"
+    ].every(Boolean));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 async function checkWebhookSubscriptionRaceContract() {

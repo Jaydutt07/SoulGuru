@@ -73,6 +73,28 @@ export function buildMembershipEmail({ name = "there", endsAt }) {
   };
 }
 
+export function buildShaniMembershipEmail({ name = "there", planName = "Shani remedy", endsAt }) {
+  const endLabel = endsAt ? new Date(endsAt).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  }) : "your selected plan period";
+  const safePlanName = String(planName || "Shani remedy").trim() || "Shani remedy";
+
+  return {
+    subject: "Your Shani remedy guidance is active",
+    text: `Hi ${name}, your ${safePlanName} Shani remedy guidance is active until ${endLabel}. Your member guidance and Pandit support are now unlocked for this plan period.`,
+    html: `
+      <div style="font-family: Inter, Arial, sans-serif; line-height: 1.6; color: #17323a;">
+        <h1 style="font-size: 24px;">Shani remedy guidance is active</h1>
+        <p>Hi ${escapeHtml(name)},</p>
+        <p>Your <strong>${escapeHtml(safePlanName)}</strong> Shani remedy guidance is active until <strong>${escapeHtml(endLabel)}</strong>.</p>
+        <p>Your member guidance and Pandit support are now unlocked for this plan period.</p>
+      </div>
+    `
+  };
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")

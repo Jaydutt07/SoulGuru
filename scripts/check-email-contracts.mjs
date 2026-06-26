@@ -1,4 +1,4 @@
-import { buildMembershipEmail, isResendConfigured, sendEmail } from "../src/backend/emailService.js";
+import { buildMembershipEmail, buildShaniMembershipEmail, isResendConfigured, sendEmail } from "../src/backend/emailService.js";
 
 const checks = [];
 
@@ -7,6 +7,7 @@ await checkUnsafeEmailFieldsSkipNetwork();
 await checkResendPayloadContract();
 await checkResendErrorContract();
 checkMembershipEmailContract();
+checkShaniMembershipEmailContract();
 
 const failed = checks.filter((check) => !check.passed);
 printReport();
@@ -197,6 +198,30 @@ function checkMembershipEmailContract() {
   pushCheck("Membership email escapes HTML in rendered fields", [
     email.html.includes("Asha &lt;script&gt;alert(1)&lt;/script&gt;"),
     !email.html.includes("<script>alert(1)</script>")
+  ].every(Boolean));
+}
+
+function checkShaniMembershipEmailContract() {
+  const email = buildShaniMembershipEmail({
+    name: "Rohan <script>alert(1)</script>",
+    planName: "1 year <strong>plan</strong>",
+    endsAt: "2027-06-01T00:00:00.000Z"
+  });
+
+  pushCheck("Shani membership email describes remedy plan and Pandit support", [
+    email.subject === "Your Shani remedy guidance is active",
+    email.text.includes("1 year <strong>plan</strong> Shani remedy guidance is active"),
+    email.text.includes("Pandit support"),
+    email.text.includes("2027"),
+    email.html.includes("Shani remedy guidance is active"),
+    email.html.includes("Pandit support"),
+    email.html.includes("2027")
+  ].every(Boolean));
+  pushCheck("Shani membership email escapes HTML in rendered fields", [
+    email.html.includes("Rohan &lt;script&gt;alert(1)&lt;/script&gt;"),
+    email.html.includes("1 year &lt;strong&gt;plan&lt;/strong&gt;"),
+    !email.html.includes("<script>alert(1)</script>"),
+    !email.html.includes("<strong>plan</strong>")
   ].every(Boolean));
 }
 
