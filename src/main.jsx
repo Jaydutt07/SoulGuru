@@ -41,12 +41,13 @@ import { clearObservedUser, identifyUser, initializeObservability, trackEvent } 
 import { enrichUserWithPlace } from "./placeResolver.js";
 import { buildFallbackPanditAnswer } from "./shaniGuidance.js";
 import { firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
+import { SOUL_WISDOM_PROMPT_VERSION } from "./soulWisdomVersion.js";
 
 const ACCOUNT_DB_KEY = "soulguru.accounts.v1";
 const SESSION_KEY = "soulguru.session.v1";
-const SOUL_READING_CACHE_VERSION = "soul-wisdom-v16";
-const SOUL_READING_CACHE_PREFIX = "soulguru.dailySoulReading.v16";
-const SOUL_READING_HISTORY_PREFIX = "soulguru.dailySoulReadingHistory.v16";
+const SOUL_READING_CACHE_VERSION = SOUL_WISDOM_PROMPT_VERSION;
+const SOUL_READING_CACHE_PREFIX = `soulguru.dailySoulReading.${SOUL_READING_CACHE_VERSION}`;
+const SOUL_READING_HISTORY_PREFIX = `soulguru.dailySoulReadingHistory.${SOUL_READING_CACHE_VERSION}`;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";

@@ -13,8 +13,9 @@ import { buildMemoryContext, searchGuidanceMemory, upsertGuidanceMemory } from "
 import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
+import { SOUL_WISDOM_PROMPT_VERSION } from "../soulWisdomVersion.js";
 
-export const SOUL_WISDOM_PROMPT_VERSION = "soul-wisdom-v17";
+export { SOUL_WISDOM_PROMPT_VERSION };
 
 export async function createDailySoulWisdom(payload, env = process.env, deps = {}) {
   let user = payload.user || {};

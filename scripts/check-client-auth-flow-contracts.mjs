@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { SOUL_WISDOM_PROMPT_VERSION } from "../src/soulWisdomVersion.js";
 
 const source = fs.readFileSync(path.join(process.cwd(), "src", "main.jsx"), "utf8");
 const authClientSource = fs.readFileSync(path.join(process.cwd(), "src", "authClient.js"), "utf8");
@@ -101,9 +102,11 @@ function checkProductionSoulGuruRequiresStoredBackendReading() {
 
 function checkSoulGuruCacheUsesCurrentPromptVersion() {
   pushCheck("Client Soul Guru cache namespace matches current prompt version", [
-    source.includes("const SOUL_READING_CACHE_VERSION = \"soul-wisdom-v16\";"),
-    source.includes("const SOUL_READING_CACHE_PREFIX = \"soulguru.dailySoulReading.v16\";"),
-    source.includes("const SOUL_READING_HISTORY_PREFIX = \"soulguru.dailySoulReadingHistory.v16\";"),
+    source.includes("import { SOUL_WISDOM_PROMPT_VERSION } from \"./soulWisdomVersion.js\";"),
+    source.includes("const SOUL_READING_CACHE_VERSION = SOUL_WISDOM_PROMPT_VERSION;"),
+    source.includes("const SOUL_READING_CACHE_PREFIX = `soulguru.dailySoulReading.${SOUL_READING_CACHE_VERSION}`;"),
+    source.includes("const SOUL_READING_HISTORY_PREFIX = `soulguru.dailySoulReadingHistory.${SOUL_READING_CACHE_VERSION}`;"),
+    /^soul-wisdom-v\d+$/.test(SOUL_WISDOM_PROMPT_VERSION),
     source.includes("cached?.promptVersion !== SOUL_READING_CACHE_VERSION"),
     source.includes("promptVersion: SOUL_READING_CACHE_VERSION")
   ].every(Boolean));
