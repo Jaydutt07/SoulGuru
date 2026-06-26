@@ -18,6 +18,7 @@ checkOpenAIProviderCoversEveryLiveQualityGate();
 checkRazorpayProviderCoversEveryPaidAccessRoute();
 checkUpstashProviderCoversRouteRateLimitMatrix();
 checkClerkProviderCoversClientAndApiAuthContracts();
+checkPineconeProviderCoversMemoryContracts();
 checkProviderMatrixReportsMissingEnvWithoutSecrets();
 checkProviderPayloadValidatorRequiresExactStack();
 checkProviderMatrixPassesWithFullProductionEnv();
@@ -164,6 +165,22 @@ function checkClerkProviderCoversClientAndApiAuthContracts() {
   const missing = requiredArtifacts.filter((artifact) => !clerk?.artifacts?.includes(artifact));
 
   pushCheck("Clerk provider evidence covers client auth and protected API route matrix", missing.length === 0, missing);
+}
+
+function checkPineconeProviderCoversMemoryContracts() {
+  const pinecone = PROVIDER_STACK.find((provider) => provider.id === "pinecone");
+  const requiredArtifacts = [
+    "src/backend/memoryService.js",
+    "api/guidance-memory.js",
+    "scripts/check-memory-contracts.mjs"
+  ];
+  const missingArtifacts = requiredArtifacts.filter((artifact) => !pinecone?.artifacts?.includes(artifact));
+  const missingCommands = ["npm run memory:check"].filter((command) => !pinecone?.commands?.includes(command));
+
+  pushCheck("Pinecone provider evidence covers long-term guidance memory contracts", [
+    missingArtifacts.length === 0,
+    missingCommands.length === 0
+  ].every(Boolean), [...missingArtifacts, ...missingCommands]);
 }
 
 function checkProviderMatrixReportsMissingEnvWithoutSecrets() {
