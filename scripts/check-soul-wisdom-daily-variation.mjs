@@ -9,6 +9,7 @@ import { SOUL_WISDOM_BASE_CASES } from "./soul-wisdom-quality-cases.mjs";
 
 const includeAi = process.argv.includes("--include-ai");
 const showReadings = process.argv.includes("--show-readings");
+const showDiagnostics = process.argv.includes("--show-diagnostics");
 const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
 const env = {
   ...loadEnv(mode, process.cwd(), ""),
@@ -94,6 +95,9 @@ function evaluateDailyVariationGroup({ source, user, readings }) {
   for (const reading of readings) {
     const repair = reading.quality?.attempts ? ` attempts=${reading.quality.attempts}` : "";
     console.log(`- ${reading.date}: ${reading.wordCount} words${repair}; area="${reading.dailyArea}"; moon=${reading.moonSign}; lunar=${reading.lunarMansion}; tithi=${reading.lunarDay}; opening=${reading.openingBucket}`);
+    if (showDiagnostics && reading.quality?.issueHistory?.length) {
+      console.log(`  diagnostics=${formatIssueHistory(reading.quality.issueHistory)}`);
+    }
     if (showReadings) {
       console.log(`  ${reading.wisdom}`);
     }
@@ -115,6 +119,7 @@ async function buildAiReadings(user) {
   const aiEnv = {
     ...env,
     SOUL_WISDOM_ALLOW_UNCACHED: "true",
+    ...(showDiagnostics ? { SOUL_WISDOM_QUALITY_DIAGNOSTICS: "true" } : {}),
     SUPABASE_URL: "",
     SUPABASE_SERVICE_ROLE_KEY: "",
     PINECONE_API_KEY: "",
@@ -182,6 +187,17 @@ function evaluateDailyReading({ user, date, result }) {
     ].join("|"),
     failures
   };
+}
+
+function formatIssueHistory(issueHistory) {
+  return issueHistory
+    .map((entry) => {
+      const issues = Array.isArray(entry.issues) && entry.issues.length
+        ? entry.issues.join(" | ")
+        : "pass";
+      return `attempt ${entry.attempt}: ${issues}`;
+    })
+    .join(" -> ");
 }
 
 function buildSimilarity(readings) {

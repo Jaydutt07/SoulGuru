@@ -151,7 +151,7 @@ async function checkSoulWisdomFeedbackContract() {
       user: smokeUser(),
       rating: "deployment-smoke-validation-only",
       readingDate: "2026-06-26",
-      promptVersion: "soul-wisdom-v21",
+      promptVersion: "soul-wisdom-v22",
       wisdom: "Deployment smoke validates feedback auth and input handling without storing a reading."
     }
   });

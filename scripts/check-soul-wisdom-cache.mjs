@@ -465,6 +465,86 @@ async function checkSeedMismatchRepairsBeforeCaching() {
   ].every(Boolean));
 }
 
+async function checkQualityDiagnosticsAreOptIn() {
+  const date = "2026-06-25";
+  const user = {
+    name: "Asha Rao",
+    phone: "+919000000001",
+    email: "asha@example.com",
+    birthDate: "1994-08-17",
+    birthTime: "06:35",
+    birthPlace: "Mumbai"
+  };
+  const mismatchedWisdomJson = JSON.stringify({
+    wisdom: "The calendar square keeps asking for a decision before the morning gets noisy. Asha, the useful pressure is not about doing everything; it is about giving one promise a visible edge before the day scatters. Write the smallest task clearly, keep the reply shorter than the worry, and let practical action happen before any private debate. If someone pulls for reassurance, answer with timing instead of a long defense. One completed detail will give your body better evidence than another round of thinking.",
+    innerWeather: "Pressure becoming practical",
+    todayMove: "Give one promise an edge",
+    release: "Stop feeding the debate"
+  });
+  const repairedWisdom = getDailyWisdom(user, date);
+
+  const withoutDiagnostics = await runUncachedRepairScenario({
+    user,
+    date,
+    firstOutput: mismatchedWisdomJson,
+    secondOutput: JSON.stringify(repairedWisdom),
+    diagnostics: false
+  });
+  const withDiagnostics = await runUncachedRepairScenario({
+    user,
+    date,
+    firstOutput: mismatchedWisdomJson,
+    secondOutput: JSON.stringify(repairedWisdom),
+    diagnostics: true
+  });
+  const serializedDiagnostics = JSON.stringify(withDiagnostics.result.quality?.issueHistory || []);
+
+  pushCheck("Soul Guru quality diagnostics are explicit and secret-safe", [
+    withoutDiagnostics.result.quality?.attempts === 2,
+    withoutDiagnostics.result.quality?.issueHistory === undefined,
+    withDiagnostics.result.quality?.attempts === 2,
+    Array.isArray(withDiagnostics.result.quality?.issueHistory),
+    withDiagnostics.result.quality.issueHistory.length === 2,
+    withDiagnostics.result.quality.issueHistory[0].issues.length > 0,
+    withDiagnostics.result.quality.issueHistory[1].issues.length === 0,
+    !serializedDiagnostics.includes("calendar square keeps asking"),
+    !serializedDiagnostics.includes("test-openai-key"),
+    withDiagnostics.openAiRequests.length === 2
+  ].every(Boolean));
+}
+
+async function runUncachedRepairScenario({ user, date, firstOutput, secondOutput, diagnostics }) {
+  const openAiRequests = [];
+  const result = await createDailySoulWisdom({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-contract",
+    SOUL_WISDOM_ALLOW_UNCACHED: "true",
+    ...(diagnostics ? { SOUL_WISDOM_QUALITY_DIAGNOSTICS: "true" } : {})
+  }, {
+    supabase: null,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async () => ({ configured: false, upserted: false }),
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async (request) => {
+            openAiRequests.push(request);
+            return {
+              output_text: openAiRequests.length === 1
+                ? firstOutput
+                : secondOutput
+            };
+          }
+        }
+      };
+    }
+  });
+  return { result, openAiRequests };
+}
+
 async function checkMechanicalDirectAddressRepairsBeforeCaching() {
   const date = "2026-06-25";
   const user = {
@@ -915,6 +995,7 @@ async function main() {
   await checkCacheMissWritesAndSecondReadUsesCache();
   await checkGenerationLockContentionDoesNotCallOpenAI();
   await checkSeedMismatchRepairsBeforeCaching();
+  await checkQualityDiagnosticsAreOptIn();
   await checkMechanicalDirectAddressRepairsBeforeCaching();
   await checkAwkwardTemplateJoinRepairsBeforeCaching();
   await checkCacheWriteFailureDoesNotReturnReading();

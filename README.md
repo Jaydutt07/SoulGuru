@@ -375,6 +375,12 @@ Run the same quality gate with live OpenAI Soul Guru readings:
 npm run soul:quality:ai
 ```
 
+When tuning Soul Guru latency or repair loops, add `-- --show-diagnostics` to print sanitized quality-repair reasons without raw prompts, failed drafts, or secrets:
+
+```bash
+npm run soul:quality:ai -- --show-diagnostics
+```
+
 Summarize privacy-safe Soul Guru feedback for prompt tuning after Supabase is connected:
 
 ```bash

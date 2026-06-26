@@ -120,6 +120,10 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     contractContext,
     { enforceArchitecture: true }
   );
+  const qualityIssueHistory = [{
+    attempt: qualityAttempts,
+    issues: candidateIssues
+  }];
 
   const fallback = payload.fallback || getDailyWisdom(user, date, payload.today || date);
   while (candidateIssues.length && qualityAttempts < 3) {
@@ -143,12 +147,18 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
       contractContext,
       { enforceArchitecture: true }
     );
+    qualityIssueHistory.push({
+      attempt: qualityAttempts,
+      issues: candidateIssues
+    });
   }
 
   let reading = normalizeWisdomPayload(outputText, fallback);
-  if (getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true }).length) {
+  const finalIssues = getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true });
+  if (finalIssues.length) {
     reading = fallback;
   }
+  const passedQuality = !getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true }).length;
   const result = {
     reading,
     wisdom: reading.wisdom,
@@ -161,7 +171,8 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     quality: {
       attempts: qualityAttempts,
       repaired: qualityAttempts > 1,
-      passed: !getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true }).length
+      passed: passedQuality,
+      ...(shouldExposeSoulWisdomQualityDiagnostics(env) ? { issueHistory: qualityIssueHistory } : {})
     },
     memory: {
       configured: Boolean(memory.configured),
@@ -209,6 +220,10 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
 
 export function isUncachedSoulWisdomAllowed(env = process.env) {
   return String(env.SOUL_WISDOM_ALLOW_UNCACHED || "false").toLowerCase() === "true";
+}
+
+function shouldExposeSoulWisdomQualityDiagnostics(env = process.env) {
+  return String(env.SOUL_WISDOM_QUALITY_DIAGNOSTICS || "false").toLowerCase() === "true";
 }
 
 async function requestSoulWisdom(client, model, input, env = process.env) {

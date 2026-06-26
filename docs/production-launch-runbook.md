@@ -171,4 +171,10 @@ npm run soul:daily:ai
 npm run soul:quality:ai
 ```
 
+When Soul Guru live quality is passing but slow, run the same gate with sanitized repair diagnostics:
+
+```bash
+npm run soul:quality:ai -- --show-diagnostics
+```
+
 If the top missed theme points to personal accuracy or daily timing, verify Supabase profile data, birth-place geocoder output, timezone, and daily cache boundaries before changing wording. The feedback report is designed to stay secret-safe: it prints prompt versions, ratings, bounded themes, and redacted optional samples only.

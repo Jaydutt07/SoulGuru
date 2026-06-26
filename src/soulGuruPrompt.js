@@ -1,4 +1,4 @@
-import { SOUL_WISDOM_MAX_WORDS } from "./soulWisdomVersion.js";
+import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "./soulWisdomVersion.js";
 
 export const SOUL_WISDOM_SYSTEM_PROMPT = `
 You are the private daily mentor voice for SoulGuru.
@@ -134,6 +134,15 @@ No disclaimers, markdown, bullets, emojis, quotes, or extra text outside JSON.
 `.trim();
 
 export function buildSoulWisdomInput({ user, context, today, memoryContext = "" }) {
+  const paragraphArchitecture = buildParagraphArchitecture(user, context, today);
+  const surfaceRhythm = buildSurfaceRhythm(user, context, today);
+  const hardContract = buildHardReadingContract({
+    user,
+    context,
+    paragraphArchitecture,
+    surfaceRhythm
+  });
+
   return `
 User:
 - First name: ${firstName(user.name)}
@@ -170,8 +179,8 @@ Silent astrology-derived signals:
 - Closing permission: ${context.closingPermission}
 - Concrete day scene: ${context.dailyScene}
 - Opening scene seed: ${context.openingScene || context.dailyScene}
-- Paragraph architecture: ${buildParagraphArchitecture(user, context, today)}
-- Surface rhythm: ${buildSurfaceRhythm(user, context, today)}
+- Paragraph architecture: ${paragraphArchitecture}
+- Surface rhythm: ${surfaceRhythm}
 - Voice lane: ${buildVoiceLane(user, context, today)}
 - Specificity pattern: ${buildSpecificityPattern(user, context, today)}
 - Reading fingerprint: ${buildReadingFingerprint(user, context, today)}
@@ -184,6 +193,9 @@ Silent astrology-derived signals:
 
 Private long-term guidance memory:
 ${memoryContext || "No prior memory is available."}
+
+Hard output contract:
+${hardContract}
 
 Task:
 Create today's Words of Wisdom using the silent signals and any relevant memory. Make the user feel uniquely seen and guided, but never reveal the signals, mention astrology, or say you remember them.
@@ -203,6 +215,47 @@ ${rejectedWisdom || "No draft text available."}
 Rewrite from scratch. Do not preserve the rejected draft's sentence count, opening syntax, emotional arc, or closing action unless the supplied Paragraph architecture requires it.
 Before returning, count the sentences in wisdom and place the first name exactly where Paragraph architecture says it belongs. If those two checks fail, rewrite again internally. Keep the same JSON schema and all hidden-signal rules.
 `.trim();
+}
+
+function buildHardReadingContract({ user, context, paragraphArchitecture, surfaceRhythm }) {
+  const contract = parseParagraphArchitectureContract(paragraphArchitecture);
+  const openingSeed = context.openingScene || context.dailyScene || "";
+  const sceneCategory = classifyPromptScene(openingSeed);
+  const openingRule = openingBucketRule(contract.openingBucket, "sentence 1");
+  const finalRule = openingBucketRule(contract.finalBucket, "final sentence");
+  const name = firstName(user.name);
+
+  return [
+    `- WORDS: ${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS}.`,
+    `- SENTENCES: exactly ${contract.sentenceCount || "the Paragraph architecture count"}.`,
+    `- NAME: "${name}" exactly once, in sentence ${contract.nameSentence || "the Paragraph architecture sentence"} only.`,
+    `- OPENING: ${openingRule}; use the opening scene seed "${openingSeed}" and keep its scene family "${sceneCategory}".`,
+    `- FINAL: ${finalRule}.`,
+    `- COMMAND COUNT: exactly ${Number.isFinite(contract.imperativeTarget) ? contract.imperativeTarget : "the Surface rhythm target"} imperative sentence opening(s).`,
+    `- SURFACE RHYTHM SOURCE: ${surfaceRhythm}.`,
+    "- DAILY ACTION: one action the user can finish in under two hours, with a measurable edge.",
+    "- UNIQUENESS: include one ordinary object, one exact friction, one body/routine or timing detail, and one practical consequence from this user's signals."
+  ].join("\n");
+}
+
+function parseParagraphArchitectureContract(architecture) {
+  return {
+    sentenceCount: Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0),
+    nameSentence: Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0),
+    openingBucket: String(architecture || "").match(/Opening bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase() || "",
+    finalBucket: String(architecture || "").match(/Final bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase() || "",
+    imperativeTarget: Number(String(architecture || "").match(/Imperative target:\s*(\d+)/i)?.[1] || Number.NaN)
+  };
+}
+
+function openingBucketRule(bucket, target) {
+  const rules = {
+    condition: `${target} starts with Before, After, When, Where, or With`,
+    scene: `${target} starts with The, A, An, One, Your, That, or This`,
+    statement: `${target} starts with a concrete noun, body detail, object, or daily situation, not an article, command, Today, There is, or This is a day`,
+    imperative: `${target} starts with Notice, Use, Keep, Treat, Give, Make, Take, Finish, Protect, or Respond`
+  };
+  return rules[bucket] || `${target} follows the Surface rhythm exactly`;
 }
 
 function buildVoiceLane(user, context, today) {

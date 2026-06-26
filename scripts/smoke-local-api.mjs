@@ -238,7 +238,7 @@ async function checkSoulWisdomFeedback() {
     user: smokeUser(),
     rating: "accurate",
     readingDate: "2026-06-24",
-    promptVersion: "soul-wisdom-v21",
+    promptVersion: "soul-wisdom-v22",
     wisdom: "A smoke reading should be practical, specific, and easy to respond to without sending raw secrets anywhere."
   });
   const feedback = result.body?.feedback || {};

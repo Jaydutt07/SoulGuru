@@ -9,6 +9,7 @@ import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
 const includeAi = process.argv.includes("--include-ai");
 const showReadings = process.argv.includes("--show-readings");
+const showDiagnostics = process.argv.includes("--show-diagnostics");
 const caseSet = getArgValue("--case-set") || "base";
 const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
 const env = {
@@ -97,6 +98,7 @@ async function buildAiResults() {
   const aiEnv = {
     ...env,
     SOUL_WISDOM_ALLOW_UNCACHED: "true",
+    ...(showDiagnostics ? { SOUL_WISDOM_QUALITY_DIAGNOSTICS: "true" } : {}),
     SUPABASE_URL: "",
     SUPABASE_SERVICE_ROLE_KEY: "",
     PINECONE_API_KEY: "",
@@ -188,10 +190,24 @@ function printGroup(group, similarity) {
   for (const item of group.results) {
     const repair = item.quality?.attempts ? ` attempts=${item.quality.attempts}` : "";
     console.log(`- ${item.name}: ${item.wordCount} words${repair}; scene=${item.openingSceneCategory}; structure=${item.structureSignature}; opening="${item.opening}"`);
+    if (showDiagnostics && item.quality?.issueHistory?.length) {
+      console.log(`  diagnostics=${formatIssueHistory(item.quality.issueHistory)}`);
+    }
     if (showReadings) {
       console.log(`  ${item.wisdom}`);
     }
   }
+}
+
+function formatIssueHistory(issueHistory) {
+  return issueHistory
+    .map((entry) => {
+      const issues = Array.isArray(entry.issues) && entry.issues.length
+        ? entry.issues.join(" | ")
+        : "pass";
+      return `attempt ${entry.attempt}: ${issues}`;
+    })
+    .join(" -> ");
 }
 
 function buildSceneRepeats(results) {
