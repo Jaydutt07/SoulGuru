@@ -35,6 +35,7 @@ try {
   await checkMoreGuidanceDashboard();
   await checkMoreGuidanceDeep();
   await checkShaniDashboard();
+  await checkSoulWisdomFeedback();
   await maybeCheckOtpRequest();
   await maybeCheckSoulWisdom();
   await maybeCheckAstroSolve();
@@ -229,6 +230,30 @@ async function checkShaniDashboard() {
     passed,
     status: result.status,
     detail: passed ? `Shani configured=${Boolean(result.body.configured)}.` : "Expected Shani report and Pandit history array."
+  });
+}
+
+async function checkSoulWisdomFeedback() {
+  const result = await requestJson("POST", "/api/soul-wisdom-feedback", {
+    user: smokeUser(),
+    rating: "accurate",
+    readingDate: "2026-06-24",
+    promptVersion: "soul-wisdom-v20",
+    wisdom: "A smoke reading should be practical, specific, and easy to respond to without sending raw secrets anywhere."
+  });
+  const feedback = result.body?.feedback || {};
+  const passed = result.status === 200
+    && feedback.rating === "accurate"
+    && feedback.readingDate === "2026-06-24"
+    && "stored" in (result.body || {});
+  pushCheck({
+    id: "soul-wisdom-feedback",
+    label: "Soul Wisdom feedback",
+    passed,
+    status: result.status,
+    detail: passed
+      ? `Feedback route stored=${Boolean(result.body.stored)}.`
+      : result.body?.error || "Expected feedback route JSON."
   });
 }
 
