@@ -93,9 +93,9 @@ function buildReport() {
       remaining: gitignoreContainsEnv() ? ["Run strict release scans before every production deploy."] : ["Add `.env` to `.gitignore`."]
     }),
     requirement("github", "Push code and SoulGuru details to the GitHub repo", {
-      status: activeWorkflowNeedsCredentials() ? "pushed_except_workflow_activation" : "complete",
+      status: workflowActivationPending() ? "pushed_except_workflow_activation" : "complete",
       evidence: ["`git log --oneline origin/main -5`", "`docs/github-actions-ci.yml`", "`npm run ci:install-workflow`", "`npm run ci:check`"],
-      remaining: activeWorkflowNeedsCredentials()
+      remaining: workflowActivationPending()
         ? ["Run `npm run ci:install-workflow` and push `.github/workflows/ci.yml` after GitHub credentials include `workflow` scope or SSH workflow-write permission."]
         : []
     }),
@@ -197,9 +197,15 @@ function missingFor(...ids) {
     .filter(Boolean);
 }
 
-function activeWorkflowNeedsCredentials() {
-  return fs.existsSync(path.join(process.cwd(), ".github", "workflows", "ci.yml"))
-    && git(["rev-parse", "--abbrev-ref", "HEAD"]) !== "main";
+function workflowActivationPending() {
+  const templatePath = path.join(process.cwd(), "docs", "github-actions-ci.yml");
+  const activePath = path.join(process.cwd(), ".github", "workflows", "ci.yml");
+  const template = readText(templatePath);
+  const active = readText(activePath);
+  if (!template) return true;
+  if (!active) return true;
+  if (normalizeWorkflow(active) !== normalizeWorkflow(template)) return true;
+  return git(["rev-parse", "--abbrev-ref", "HEAD"]) !== "main";
 }
 
 function gitignoreContainsEnv() {
@@ -211,6 +217,18 @@ function gitignoreContainsEnv() {
   } catch {
     return false;
   }
+}
+
+function readText(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function normalizeWorkflow(text) {
+  return String(text || "").trim().replace(/\r\n/g, "\n");
 }
 
 function apkEvidence() {

@@ -22,6 +22,13 @@ Do not paste real secret values into this file, README, issues, screenshots, com
    - Remote: `git@github.com:Jaydutt07/SoulGuru.git`
    - Proof: latest code is pushed and `npm run ci:check` passes.
    - GitHub Actions activation: run `npm run ci:install-workflow` only when pushing with a GitHub token that has `workflow` scope or an SSH key with permission to update workflows. Without that permission, GitHub rejects workflow-file pushes; keep `docs/github-actions-ci.yml` as the source of truth until the credential is updated.
+   - Credential preflight:
+
+```bash
+npm run github:workflow:check
+```
+
+   - If the check reports `needs_credentials`, refresh the GitHub CLI token with `gh auth refresh -h github.com -s workflow` or configure an SSH key with write access to `git@github.com:Jaydutt07/SoulGuru.git`, then install and push `.github/workflows/ci.yml`.
 
 2. Supabase backend
    - Create a Supabase project.

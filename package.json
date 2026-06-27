@@ -23,6 +23,7 @@
     "place:geocoder:check": "node scripts/check-place-geocoder-smoke-contracts.mjs",
     "place:geocoder:smoke": "node scripts/smoke-place-geocoder.mjs",
     "deployment:check": "node scripts/check-deployment-contracts.mjs",
+    "github:workflow:check": "node scripts/check-github-workflow-credentials.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "android:add": "cap add android",
