@@ -273,6 +273,111 @@ async function checkSmsWebhookSendsBearerToken() {
   }
 }
 
+async function checkMsg91OtpSendsTemplateRequest() {
+  const supabase = createFakeSupabase();
+  const fetchCalls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    fetchCalls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ type: "success", request_id: "msg91-contract-request" })
+    };
+  };
+
+  try {
+    const result = await requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      OTP_EXPIRY_MINUTES: "7",
+      MSG91_AUTH_KEY: "msg91-contract-auth-key",
+      MSG91_OTP_TEMPLATE_ID: "msg91-template-contract",
+      MSG91_OTP_ENDPOINT: "https://control.msg91.com/api/v5/otp"
+    }, {
+      supabase,
+      createOtpCode: () => "123456"
+    });
+    const challenge = supabase.state.challenges.get(result.challengeId);
+    const url = new URL(fetchCalls[0]?.url || "https://invalid.local");
+
+    pushCheck("MSG91 OTP sends configured template request", [
+      fetchCalls.length === 1,
+      url.origin + url.pathname === "https://control.msg91.com/api/v5/otp",
+      fetchCalls[0].options.method === "POST",
+      fetchCalls[0].options.headers.Accept === "application/json",
+      fetchCalls[0].options.headers["Content-Type"] === "application/json",
+      fetchCalls[0].options.body === "{}",
+      url.searchParams.get("template_id") === "msg91-template-contract",
+      url.searchParams.get("mobile") === "919800000004",
+      url.searchParams.get("authkey") === "msg91-contract-auth-key",
+      url.searchParams.get("otp") === "123456",
+      url.searchParams.get("otp_expiry") === "7"
+    ].every(Boolean));
+    pushCheck("MSG91 OTP success updates stored delivery channel", [
+      result.delivery?.sent === true,
+      result.delivery?.channel === "msg91",
+      result.delivery?.id === "msg91-contract-request",
+      challenge.delivery_channel === "msg91",
+      challenge.metadata?.deliveryId === "msg91-contract-request"
+    ].every(Boolean));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function checkMsg91ConfigIsValidatedBeforeStorage() {
+  const missingTemplateSupabase = createFakeSupabase();
+  const invalidEndpointSupabase = createFakeSupabase();
+
+  await expectRejects(
+    "MSG91 OTP requires template ID before storage",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      MSG91_AUTH_KEY: "msg91-contract-auth-key"
+    }, {
+      supabase: missingTemplateSupabase,
+      createOtpCode: () => "123456"
+    }),
+    /MSG91_OTP_TEMPLATE_ID.*configured/i,
+    500
+  );
+
+  await expectRejects(
+    "MSG91 OTP rejects insecure endpoint before storage",
+    () => requestOtp({
+      phone,
+      email,
+      purpose: "login"
+    }, {
+      OTP_HASH_SECRET: otpSecret,
+      OTP_DEMO_ENABLED: "false",
+      MSG91_AUTH_KEY: "msg91-contract-auth-key",
+      MSG91_OTP_TEMPLATE_ID: "msg91-template-contract",
+      MSG91_OTP_ENDPOINT: "http://control.msg91.com/api/v5/otp"
+    }, {
+      supabase: invalidEndpointSupabase,
+      createOtpCode: () => "123456"
+    }),
+    /MSG91_OTP_ENDPOINT.*HTTPS/i,
+    500
+  );
+
+  pushCheck("Invalid MSG91 config leaves no stored challenge", [
+    missingTemplateSupabase.state.challenges.size === 0,
+    invalidEndpointSupabase.state.challenges.size === 0
+  ].every(Boolean));
+}
+
 async function checkVerifyOtpAttemptsAndSuccess() {
   const supabase = createFakeSupabase({
     challenges: [buildChallenge({
@@ -402,8 +507,8 @@ function checkOtpReadinessRequiresStrongSecret() {
     OPENAI_MODEL: "gpt-5.5",
     SUPABASE_URL: "https://example.supabase.co",
     SUPABASE_SERVICE_ROLE_KEY: "service-role",
-    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
-    OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-token-123",
+    MSG91_AUTH_KEY: "msg91-contract-auth-key",
+    MSG91_OTP_TEMPLATE_ID: "msg91-template-contract",
     RAZORPAY_KEY_ID: "rzp_test_contract",
     RAZORPAY_KEY_SECRET: "razorpay-secret",
     RAZORPAY_WEBHOOK_SECRET: "webhook-secret",
@@ -425,6 +530,17 @@ function checkOtpReadinessRequiresStrongSecret() {
     weakOtp?.missingEnv.includes("OTP_HASH_SECRET>=32 characters")
   ].every(Boolean));
   pushCheck("Production readiness accepts strong OTP hash secret", strongOtp?.status === "pass");
+
+  const missingTemplateReport = buildDeploymentReadiness({
+    ...baseEnv,
+    OTP_HASH_SECRET: otpSecret,
+    MSG91_OTP_TEMPLATE_ID: ""
+  });
+  const missingTemplateOtp = missingTemplateReport.checks.find((check) => check.id === "otp");
+  pushCheck("Production readiness requires MSG91 template when MSG91 auth is configured", [
+    missingTemplateOtp?.status === "fail",
+    missingTemplateOtp?.missingEnv.includes("MSG91_OTP_TEMPLATE_ID")
+  ].every(Boolean));
 }
 
 function createFakeSupabase({ challenges = [], failChallengeInsert = false } = {}) {
@@ -604,6 +720,8 @@ async function main() {
   await checkSmsWebhookTokenIsRequiredBeforeStorage();
   await checkSmsWebhookUrlIsValidatedBeforeStorage();
   await checkSmsWebhookSendsBearerToken();
+  await checkMsg91OtpSendsTemplateRequest();
+  await checkMsg91ConfigIsValidatedBeforeStorage();
   await checkVerifyOtpAttemptsAndSuccess();
   await checkMaxAttemptsAndExpiryBlockVerification();
   checkOtpReadinessRequiresStrongSecret();

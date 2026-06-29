@@ -81,6 +81,7 @@ function checkLaunchPlanKeepsStackOrderPhases() {
     expectedTitles.every((title) => phaseTitles.includes(title)),
     plan?.phases?.[0]?.providers?.some((provider) => provider.id === "github"),
     plan?.phases?.[1]?.providers?.some((provider) => provider.id === "supabase"),
+    plan?.phases?.[1]?.providers?.some((provider) => provider.id === "msg91"),
     plan?.phases?.[2]?.providers?.some((provider) => provider.id === "vercel"),
     plan?.phases?.[3]?.providers?.some((provider) => provider.id === "razorpay"),
     plan?.phases?.[4]?.providers?.some((provider) => provider.id === "pinecone")
@@ -154,6 +155,7 @@ function checkDoesNotExposeRuntimeSecretValues() {
   const sentinelEnv = {
     ...process.env,
     OPENAI_API_KEY: "openai-launch-plan-sentinel",
+    MSG91_AUTH_KEY: "msg91-launch-plan-sentinel",
     SUPABASE_SERVICE_ROLE_KEY: "supabase-launch-plan-sentinel",
     RAZORPAY_KEY_SECRET: "razorpay-launch-plan-sentinel",
     RAZORPAY_WEBHOOK_SECRET: "razorpay-webhook-launch-plan-sentinel",

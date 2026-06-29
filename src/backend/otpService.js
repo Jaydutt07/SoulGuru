@@ -7,6 +7,8 @@ const DEFAULT_EXPIRY_MINUTES = 10;
 const DEFAULT_MAX_ATTEMPTS = 5;
 const MIN_OTP_HASH_SECRET_LENGTH = 32;
 const MIN_SMS_WEBHOOK_TOKEN_LENGTH = 16;
+const MIN_MSG91_AUTH_KEY_LENGTH = 8;
+const DEFAULT_MSG91_OTP_ENDPOINT = "https://control.msg91.com/api/v5/otp";
 
 export async function requestOtp(payload, env = process.env, deps = {}) {
   const phone = normalizePhone(payload.phone || payload.user?.phone);
@@ -154,6 +156,10 @@ export async function verifyOtp(payload, env = process.env, deps = {}) {
 }
 
 async function deliverOtp({ phone, email, code, purpose }, env) {
+  if (isMsg91OtpConfigured(env)) {
+    return sendMsg91Otp({ phone, code }, env);
+  }
+
   const smsWebhookUrl = getSmsWebhookUrl(env);
   if (smsWebhookUrl) {
     return sendSmsWebhook({ phone, code, purpose }, env, smsWebhookUrl);
@@ -181,6 +187,38 @@ async function deliverOtp({ phone, email, code, purpose }, env) {
   }
 
   throw createHttpError("OTP delivery is not configured", 500);
+}
+
+async function sendMsg91Otp({ phone, code }, env) {
+  const url = new URL(getMsg91OtpEndpoint(env));
+  url.searchParams.set("template_id", getMsg91OtpTemplateId(env));
+  url.searchParams.set("mobile", normalizeMsg91Mobile(phone));
+  url.searchParams.set("authkey", getMsg91AuthKey(env));
+  url.searchParams.set("otp", code);
+  url.searchParams.set("otp_expiry", String(getExpiryMinutes(env)));
+
+  const response = await fetchWithTimeout(url.toString(), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({})
+  }, {
+    env,
+    label: "MSG91 OTP"
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || String(data?.type || "").toLowerCase() === "error") {
+    throw new Error(data?.message || `MSG91 OTP failed with ${response.status}`);
+  }
+
+  return {
+    sent: true,
+    channel: "msg91",
+    id: data.request_id || data.messageId || data.message_id || data.id || null
+  };
 }
 
 async function sendSmsWebhook({ phone, code, purpose }, env, smsWebhookUrl = getSmsWebhookUrl(env)) {
@@ -252,6 +290,13 @@ function getOtpHashSecret(env) {
 }
 
 function assertOtpDeliveryConfigured({ email }, env) {
+  if (hasAnyMsg91OtpConfig(env)) {
+    getMsg91AuthKey(env);
+    getMsg91OtpTemplateId(env);
+    getMsg91OtpEndpoint(env);
+    return;
+  }
+
   if (getSmsWebhookUrl(env)) {
     getSmsWebhookToken(env);
     return;
@@ -266,6 +311,44 @@ function assertOtpDeliveryConfigured({ email }, env) {
   }
 
   throw createHttpError("OTP delivery is not configured", 500);
+}
+
+function isMsg91OtpConfigured(env) {
+  return Boolean(getConfiguredEnvValue(env, "MSG91_AUTH_KEY") && getConfiguredEnvValue(env, "MSG91_OTP_TEMPLATE_ID"));
+}
+
+function hasAnyMsg91OtpConfig(env) {
+  return Boolean(
+    String(env.MSG91_AUTH_KEY || "").trim() ||
+    String(env.MSG91_OTP_TEMPLATE_ID || "").trim()
+  );
+}
+
+function getMsg91AuthKey(env) {
+  const authKey = getConfiguredEnvValue(env, "MSG91_AUTH_KEY");
+  if (!authKey) {
+    throw createHttpError("MSG91_AUTH_KEY must be configured for MSG91 OTP delivery", 500);
+  }
+  if (authKey.length < MIN_MSG91_AUTH_KEY_LENGTH) {
+    throw createHttpError(`MSG91_AUTH_KEY must be at least ${MIN_MSG91_AUTH_KEY_LENGTH} characters`, 500);
+  }
+  return authKey;
+}
+
+function getMsg91OtpTemplateId(env) {
+  const templateId = getConfiguredEnvValue(env, "MSG91_OTP_TEMPLATE_ID");
+  if (!templateId) {
+    throw createHttpError("MSG91_OTP_TEMPLATE_ID must be configured for MSG91 OTP delivery", 500);
+  }
+  return templateId;
+}
+
+function getMsg91OtpEndpoint(env) {
+  const endpoint = getConfiguredEnvValue(env, "MSG91_OTP_ENDPOINT") || DEFAULT_MSG91_OTP_ENDPOINT;
+  if (!isSafeHttpsUrl(endpoint)) {
+    throw createHttpError("MSG91_OTP_ENDPOINT must be a real HTTPS provider URL", 500);
+  }
+  return endpoint;
 }
 
 function getSmsWebhookUrl(env) {
@@ -286,6 +369,11 @@ function getSmsWebhookToken(env) {
     throw createHttpError(`OTP_SMS_WEBHOOK_TOKEN must be at least ${MIN_SMS_WEBHOOK_TOKEN_LENGTH} characters`, 500);
   }
   return token;
+}
+
+function getConfiguredEnvValue(env, key) {
+  const value = String(env[key] || "").trim();
+  return isPlaceholderSecret(value) ? "" : value;
 }
 
 function isPlaceholderSecret(value) {
@@ -334,6 +422,10 @@ function getMaxAttempts(env) {
 
 function normalizePhone(phone) {
   return String(phone || "").replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+}
+
+function normalizeMsg91Mobile(phone) {
+  return normalizePhone(phone).replace(/^\+/, "");
 }
 
 function normalizeEmail(email) {

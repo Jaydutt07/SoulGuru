@@ -68,7 +68,8 @@ npm run place:geocoder:smoke -- --place="Paris, France"
 ```
 
 5. OTP login and email
-   - Set `OTP_HASH_SECRET`, `OTP_SMS_WEBHOOK_URL`, and `OTP_SMS_WEBHOOK_TOKEN`.
+   - Set `OTP_HASH_SECRET`, `MSG91_AUTH_KEY`, `MSG91_OTP_TEMPLATE_ID`, and optionally `MSG91_OTP_ENDPOINT`.
+   - Keep `OTP_DEMO_ENABLED=false`; the MSG91 template must include `##OTP##`.
    - Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
    - Proof:
 

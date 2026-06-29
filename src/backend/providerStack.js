@@ -75,6 +75,7 @@ export const PROVIDER_STACK = Object.freeze([
       "supabase/migrations/014_soul_wisdom_generation_locks.sql",
       "supabase/migrations/015_more_guidance_generation_locks.sql",
       "supabase/migrations/016_soul_wisdom_feedback.sql",
+      "supabase/migrations/017_service_role_grants.sql",
       "src/backend/userIdentity.js",
       "scripts/generate-supabase-schema-bundle.mjs",
       "scripts/check-supabase-schema-bundle.mjs",
@@ -101,6 +102,23 @@ export const PROVIDER_STACK = Object.freeze([
     ],
     commands: ["npm run deployment:check", "npm run deployment:smoke:check", "npm run deployment:smoke"],
     notes: "Production mobile builds must point at the deployed HTTPS API base URL."
+  },
+  {
+    id: "msg91",
+    name: "MSG91",
+    planningImageLabel: "MSG91 / OTP SMS",
+    planningImageCost: "Usage-based OTP/SMS credits; start with OTP-only traffic",
+    purpose: "Phone OTP delivery for login and create-account verification",
+    readinessChecks: ["otp"],
+    envScope: ["MSG91_AUTH_KEY", "MSG91_OTP_TEMPLATE_ID", "MSG91_OTP_ENDPOINT"],
+    artifacts: [
+      "src/backend/otpService.js",
+      "api/auth-otp.js",
+      "scripts/check-otp-contracts.mjs",
+      "docs/external-provider-requirements.md"
+    ],
+    commands: ["npm run otp:check"],
+    notes: "The Auth Key stays server-side; the OTP template should include MSG91's ##OTP## placeholder."
   },
   {
     id: "namecheap",

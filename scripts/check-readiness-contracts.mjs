@@ -90,7 +90,7 @@ function checkPlaceholderValuesAreNotReady() {
     ...fullEnv(),
     OPENAI_API_KEY: "fake-openai-key",
     SUPABASE_SERVICE_ROLE_KEY: "replace-with-service-role",
-    OTP_SMS_WEBHOOK_TOKEN: "replace-with-sms-token",
+    MSG91_AUTH_KEY: "replace-with-msg91-auth-key",
     PLACE_GEOCODER_URL: "<geocoder-url>",
     RAZORPAY_KEY_SECRET: "<razorpay-secret>",
     RAZORPAY_WEBHOOK_URL: "<razorpay-webhook-url>",
@@ -116,7 +116,7 @@ function checkPlaceholderValuesAreNotReady() {
     report.ok === false,
     openai?.missingEnv.includes("OPENAI_API_KEY"),
     supabase?.missingEnv.includes("SUPABASE_SERVICE_ROLE_KEY"),
-    otp?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN"),
+    otp?.missingEnv.includes("MSG91_AUTH_KEY"),
     birthPlaceAccuracy?.missingEnv.includes("PLACE_GEOCODER_URL"),
     razorpay?.missingEnv.includes("RAZORPAY_KEY_SECRET"),
     razorpay?.missingEnv.includes("RAZORPAY_WEBHOOK_URL"),
@@ -302,13 +302,24 @@ function checkInvalidRazorpayWebhookIsNotReady() {
 function checkInvalidOtpDeliveryIsNotReady() {
   const emailOnlyReport = buildDeploymentReadiness({
     ...fullEnv(),
+    MSG91_AUTH_KEY: "",
+    MSG91_OTP_TEMPLATE_ID: "",
     OTP_SMS_WEBHOOK_URL: "",
     OTP_SMS_WEBHOOK_TOKEN: "",
     RESEND_API_KEY: "re_contract_key_123456",
     RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
   });
-  const weakTokenReport = buildDeploymentReadiness({
+  const weakMsg91Report = buildDeploymentReadiness({
     ...fullEnv(),
+    MSG91_AUTH_KEY: "short",
+    OTP_SMS_WEBHOOK_URL: "",
+    OTP_SMS_WEBHOOK_TOKEN: ""
+  });
+  const weakWebhookReport = buildDeploymentReadiness({
+    ...fullEnv(),
+    MSG91_AUTH_KEY: "",
+    MSG91_OTP_TEMPLATE_ID: "",
+    OTP_SMS_WEBHOOK_URL: "https://sms.example.test",
     OTP_SMS_WEBHOOK_TOKEN: "short"
   });
   const demoReport = buildDeploymentReadiness({
@@ -317,17 +328,21 @@ function checkInvalidOtpDeliveryIsNotReady() {
   });
 
   const emailOnly = emailOnlyReport.checks.find((check) => check.id === "otp");
-  const weakToken = weakTokenReport.checks.find((check) => check.id === "otp");
+  const weakMsg91 = weakMsg91Report.checks.find((check) => check.id === "otp");
+  const weakWebhook = weakWebhookReport.checks.find((check) => check.id === "otp");
   const demo = demoReport.checks.find((check) => check.id === "otp");
 
-  pushCheck("Readiness requires token-authenticated SMS OTP delivery", [
+  pushCheck("Readiness requires production SMS OTP delivery", [
     emailOnlyReport.ok === false,
     emailOnly?.status === "fail",
-    emailOnly?.missingEnv.includes("OTP_SMS_WEBHOOK_URL"),
-    emailOnly?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN"),
-    weakTokenReport.ok === false,
-    weakToken?.status === "fail",
-    weakToken?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN>=16 characters"),
+    emailOnly?.missingEnv.includes("MSG91_AUTH_KEY"),
+    emailOnly?.missingEnv.includes("MSG91_OTP_TEMPLATE_ID"),
+    weakMsg91Report.ok === false,
+    weakMsg91?.status === "fail",
+    weakMsg91?.missingEnv.includes("MSG91_AUTH_KEY>=8 characters"),
+    weakWebhookReport.ok === false,
+    weakWebhook?.status === "fail",
+    weakWebhook?.missingEnv.includes("OTP_SMS_WEBHOOK_TOKEN>=16 characters"),
     demoReport.ok === false,
     demo?.status === "fail",
     demo?.missingEnv.includes("OTP_DEMO_ENABLED=false")
@@ -341,7 +356,7 @@ function checkInvalidServiceUrlsAreNotReady() {
   });
   const otpReport = buildDeploymentReadiness({
     ...fullEnv(),
-    OTP_SMS_WEBHOOK_URL: "http://sms.example.test"
+    MSG91_OTP_ENDPOINT: "http://control.msg91.com/api/v5/otp"
   });
   const vendorReport = buildDeploymentReadiness({
     ...fullEnv(),
@@ -371,7 +386,7 @@ function checkInvalidServiceUrlsAreNotReady() {
     supabase?.missingEnv.includes("SUPABASE_URL=https URL"),
     otpReport.ok === false,
     otp?.status === "fail",
-    otp?.missingEnv.includes("OTP_SMS_WEBHOOK_URL=https URL"),
+    otp?.missingEnv.includes("MSG91_OTP_ENDPOINT=https URL"),
     vendorReport.ok === false,
     birthPlaceAccuracy?.status === "fail",
     birthPlaceAccuracy?.missingEnv.includes("PLACE_GEOCODER_URL=https URL"),
@@ -419,6 +434,7 @@ function checkReadinessPayloadDoesNotLeakSecretValues() {
   const forbiddenValues = [
     env.OPENAI_API_KEY,
     env.SUPABASE_SERVICE_ROLE_KEY,
+    env.MSG91_AUTH_KEY,
     env.OTP_HASH_SECRET,
     env.RAZORPAY_KEY_SECRET,
     env.RAZORPAY_WEBHOOK_SECRET,
@@ -468,8 +484,9 @@ function criticalEnv() {
     SUPABASE_URL: "https://soulguru-prod.supabase.co",
     SUPABASE_SERVICE_ROLE_KEY: "service-role-contract-secret-123456",
     OTP_HASH_SECRET: "soulguru-otp-hash-secret-with-at-least-32-chars",
-    OTP_SMS_WEBHOOK_URL: "https://sms.soulguru.app/send",
-    OTP_SMS_WEBHOOK_TOKEN: "sms-webhook-contract-token",
+    MSG91_AUTH_KEY: "msg91-contract-auth-key",
+    MSG91_OTP_TEMPLATE_ID: "msg91-contract-template",
+    MSG91_OTP_ENDPOINT: "https://control.msg91.com/api/v5/otp",
     RAZORPAY_KEY_ID: "rzp_test_contract123456",
     RAZORPAY_KEY_SECRET: "razorpay-contract-secret-123456",
     RAZORPAY_WEBHOOK_SECRET: "razorpay-webhook-secret-123456",

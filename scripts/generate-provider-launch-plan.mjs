@@ -40,7 +40,7 @@ function buildLaunchPlan({ summary, providers }) {
     {
       title: "Data, Auth, OTP, And Email",
       objective: "Connect persistent identity, profile storage, OTP login, and transactional membership email.",
-      providerIds: ["supabase", "clerk", "resend"]
+      providerIds: ["supabase", "msg91", "clerk", "resend"]
     },
     {
       title: "Deployment, Domain, And DNS",

@@ -128,6 +128,7 @@ function checkDoesNotExposeRuntimeSecretValues() {
   const sentinelEnv = {
     ...process.env,
     OPENAI_API_KEY: "openai-env-template-sentinel",
+    MSG91_AUTH_KEY: "msg91-env-template-sentinel",
     SUPABASE_SERVICE_ROLE_KEY: "supabase-env-template-sentinel",
     RAZORPAY_KEY_SECRET: "razorpay-env-template-sentinel",
     RAZORPAY_WEBHOOK_SECRET: "razorpay-webhook-env-template-sentinel",

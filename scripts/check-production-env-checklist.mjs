@@ -76,6 +76,7 @@ function checkDoesNotExposeRuntimeSecretValues() {
   const sentinelEnv = {
     ...process.env,
     OPENAI_API_KEY: "openai-prod-env-checklist-sentinel",
+    MSG91_AUTH_KEY: "msg91-prod-env-checklist-sentinel",
     SUPABASE_SERVICE_ROLE_KEY: "supabase-service-role-sentinel",
     RAZORPAY_KEY_SECRET: "razorpay-secret-sentinel",
     OTP_HASH_SECRET: "otp-secret-sentinel-with-at-least-32-characters"
@@ -88,6 +89,7 @@ function checkDoesNotExposeRuntimeSecretValues() {
   const sentinelOutput = sentinelResult.stdout || "";
   const leaked = [
     sentinelEnv.OPENAI_API_KEY,
+    sentinelEnv.MSG91_AUTH_KEY,
     sentinelEnv.SUPABASE_SERVICE_ROLE_KEY,
     sentinelEnv.RAZORPAY_KEY_SECRET,
     sentinelEnv.OTP_HASH_SECRET

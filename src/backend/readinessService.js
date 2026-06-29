@@ -3,6 +3,8 @@ import {
   summarizeProviderReadiness
 } from "./providerStack.js";
 
+const MIN_MSG91_AUTH_KEY_LENGTH = 8;
+
 export function buildDeploymentReadiness(env = process.env) {
   const checks = [
     checkRequired(env, "openai", "OpenAI AI routes", [
@@ -232,8 +234,17 @@ function checkOtp(env) {
     .filter((name) => !hasEnv(env, name));
   const hasOtpSecret = hasEnv(env, "OTP_HASH_SECRET");
   const otpSecret = String(env.OTP_HASH_SECRET || "").trim();
+  const hasMsg91Auth = hasEnv(env, "MSG91_AUTH_KEY");
+  const msg91Auth = String(env.MSG91_AUTH_KEY || "").trim();
+  const hasMsg91Template = hasEnv(env, "MSG91_OTP_TEMPLATE_ID");
+  const hasMsg91Endpoint = hasEnv(env, "MSG91_OTP_ENDPOINT");
+  const hasAnyMsg91Config = Boolean(
+    String(env.MSG91_AUTH_KEY || "").trim() ||
+    String(env.MSG91_OTP_TEMPLATE_ID || "").trim()
+  );
   const hasSms = hasEnv(env, "OTP_SMS_WEBHOOK_URL");
   const hasSmsToken = hasEnv(env, "OTP_SMS_WEBHOOK_TOKEN");
+  const hasAnySmsWebhookConfig = hasSms || hasSmsToken;
   const smsToken = String(env.OTP_SMS_WEBHOOK_TOKEN || "").trim();
   const demoEnabled = String(env.OTP_DEMO_ENABLED || "false").toLowerCase() === "true";
   const missingEnv = [...missingBase];
@@ -243,16 +254,33 @@ function checkOtp(env) {
   } else if (otpSecret.length < 32) {
     missingEnv.push("OTP_HASH_SECRET>=32 characters");
   }
-  if (!hasSms) {
-    missingEnv.push("OTP_SMS_WEBHOOK_URL");
-  }
-  if (hasSms && !isHttpsUrl(env.OTP_SMS_WEBHOOK_URL)) {
-    missingEnv.push("OTP_SMS_WEBHOOK_URL=https URL");
-  }
-  if (!hasSmsToken) {
-    missingEnv.push("OTP_SMS_WEBHOOK_TOKEN");
-  } else if (smsToken.length < 16) {
-    missingEnv.push("OTP_SMS_WEBHOOK_TOKEN>=16 characters");
+
+  if (hasAnyMsg91Config) {
+    if (!hasMsg91Auth) {
+      missingEnv.push("MSG91_AUTH_KEY");
+    } else if (msg91Auth.length < MIN_MSG91_AUTH_KEY_LENGTH) {
+      missingEnv.push(`MSG91_AUTH_KEY>=${MIN_MSG91_AUTH_KEY_LENGTH} characters`);
+    }
+    if (!hasMsg91Template) {
+      missingEnv.push("MSG91_OTP_TEMPLATE_ID");
+    }
+    if (hasMsg91Endpoint && !isHttpsUrl(env.MSG91_OTP_ENDPOINT)) {
+      missingEnv.push("MSG91_OTP_ENDPOINT=https URL");
+    }
+  } else if (hasAnySmsWebhookConfig) {
+    if (!hasSms) {
+      missingEnv.push("OTP_SMS_WEBHOOK_URL");
+    }
+    if (hasSms && !isHttpsUrl(env.OTP_SMS_WEBHOOK_URL)) {
+      missingEnv.push("OTP_SMS_WEBHOOK_URL=https URL");
+    }
+    if (!hasSmsToken) {
+      missingEnv.push("OTP_SMS_WEBHOOK_TOKEN");
+    } else if (smsToken.length < 16) {
+      missingEnv.push("OTP_SMS_WEBHOOK_TOKEN>=16 characters");
+    }
+  } else {
+    missingEnv.push("MSG91_AUTH_KEY", "MSG91_OTP_TEMPLATE_ID");
   }
   if (demoEnabled) {
     missingEnv.push("OTP_DEMO_ENABLED=false");
@@ -267,12 +295,13 @@ function checkOtp(env) {
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
       "OTP_HASH_SECRET>=32 characters",
-      "OTP_SMS_WEBHOOK_URL",
-      "OTP_SMS_WEBHOOK_TOKEN>=16 characters",
+      "MSG91_AUTH_KEY or OTP_SMS_WEBHOOK_URL",
+      "MSG91_OTP_TEMPLATE_ID or OTP_SMS_WEBHOOK_TOKEN>=16 characters",
+      "MSG91_OTP_ENDPOINT=https URL",
       "OTP_DEMO_ENABLED=false"
     ],
     missingEnv,
-    advice: missingEnv.length ? "Configure Supabase-backed OTP storage, a strong OTP hash secret, and a token-authenticated SMS delivery path." : ""
+    advice: missingEnv.length ? "Configure Supabase-backed OTP storage, a strong OTP hash secret, and MSG91 or a token-authenticated SMS delivery path." : ""
   };
 }
 
