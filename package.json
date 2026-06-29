@@ -29,7 +29,7 @@
     "android:add": "cap add android",
     "android:sync": "npm run build && cap sync android",
     "android:apk": "node scripts/build-android-debug.mjs",
-    "android:apk:backend": "node scripts/validate-mobile-backend.mjs && npm run android:apk",
+    "android:apk:backend": "node scripts/validate-mobile-backend.mjs && node scripts/build-android-debug.mjs --backend",
     "android:apk:local": "node scripts/build-local-mobile-apk.mjs",
     "android:artifact:check": "node scripts/check-android-artifact.mjs",
     "android:security:check": "node scripts/check-android-security-contracts.mjs",

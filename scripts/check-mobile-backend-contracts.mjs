@@ -6,6 +6,7 @@ import { PROVIDER_STACK } from "../src/backend/providerStack.js";
 
 const checks = [];
 
+checkDebugApkBuildKeepsDemoOtpFallback();
 checkLocalApkBuildEnablesPreviewFlags();
 checkLocalApkBuildRunsArtifactAudit();
 checkReleaseBuildRunsArtifactAudit();
@@ -29,6 +30,20 @@ function checkLocalApkBuildEnablesPreviewFlags() {
     source.includes('VITE_DEMO_PAYMENTS: "true"'),
     source.includes("Local preview flags enabled"),
     source.includes('VITE_API_BASE_URL: apiBaseUrl')
+  ].every(Boolean));
+}
+
+function checkDebugApkBuildKeepsDemoOtpFallback() {
+  const source = fs.readFileSync("scripts/build-android-debug.mjs", "utf8");
+  const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  pushCheck("Debug APK build keeps demo OTP fallback unless backend mode is explicit", [
+    packageJson.scripts["android:apk"] === "node scripts/build-android-debug.mjs",
+    packageJson.scripts["android:apk:backend"] === "node scripts/validate-mobile-backend.mjs && node scripts/build-android-debug.mjs --backend",
+    source.includes('const backendMode = process.argv.includes("--backend");'),
+    source.includes('env.VITE_LOCAL_AUTH_FALLBACK = "true";'),
+    source.includes('env.VITE_LOCAL_AUTH_FALLBACK = "false";'),
+    source.includes("Building debug APK with demo OTP fallback enabled."),
+    source.includes("Building backend-connected debug APK with demo OTP fallback disabled.")
   ].every(Boolean));
 }
 

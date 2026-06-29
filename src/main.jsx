@@ -2488,11 +2488,10 @@ async function requestOtpFromServer({ phone, email, purpose }) {
       code: fallbackCode
     };
   } catch (error) {
-    if (error.message && error.message !== "Failed to fetch") {
-      throw error;
-    }
-
     if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+      if (error.message && error.message !== "Failed to fetch") {
+        throw error;
+      }
       throw new Error("Unable to reach OTP service. Please try again shortly.");
     }
 
