@@ -18,7 +18,8 @@ const requiredMigrationFiles = [
   "013_hashed_user_keys.sql",
   "014_soul_wisdom_generation_locks.sql",
   "015_more_guidance_generation_locks.sql",
-  "016_soul_wisdom_feedback.sql"
+  "016_soul_wisdom_feedback.sql",
+  "017_service_role_grants.sql"
 ];
 
 const hashedUserKeyTables = [
@@ -382,6 +383,15 @@ function checkCriticalDefaults() {
     contains("grant execute on function public.soulguru_schema_contract() to service_role"),
     contains("revoke all on function public.soulguru_schema_contract() from anon"),
     contains("revoke all on function public.soulguru_schema_contract() from authenticated")
+  ].every(Boolean));
+  pushCheck("Service role has explicit table, sequence, and function grants", [
+    contains("grant usage on schema public to service_role"),
+    contains("grant all privileges on all tables in schema public to service_role"),
+    contains("grant all privileges on all sequences in schema public to service_role"),
+    contains("grant execute on all functions in schema public to service_role"),
+    contains("alter default privileges in schema public grant all privileges on tables to service_role"),
+    contains("alter default privileges in schema public grant all privileges on sequences to service_role"),
+    contains("alter default privileges in schema public grant execute on functions to service_role")
   ].every(Boolean));
 }
 
