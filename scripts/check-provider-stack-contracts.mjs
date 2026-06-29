@@ -214,10 +214,7 @@ function checkRazorpayProviderCoversEveryPaidAccessRoute() {
   const requiredArtifacts = [
     "src/backend/payments.js",
     "src/backend/userIdentity.js",
-    "api/create-razorpay-order.js",
-    "api/verify-razorpay-payment.js",
-    "api/create-shani-order.js",
-    "api/verify-shani-payment.js",
+    "api/payments.js",
     "api/razorpay-webhook.js",
     "scripts/check-payment-contracts.mjs",
     "scripts/check-client-payment-flow-contracts.mjs"

@@ -58,6 +58,22 @@
   ],
   "rewrites": [
     {
+      "source": "/api/create-razorpay-order",
+      "destination": "/api/payments?action=create-razorpay-order"
+    },
+    {
+      "source": "/api/verify-razorpay-payment",
+      "destination": "/api/payments?action=verify-razorpay-payment"
+    },
+    {
+      "source": "/api/create-shani-order",
+      "destination": "/api/payments?action=create-shani-order"
+    },
+    {
+      "source": "/api/verify-shani-payment",
+      "destination": "/api/payments?action=verify-shani-payment"
+    },
+    {
       "source": "/:path((?!api/).*)",
       "destination": "/index.html"
     }

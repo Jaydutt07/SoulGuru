@@ -11,14 +11,14 @@ const protectedRoutes = [
     downstream: ["getAstroSolveAllowanceStatus", "createAstroSolve"]
   },
   {
-    file: "create-razorpay-order.js",
-    label: "More Guidance order creation",
-    downstream: ["createRazorpayOrder"]
-  },
-  {
-    file: "create-shani-order.js",
-    label: "Shani order creation",
-    downstream: ["createShaniRazorpayOrder"]
+    file: "payments.js",
+    label: "Payment checkout",
+    downstream: [
+      "createRazorpayOrder",
+      "verifyRazorpayCheckoutPayment",
+      "createShaniRazorpayOrder",
+      "verifyShaniRazorpayCheckoutPayment"
+    ]
   },
   {
     file: "guidance-memory.js",
@@ -49,16 +49,6 @@ const protectedRoutes = [
     file: "user-profile.js",
     label: "User profile",
     downstream: ["handleUserProfile"]
-  },
-  {
-    file: "verify-razorpay-payment.js",
-    label: "More Guidance payment verification",
-    downstream: ["verifyRazorpayCheckoutPayment"]
-  },
-  {
-    file: "verify-shani-payment.js",
-    label: "Shani payment verification",
-    downstream: ["verifyShaniRazorpayCheckoutPayment"]
   }
 ];
 

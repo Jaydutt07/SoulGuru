@@ -10,6 +10,7 @@ const viteConfig = readFile("vite.config.js");
 checkVercelBuildConfig();
 checkViteChunkingConfig();
 checkVercelApiFunctionConfig();
+checkVercelHobbyFunctionCount();
 checkVercelSecurityHeaders();
 checkVercelCacheHeaders();
 checkVercelSpaRewrite();
@@ -58,6 +59,16 @@ function checkVercelApiFunctionConfig() {
     Number(apiFunction?.maxDuration) >= 30
   ].every(Boolean), [
     "Expected functions[\"api/**/*.js\"].maxDuration to be at least 30."
+  ]);
+}
+
+function checkVercelHobbyFunctionCount() {
+  const apiFunctions = listFiles("api")
+    .filter((file) => file.endsWith(".js"))
+    .sort();
+
+  pushCheck("Vercel Hobby deployment stays within serverless function count", apiFunctions.length <= 12, [
+    `Expected at most 12 API serverless function files for Hobby; found ${apiFunctions.length}: ${apiFunctions.join(", ")}`
   ]);
 }
 
@@ -246,6 +257,18 @@ function readFile(file) {
     return fs.readFileSync(file, "utf8");
   } catch {
     return "";
+  }
+}
+
+function listFiles(dir) {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const entryPath = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) return listFiles(entryPath);
+      return entry.isFile() ? [entryPath] : [];
+    });
+  } catch {
+    return [];
   }
 }
 

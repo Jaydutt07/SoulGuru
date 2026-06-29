@@ -26,7 +26,7 @@ const rateLimitedRoutes = [
     downstream: ["requestOtp", "verifyOtp"]
   },
   {
-    file: "create-razorpay-order.js",
+    file: "payments.js",
     label: "More Guidance order",
     route: "razorpay-order",
     limitEnv: "RAZORPAY_ORDER_RATE_LIMIT",
@@ -36,7 +36,7 @@ const rateLimitedRoutes = [
     downstream: ["createRazorpayOrder"]
   },
   {
-    file: "create-shani-order.js",
+    file: "payments.js",
     label: "Shani order",
     route: "shani-razorpay-order",
     limitEnv: "RAZORPAY_ORDER_RATE_LIMIT",
@@ -106,7 +106,7 @@ const rateLimitedRoutes = [
     downstream: ["handleUserProfile"]
   },
   {
-    file: "verify-razorpay-payment.js",
+    file: "payments.js",
     label: "More Guidance payment verification",
     route: "razorpay-verify",
     limitEnv: "RAZORPAY_VERIFY_RATE_LIMIT",
@@ -116,7 +116,7 @@ const rateLimitedRoutes = [
     downstream: ["verifyRazorpayCheckoutPayment"]
   },
   {
-    file: "verify-shani-payment.js",
+    file: "payments.js",
     label: "Shani payment verification",
     route: "shani-razorpay-verify",
     limitEnv: "RAZORPAY_VERIFY_RATE_LIMIT",
@@ -149,19 +149,16 @@ function checkRouteCoverage() {
   const actualRoutes = fs.readdirSync(apiDir)
     .filter((file) => file.endsWith(".js"))
     .sort();
-  const covered = [...rateLimitedRoutes.map((route) => route.file), ...intentionallyUnmeteredRoutes].sort();
+  const covered = [...new Set([...rateLimitedRoutes.map((route) => route.file), ...intentionallyUnmeteredRoutes])].sort();
   const missing = actualRoutes.filter((file) => !covered.includes(file));
   const stale = covered.filter((file) => !actualRoutes.includes(file));
-  const duplicates = covered.filter((file, index) => covered.indexOf(file) !== index);
 
-  pushCheck("API rate-limit matrix covers every route exactly once", [
+  pushCheck("API rate-limit matrix covers every serverless route file", [
     missing.length === 0,
-    stale.length === 0,
-    duplicates.length === 0
+    stale.length === 0
   ].every(Boolean), [
     ...missing.map((file) => `missing rate-limit matrix entry for ${file}`),
-    ...stale.map((file) => `stale rate-limit matrix entry for ${file}`),
-    ...duplicates.map((file) => `duplicate rate-limit matrix entry for ${file}`)
+    ...stale.map((file) => `stale rate-limit matrix entry for ${file}`)
   ]);
 }
 
