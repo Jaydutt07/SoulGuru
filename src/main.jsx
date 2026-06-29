@@ -504,6 +504,14 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const mentorMove = reading?.todayMove || focusCue || "Finish one real step";
   const releaseMove = reading?.release || avoidCue || "The extra debate";
   const mentorName = firstName(user.name) || "Seeker";
+  const readingDeck = useMemo(() => buildSoulGuruReadingDeck({
+    reading,
+    focusCue,
+    anchorCue,
+    avoidCue,
+    mentorMove,
+    releaseMove
+  }), [anchorCue, avoidCue, focusCue, mentorMove, reading, releaseMove]);
 
   useEffect(() => {
     setFeedbackChoice("");
@@ -741,67 +749,75 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
 
   return (
     <section className="tab-section soul-section">
-      <p className="eyebrow">Soul Guru</p>
-      <h2>Words of Wisdom</h2>
-      <div className="soul-guru-hero" aria-label="Today's Soul Guru signal">
-        <div className="soul-guru-cosmos" aria-hidden="true">
-          <span className="guru-compass-ring" />
-          <span className="guru-compass-ring guru-compass-ring-inner" />
+      <div className="soul-guru-hero" aria-label="Today's Soul Guru room">
+        <div className="soul-guru-cosmos guru-sanctum" aria-hidden="true">
+          <span className="guru-arch" />
+          <span className="guru-astrolabe" />
+          <span className="guru-astrolabe guru-astrolabe-inner" />
           <span className="guru-orbit guru-orbit-one" />
           <span className="guru-orbit guru-orbit-two" />
+          <span className="guru-advisor">
+            <span className="guru-advisor-head" />
+            <span className="guru-advisor-robe" />
+          </span>
+          <span className="guru-book">
+            <span />
+          </span>
           <span className="guru-star guru-star-one" />
           <span className="guru-star guru-star-two" />
           <span className="guru-star guru-star-three" />
-          <span className="guru-core">
-            <Sparkles size={28} aria-hidden="true" />
-          </span>
         </div>
         <div className="soul-guru-daily">
+          <p className="eyebrow">Soul Guru</p>
+          <h2>Words of Wisdom</h2>
           <span>
             <Clock3 size={14} aria-hidden="true" />
             {formatDate(todayKey)}
           </span>
-          <strong>{mentorName}'s mentor signal</strong>
+          <strong>{mentorName}, keep today's answer close.</strong>
         </div>
       </div>
       <article className="wisdom-panel">
         <div className="wisdom-sigil" aria-hidden="true" />
         <div className="wisdom-panel-top">
-          <p className="editorial-kicker">Today's mentor word</p>
+          <p className="editorial-kicker">Today's private note</p>
           {reading && (
             <span className="soul-weather-pill">
               <Sparkles size={14} aria-hidden="true" />
-              {reading.innerWeather || anchorCue}
+              Chart signal
             </span>
           )}
         </div>
         {reading ? (
           <>
-            <h3 className="wisdom-headline">{wisdomEditorial.headline}</h3>
-            {wisdomEditorial.body && <p className="wisdom-body">{wisdomEditorial.body}</p>}
+            <div className="soul-note-frame">
+              <h3 className="wisdom-headline">{wisdomEditorial.headline}</h3>
+              {wisdomEditorial.body && <p className="wisdom-body">{wisdomEditorial.body}</p>}
+            </div>
+            <div className="soul-reading-briefing" aria-label="Soul Guru reading briefing">
+              {readingDeck.map((layer, index) => (
+                <section className={`soul-briefing-row soul-briefing-row-${layer.id}`} key={layer.id}>
+                  <span className="soul-briefing-index">{String(index + 1).padStart(2, "0")}</span>
+                  <div>
+                    <span>{layer.label}</span>
+                    <p>{layer.value}</p>
+                  </div>
+                </section>
+              ))}
+            </div>
           </>
         ) : (
           <p className="wisdom-status">{readingStatus}</p>
         )}
       </article>
       {reading && (
-        <div className="soul-focus-grid" aria-label="Today's astrology focus">
-          {focusItems.map((item) => (
-            <div className="soul-focus-chip" key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
-          ))}
-        </div>
-      )}
-      {reading && (
         <div className="mentor-cues" aria-label="Today's mentor cues">
           <div>
-            <span>Do</span>
+            <span>Do before sunset</span>
             <strong>{mentorMove}</strong>
           </div>
           <div>
-            <span>Leave</span>
+            <span>Do not carry tonight</span>
             <strong>{releaseMove}</strong>
           </div>
         </div>
@@ -854,6 +870,14 @@ function splitWisdomForEditorial(input) {
     };
   }
 
+  const cueHeadline = normalizeReadingHeadline(source.innerWeather || source.todayMove || "");
+  if (cueHeadline) {
+    return {
+      headline: cueHeadline,
+      body: sentenceCase(clean)
+    };
+  }
+
   if (words(clean).length <= 18 && clean.length <= 118) {
     return {
       headline: normalizeMentorHeadline(clean),
@@ -867,7 +891,7 @@ function splitWisdomForEditorial(input) {
     if (words(firstSentence).length <= 14 && firstSentence.length <= 92) {
       return {
         headline: normalizeMentorHeadline(firstSentence),
-        body: limitDisplayWords(sentenceMatch[2], 12)
+        body: sentenceCase(sentenceMatch[2])
       };
     }
   }
@@ -876,14 +900,32 @@ function splitWisdomForEditorial(input) {
   if (mentorMove) {
     return {
       headline: mentorMove,
-      body: limitDisplayWords(clean, 12)
+      body: sentenceCase(clean)
     };
   }
 
   return {
-    headline: normalizeMentorHeadline(limitDisplayWords(clean, 14)),
+    headline: normalizeMentorHeadline(limitDisplayWords(clean, 12)),
     body: ""
   };
+}
+
+function buildSoulGuruReadingDeck({ reading, focusCue, anchorCue, avoidCue, mentorMove, releaseMove }) {
+  if (!reading) return [];
+  const layers = [];
+  pushUniqueReadingLayer(layers, "signal", "Today's pressure", focusCue || reading.innerWeather);
+  pushUniqueReadingLayer(layers, "move", "The move to make", mentorMove || reading.todayMove);
+  pushUniqueReadingLayer(layers, "anchor", "Steadying anchor", anchorCue || reading.innerWeather);
+  pushUniqueReadingLayer(layers, "release", "Stop feeding", releaseMove || avoidCue || reading.release);
+  return layers.slice(0, 4);
+}
+
+function pushUniqueReadingLayer(layers, id, label, value) {
+  const clean = ensureSentence(value);
+  if (!clean) return;
+  const normalized = clean.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (layers.some((layer) => layer.normalized === normalized)) return;
+  layers.push({ id, label, value: clean, normalized });
 }
 
 function words(text) {
@@ -905,6 +947,17 @@ function normalizeMentorHeadline(text) {
   if (cleanWords.length > 10 || clean.length > 76) return "";
   const headline = sentenceCase(clean);
   return /[.!?]$/.test(headline) ? headline : `${headline}.`;
+}
+
+function normalizeReadingHeadline(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  return sentenceCase(limitDisplayWords(clean.replace(/[.!?]+$/, ""), 8));
+}
+
+function ensureSentence(text) {
+  const clean = sentenceCase(String(text || "").replace(/\s+/g, " ").trim());
+  return clean && !/[.!?]$/.test(clean) ? `${clean}.` : clean;
 }
 
 function limitDisplayWords(text, maxWords) {

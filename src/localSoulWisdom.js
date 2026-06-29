@@ -124,8 +124,36 @@ function conciseSceneAction(context, seed = 0, name = "") {
   if (/\bkitchen counter\b|\bcounter before\b/.test(scene)) {
     return pickLine([
       "Clear the kitchen counter before the first task borrows the night",
-      "Use the kitchen counter as the first practical reset",
+      "Clear one object from the kitchen counter before the first practical reset",
       "Put the first task on the counter before the thought expands"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\blist\b|\bitem\b|\bunnamed\b/.test(scene)) {
+    return pickLine([
+      "Write the unnamed item on the list before the whole plan grows",
+      "Mark one list item before the day turns into a bigger promise",
+      "Finish one listed task before adding another possible version"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\btab\b|\bmind\b|\bworry\b|\bthought\b/.test(scene)) {
+    if (area.includes("creative") || area.includes("visibility") || area.includes("self-expression")) {
+      return pickLine([
+        "Close the old tab in your mind before showing the rough version",
+        "Show the rough version before the old tab in your mind reloads",
+        "Mark the creative draft once before the old thought reopens"
+      ], seed, name, scene, area, gate);
+    }
+    if (area.includes("family") || area.includes("home") || area.includes("fatigue")) {
+      return pickLine([
+        "Write the returning thought in one line before reopening the day",
+        "Close the old tab in your mind before answering the family duty",
+        "Put the repeated thought into one line before care turns heavy"
+      ], seed, name, scene, area, gate);
+    }
+    return pickLine([
+      "Close the old tab in your mind before checking the question again",
+      "Write the returning thought in one line before reopening the day",
+      "Close the worry tab before it spends another hour as planning"
     ], seed, name, scene, area, gate);
   }
   if (/\bchair\b|\bsame worry\b|\bworry keeps returning\b/.test(scene)) {
@@ -249,6 +277,20 @@ function conciseClose(context, seed = 0, name = "") {
       "one practical beginning is enough for this hour"
     ], seed, name, scene, area, gate);
   }
+  if (/\blist\b|\bitem\b|\bunnamed\b/.test(scene)) {
+    return pickLine([
+      "one named item is kinder than a list that keeps expanding",
+      "the list needs a finish mark more than another option",
+      "one completed line can stop the day from growing sideways"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\btab\b|\bmind\b|\bworry\b|\bthought\b/.test(scene)) {
+    return pickLine([
+      "the mind gets quieter when one tab is actually closed",
+      "the old thought does not need another private review",
+      "one closed mental tab is enough evidence for this hour"
+    ], seed, name, scene, area, gate);
+  }
   if (/\b(wallet|receipt|payment|bill|amount)\b/.test(scene)) {
     return pickLine([
       "one clear number is enough for now",
@@ -362,6 +404,8 @@ function polishLocalWisdom(text) {
     .replace(/\bgives .*? a handle\b/gi, (match) => match.replace(/\ba handle\b/i, "a timed task"))
     .replace(/\bneeds a handle\b/gi, "needs a timed task")
     .replace(/\bvisible repair\b/gi, "checkable repair")
+    .replace(/\bvisible finish\b/gi, "finished piece")
+    .replace(/\bone visible finish\b/gi, "one finished piece")
     .replace(/\bvisible block\b/gi, "timed block")
     .replace(/\bvisible choice\b/gi, "choice with an ending")
     .replace(/\bsmaller promise\b/gi, "promise with a real edge")

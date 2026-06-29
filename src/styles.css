@@ -5795,3 +5795,537 @@ body {
     animation: none;
   }
 }
+/* Soul Guru rich sanctum: premium daily mentor room with advisor + astrolabe. */
+.phone-shell.theme-soul {
+  --tab-accent: #d8ad58;
+  --tab-accent-2: #38b8a8;
+  --tab-accent-3: #a54a73;
+  background:
+    linear-gradient(180deg, #090d18 0 9.25rem, #f6ead2 9.25rem 100%);
+}
+
+.phone-shell.theme-soul .app-header,
+.phone-shell.theme-soul .top-tabs {
+  background:
+    linear-gradient(180deg, rgba(8, 12, 22, 0.99), rgba(18, 22, 43, 0.98));
+}
+
+.phone-shell.theme-soul .tab-stage {
+  background:
+    linear-gradient(126deg, rgba(216, 173, 88, 0.18) 0 18%, transparent 18% 100%),
+    linear-gradient(226deg, rgba(56, 184, 168, 0.14) 0 19%, transparent 19% 100%),
+    linear-gradient(180deg, #0a0e19 0, #17122a 15.2rem, #3a2335 15.24rem, #f5e4c6 20.1rem, #fff8eb 100%);
+}
+
+.soul-section {
+  gap: 0.84rem;
+  color: #171522;
+}
+
+.soul-section::before {
+  inset: -1rem;
+  background:
+    linear-gradient(135deg, transparent 0 47%, rgba(216, 173, 88, 0.26) 47% 48%, transparent 48% 100%),
+    linear-gradient(45deg, transparent 0 56%, rgba(56, 184, 168, 0.2) 56% 57%, transparent 57% 100%);
+  background-size: 8.5rem 8.5rem, 11rem 11rem;
+  opacity: 0.5;
+}
+
+.soul-guru-hero {
+  min-height: 14.25rem;
+  grid-template-columns: 11.15rem minmax(0, 1fr);
+  gap: 0.5rem;
+  border-radius: 8px;
+  border-color: rgba(244, 214, 155, 0.26);
+  background:
+    linear-gradient(105deg, rgba(7, 10, 19, 0.95) 0 36%, rgba(21, 20, 43, 0.88) 58%, rgba(76, 41, 58, 0.78) 100%),
+    url("/assets/ocean-breeze.png") center / cover no-repeat;
+  padding: 0.78rem 0.95rem 0.86rem 0.24rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 244, 216, 0.08),
+    inset 0 -4rem 5.7rem rgba(4, 7, 13, 0.55),
+    0 24px 46px rgba(8, 11, 20, 0.38);
+}
+
+.soul-guru-hero::before {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(216, 173, 88, 0.18), transparent 31% 100%),
+    linear-gradient(180deg, rgba(255, 247, 226, 0.1), transparent 34% 100%),
+    repeating-linear-gradient(90deg, transparent 0 2.65rem, rgba(255, 247, 226, 0.045) 2.65rem 2.72rem);
+  content: "";
+  pointer-events: none;
+}
+
+.soul-guru-hero::after {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.84rem;
+  width: 6.5rem;
+  height: 0.12rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(216, 173, 88, 0.94), rgba(56, 184, 168, 0.72), transparent);
+  content: "";
+}
+
+.soul-guru-cosmos.guru-sanctum {
+  width: 10.6rem;
+  height: 10.6rem;
+  aspect-ratio: 1;
+  align-self: center;
+}
+
+.guru-arch {
+  position: absolute;
+  left: 1.28rem;
+  top: 0.4rem;
+  width: 7.95rem;
+  height: 9.6rem;
+  border: 1px solid rgba(244, 214, 155, 0.34);
+  border-bottom-color: rgba(56, 184, 168, 0.32);
+  border-radius: 999px 999px 8px 8px;
+  background:
+    linear-gradient(180deg, rgba(244, 214, 155, 0.12), transparent 42%),
+    linear-gradient(160deg, rgba(56, 184, 168, 0.2), rgba(165, 74, 115, 0.16) 52%, rgba(7, 10, 19, 0.2));
+  box-shadow:
+    inset 0 0 2.2rem rgba(216, 173, 88, 0.16),
+    0 0 2.4rem rgba(56, 184, 168, 0.12);
+}
+
+.guru-astrolabe,
+.guru-astrolabe-inner {
+  position: absolute;
+  inset: 0.62rem;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 8deg, rgba(216, 173, 88, 0.95), transparent 8%, rgba(255, 247, 226, 0.48) 12%, transparent 18%, rgba(56, 184, 168, 0.74) 29%, transparent 37%, rgba(165, 74, 115, 0.8) 51%, transparent 61%, rgba(216, 173, 88, 0.86) 78%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle, transparent 0 57%, #000 58% 62%, transparent 63% 100%);
+  mask-image: radial-gradient(circle, transparent 0 57%, #000 58% 62%, transparent 63% 100%);
+  animation: guruAstrolabeTurn 34s linear infinite;
+}
+
+.guru-astrolabe-inner {
+  inset: 2rem;
+  opacity: 0.72;
+  animation-duration: 24s;
+  animation-direction: reverse;
+}
+
+.guru-orbit {
+  inset: 1.26rem;
+  border-color: rgba(244, 214, 155, 0.18);
+}
+
+.guru-orbit::before {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 2px;
+  background: #e5bd63;
+  box-shadow: 0 0 16px rgba(229, 189, 99, 0.72);
+  transform: rotate(45deg);
+}
+
+.guru-orbit-two {
+  inset: 2.36rem;
+}
+
+.guru-orbit-two::before {
+  background: #57d5c5;
+  box-shadow: 0 0 15px rgba(87, 213, 197, 0.7);
+}
+
+.guru-advisor {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 3.7rem;
+  height: 4.9rem;
+  transform: translate(-50%, -50%);
+}
+
+.guru-advisor-head {
+  position: absolute;
+  left: 50%;
+  top: 0.46rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background:
+    linear-gradient(145deg, #ffe7b7, #b46b6f 58%, #21152a);
+  box-shadow:
+    0 -0.28rem 0 0.18rem rgba(216, 173, 88, 0.22),
+    0 0 1.15rem rgba(255, 231, 183, 0.36);
+  transform: translateX(-50%);
+}
+
+.guru-advisor-robe {
+  position: absolute;
+  left: 50%;
+  top: 1.72rem;
+  width: 3.25rem;
+  height: 3.12rem;
+  border-radius: 48% 48% 8px 8px;
+  background:
+    linear-gradient(118deg, #26172f 0 22%, #a54a73 23% 42%, #174a53 43% 69%, #0a0e19 70% 100%);
+  box-shadow:
+    inset 0.45rem 0 0 rgba(255, 247, 226, 0.07),
+    inset -0.65rem -0.55rem 0.8rem rgba(0, 0, 0, 0.28),
+    0 0.8rem 1.6rem rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%);
+}
+
+.guru-book {
+  position: absolute;
+  left: 50%;
+  bottom: 1.42rem;
+  width: 3.75rem;
+  height: 1.36rem;
+  border: 1px solid rgba(255, 241, 201, 0.5);
+  border-radius: 8px 8px 4px 4px;
+  background:
+    linear-gradient(90deg, #f4d89d 0 47%, #c99445 48% 52%, #fff2c7 53% 100%);
+  box-shadow:
+    0 0 1.2rem rgba(216, 173, 88, 0.4),
+    0 0.55rem 1rem rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%) perspective(5rem) rotateX(18deg);
+}
+
+.guru-book span {
+  position: absolute;
+  left: 50%;
+  top: 0.13rem;
+  width: 1px;
+  height: 0.96rem;
+  background: rgba(82, 48, 33, 0.42);
+}
+
+.guru-star {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 2px;
+  background: #f4d69a;
+  opacity: 0.92;
+  transform: rotate(45deg);
+}
+
+.guru-star-one {
+  left: 1.45rem;
+  top: 3.45rem;
+}
+
+.guru-star-two {
+  right: 1.55rem;
+  top: 2.85rem;
+  background: #65d9c9;
+}
+
+.guru-star-three {
+  right: 2.2rem;
+  bottom: 2rem;
+  background: #d56f97;
+}
+
+.soul-guru-daily {
+  align-content: center;
+  gap: 0.46rem;
+  min-width: 0;
+}
+
+.soul-guru-daily .eyebrow,
+.soul-section .wisdom-panel .editorial-kicker,
+.soul-focus-chip span,
+.mentor-cues span,
+.soul-briefing-row span {
+  letter-spacing: 0;
+}
+
+.soul-guru-daily .eyebrow {
+  margin: 0;
+  color: #e5bd63;
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.soul-guru-daily h2 {
+  margin: 0;
+  color: #fff5dc;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.08rem;
+  font-weight: 680;
+  line-height: 0.96;
+  overflow-wrap: break-word;
+}
+
+.soul-guru-daily span {
+  border-color: rgba(255, 241, 201, 0.18);
+  background: rgba(255, 241, 201, 0.1);
+  color: #e9c474;
+}
+
+.soul-guru-daily strong {
+  max-width: 12.1rem;
+  color: rgba(255, 247, 226, 0.92);
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.24;
+}
+
+.soul-section .wisdom-panel {
+  border-radius: 8px;
+  border-color: rgba(94, 65, 29, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(248, 232, 199, 0.98)),
+    linear-gradient(90deg, rgba(216, 173, 88, 0.08), rgba(56, 184, 168, 0.06), rgba(165, 74, 115, 0.08));
+  padding: 1rem 1rem 1.08rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 20px 38px rgba(33, 22, 24, 0.12);
+}
+
+.soul-section .wisdom-panel::before {
+  right: -4.4rem;
+  bottom: -5.2rem;
+  width: 12rem;
+  height: 12rem;
+  background:
+    conic-gradient(from 34deg, rgba(216, 173, 88, 0.28), transparent 18%, rgba(56, 184, 168, 0.18) 31%, transparent 54%, rgba(165, 74, 115, 0.18) 68%, transparent 100%);
+  opacity: 0.82;
+}
+
+.soul-section .wisdom-sigil {
+  top: 0.88rem;
+  right: 0.9rem;
+  opacity: 0.18;
+}
+
+.soul-section .wisdom-panel .editorial-kicker {
+  color: #8a5a13;
+  font-size: 0.66rem;
+  font-weight: 950;
+}
+
+.soul-weather-pill {
+  max-width: 12.5rem;
+  border-color: rgba(138, 90, 19, 0.18);
+  background: rgba(255, 247, 226, 0.62);
+  color: #4a3a2a;
+}
+
+.soul-note-frame {
+  padding: 0.2rem 0 0.72rem 0.82rem;
+  border-left: 3px solid rgba(216, 173, 88, 0.72);
+}
+
+.soul-section .wisdom-headline {
+  max-width: 21rem;
+  margin: 0;
+  color: #2a1723;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.62rem;
+  font-weight: 760;
+  line-height: 1.08;
+}
+
+.soul-section .wisdom-panel .wisdom-body,
+.soul-section .wisdom-panel .wisdom-status {
+  max-width: 20.5rem;
+  color: #2d3440;
+  font-size: 0.98rem;
+  font-weight: 760;
+  line-height: 1.48;
+}
+
+.soul-reading-briefing {
+  display: grid;
+  margin-top: 0.18rem;
+  border-top: 1px solid rgba(42, 23, 35, 0.12);
+}
+
+.soul-briefing-row {
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  gap: 0.72rem;
+  padding: 0.78rem 0;
+  border-bottom: 1px solid rgba(42, 23, 35, 0.1);
+}
+
+.soul-briefing-index {
+  color: #b7832f;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.08rem;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.soul-briefing-row div > span {
+  display: block;
+  color: #8a5a13;
+  font-size: 0.65rem;
+  font-weight: 950;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.soul-briefing-row p {
+  margin: 0.24rem 0 0;
+  color: #171522;
+  font-size: 0.88rem;
+  font-weight: 790;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.soul-briefing-row-release p {
+  color: #76354e;
+}
+
+.soul-focus-grid {
+  gap: 0.62rem;
+}
+
+.soul-focus-chip {
+  min-height: 5.75rem;
+  border-radius: 8px;
+  border-color: rgba(255, 241, 201, 0.16);
+  background:
+    linear-gradient(145deg, #111827, #14353c 55%, #6d3752);
+  box-shadow: 0 15px 28px rgba(17, 24, 39, 0.14);
+}
+
+.soul-focus-chip:nth-child(2) {
+  background:
+    linear-gradient(145deg, #24172f, #124349 58%, #b1782f);
+}
+
+.soul-focus-chip:nth-child(3) {
+  background:
+    linear-gradient(145deg, #2a1723, #5a2847 54%, #173d44);
+}
+
+.soul-focus-chip span {
+  color: #f1cc7d;
+}
+
+.soul-focus-chip strong {
+  color: rgba(255, 247, 226, 0.94);
+  font-size: 0.76rem;
+}
+
+.mentor-cues {
+  gap: 0.66rem;
+}
+
+.mentor-cues div {
+  min-height: 6.25rem;
+  border-radius: 8px;
+  border-color: rgba(255, 241, 201, 0.16);
+  background:
+    linear-gradient(135deg, #0f1726, #292042 48%, #935073 100%);
+  box-shadow: 0 16px 30px rgba(31, 23, 42, 0.18);
+}
+
+.mentor-cues div:nth-child(2) {
+  background:
+    linear-gradient(135deg, #351c32, #0f2939 54%, #165c58 100%);
+}
+
+.mentor-cues div::after {
+  background:
+    conic-gradient(from 42deg, rgba(255, 247, 226, 0.2), transparent 26%, rgba(216, 173, 88, 0.22), transparent 70%);
+}
+
+.mentor-cues span {
+  color: #f1cc7d;
+}
+
+.mentor-cues strong {
+  color: rgba(255, 247, 226, 0.96);
+  font-size: 0.94rem;
+}
+
+.soul-section .wisdom-feedback button {
+  border-radius: 8px;
+  background: rgba(255, 250, 239, 0.96);
+  color: #24172f;
+}
+
+.soul-section .wisdom-feedback button.active {
+  border-color: rgba(216, 173, 88, 0.45);
+  background: #171522;
+  color: #fff5dc;
+}
+
+.soul-section .guidance-actions .secondary-action {
+  border-color: rgba(216, 173, 88, 0.26);
+  background: #fff7e8;
+  color: #24172f;
+}
+
+.soul-section .guidance-actions .primary-action {
+  background:
+    linear-gradient(135deg, #5b2747 0, #d8ad58 52%, #149384 100%);
+  box-shadow: 0 18px 34px rgba(91, 39, 71, 0.24);
+}
+
+@keyframes guruAstrolabeTurn {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 24rem) {
+  .soul-guru-hero {
+    grid-template-columns: 8.9rem minmax(0, 1fr);
+    min-height: 12.9rem;
+    padding: 0.72rem 0.78rem 0.76rem 0.12rem;
+  }
+
+  .soul-guru-cosmos.guru-sanctum {
+    width: 8.6rem;
+    height: 8.6rem;
+  }
+
+  .guru-arch {
+    left: 1.08rem;
+    width: 6.4rem;
+    height: 7.85rem;
+  }
+
+  .guru-advisor {
+    transform: translate(-50%, -50%) scale(0.86);
+  }
+
+  .guru-book {
+    bottom: 1.2rem;
+    transform: translateX(-50%) perspective(5rem) rotateX(18deg) scale(0.84);
+  }
+
+  .soul-guru-daily h2 {
+    font-size: 1.72rem;
+  }
+
+  .soul-guru-daily strong {
+    font-size: 0.82rem;
+  }
+
+  .soul-briefing-row {
+    grid-template-columns: 1.8rem minmax(0, 1fr);
+    gap: 0.55rem;
+  }
+
+  .soul-focus-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guru-astrolabe,
+  .guru-astrolabe-inner {
+    animation: none;
+  }
+}
