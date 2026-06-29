@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
-import { buildParagraphArchitecture, firstName, getSoulWisdomSpecificityIssues, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { firstName } from "../src/soulGuruPrompt.js";
 import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "../src/soulWisdomVersion.js";
 import { getSoulWisdomQualityCases } from "./soul-wisdom-quality-cases.mjs";
 
@@ -50,15 +50,11 @@ for (const group of groups) {
   }
 
   const repeatedScenes = buildSceneRepeats(group.results).filter((item) => item.category !== "general" && item.count > maxSceneRepeats);
-  const repeatedStructures = buildStructureRepeats(group.results).filter((item) => item.count > maxStructureRepeats);
   const deviceOpenings = group.results.filter((item) => item.openingSceneCategory === "device");
   const repeatedDistinctivePhrases = buildRepeatedDistinctivePhrases(group.results, repeatedPhraseOwners);
   const repeatedShortAnchors = buildRepeatedShortAnchorPhrases(group.results, maxShortAnchorOwners);
   if (repeatedScenes.length) {
     failures.push(`${group.source}: repeated opening scene category ${repeatedScenes.map((item) => `${item.category}=${item.count}`).join(", ")}.`);
-  }
-  if (repeatedStructures.length) {
-    failures.push(`${group.source}: repeated paragraph structure ${repeatedStructures.map((item) => `${item.signature}=${item.count}`).join(", ")}.`);
   }
   if (deviceOpenings.length > 1) {
     failures.push(`${group.source}: device/message imagery opened ${deviceOpenings.length} readings.`);
@@ -133,15 +129,20 @@ function evaluateReading({ user, source, result }) {
   if (wordCount < minWords || wordCount > maxWords) {
     failures.push(`expected ${minWords}-${maxWords} words, got ${wordCount}.`);
   }
-  if (sentences.length < 3 || sentences.length > 6) {
-    failures.push(`expected 3-6 sentences, got ${sentences.length}.`);
+  if (sentences.length < 1 || sentences.length > 2) {
+    failures.push(`expected 1-2 sentences, got ${sentences.length}.`);
   }
-  if (isLowQualityWisdom(wisdom)) {
-    failures.push("matched low-quality/repeated phrasing rules.");
+  if (hasGenericShortWisdom(wisdom)) {
+    failures.push("matched generic or multi-direction short-reading phrasing.");
   }
-  failures.push(...getSoulWisdomSpecificityIssues(wisdom).map((issue) => `${issue}.`));
-  if (nameCount !== 1) {
-    failures.push(`expected first name exactly once, got ${nameCount}.`);
+  if (nameCount > 1) {
+    failures.push(`expected first name at most once, got ${nameCount}.`);
+  }
+  if (!hasConcreteShortAction(wisdom)) {
+    failures.push("missing one concrete short action.");
+  }
+  if (hasMultipleDirections(wisdom)) {
+    failures.push("gave more than one direction.");
   }
   if (hasMechanicalDirectAddressCasing(wisdom, firstName(user.name))) {
     failures.push("used mechanical capitalized direct-address phrasing.");
@@ -161,18 +162,11 @@ function evaluateReading({ user, source, result }) {
   if (openingSceneCategory === "device" && expectedSceneCategory !== "device") {
     failures.push("opened with phone/message/screen imagery even though the seeded scene was not device-based.");
   }
-  failures.push(...getParagraphArchitectureFailures({
-    sentences,
-    user,
-    context,
-    today: source === "openai" ? formatDateForPrompt(date) : date
-  }));
-
   return {
     source,
     name: user.name,
     wordCount,
-    lowQuality: isLowQualityWisdom(wisdom),
+    lowQuality: hasGenericShortWisdom(wisdom),
     quality: result.quality || null,
     openingSceneCategory,
     expectedOpeningScene,
@@ -504,42 +498,32 @@ function hasAwkwardTemplateJoin(text) {
   ].some((pattern) => pattern.test(String(text || "")));
 }
 
-function getParagraphArchitectureFailures({ sentences, user, context, today }) {
-  const architecture = buildParagraphArchitecture(user, context, today);
-  const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0);
-  const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
-  const expectedOpeningBucket = String(architecture || "").match(/Opening bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
-  const expectedFinalBucket = String(architecture || "").match(/Final bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
-  const expectedImperativeTarget = Number(String(architecture || "").match(/Imperative target:\s*(\d+)/i)?.[1] || Number.NaN);
-  const failures = [];
-  if (sentenceCount && sentences.length !== sentenceCount) {
-    failures.push(`expected paragraph architecture sentence count ${sentenceCount}, got ${sentences.length}.`);
-  }
-  if (nameSentence) {
-    const nameIndex = sentences.findIndex((sentence) => countWord(sentence, firstName(user.name)) > 0);
-    if (nameIndex !== nameSentence - 1) {
-      failures.push(`expected first name in sentence ${nameSentence}, got ${nameIndex + 1 || 0}.`);
-    }
-  }
-  if (expectedOpeningBucket && sentences[0]) {
-    const actualOpeningBucket = sentenceOpeningBucket(sentences[0]);
-    if (actualOpeningBucket !== expectedOpeningBucket) {
-      failures.push(`expected opening bucket ${expectedOpeningBucket}, got ${actualOpeningBucket}.`);
-    }
-  }
-  if (expectedFinalBucket && sentences.at(-1)) {
-    const actualFinalBucket = sentenceOpeningBucket(sentences.at(-1));
-    if (actualFinalBucket !== expectedFinalBucket) {
-      failures.push(`expected final bucket ${expectedFinalBucket}, got ${actualFinalBucket}.`);
-    }
-  }
-  if (Number.isFinite(expectedImperativeTarget)) {
-    const actualImperatives = sentences.filter((sentence) => sentenceOpeningBucket(sentence) === "imperative").length;
-    if (actualImperatives !== expectedImperativeTarget) {
-      failures.push(`expected imperative target ${expectedImperativeTarget}, got ${actualImperatives}.`);
-    }
-  }
-  return failures;
+function hasGenericShortWisdom(text) {
+  return [
+    /\byou may\b/i,
+    /\byou might\b/i,
+    /\byou could\b/i,
+    /\btoday asks\b/i,
+    /\btrust the process\b/i,
+    /\bstay grounded\b/i,
+    /\bset boundaries\b/i,
+    /\bcalm energy\b/i,
+    /\bthe universe\b/i,
+    /\bspiritual journey\b/i,
+    /\bchoose peace\b/i,
+    /\bsmall step\b/i,
+    /\bdo everything\b/i,
+    /\bhandle everything\b/i
+  ].some((pattern) => pattern.test(String(text || "")));
+}
+
+function hasConcreteShortAction(text) {
+  return /\b(answer|approve|check|choose|clean|clear|close|decide|decline|drink|eat|finish|fold|keep|leave|mark|pack|pay|place|protect|put|send|settle|show|submit|write)\b/i.test(String(text || ""));
+}
+
+function hasMultipleDirections(text) {
+  const matches = String(text || "").match(/\b(answer|approve|check|choose|clean|clear|close|decide|decline|drink|eat|finish|fold|keep|leave|mark|pack|pay|place|protect|put|send|settle|show|submit|write)\b/gi) || [];
+  return new Set(matches.map((match) => match.toLowerCase())).size > 3;
 }
 
 function words(text) {

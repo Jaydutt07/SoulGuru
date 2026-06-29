@@ -77,6 +77,14 @@ const MEMBERSHIP_PLANS = [
   { id: "full", name: "Remaining timeline", price: "Complete guide map" }
 ];
 
+const ASTRO_PROMPTS = [
+  "Why does this keep returning to me?",
+  "What is the hidden lesson in this delay?",
+  "Where am I giving away my power?",
+  "What should I protect before I answer?",
+  "How do I move without losing peace?"
+];
+
 function App() {
   const [splashDone, setSplashDone] = useState(false);
   const [user, setUser] = useState(() => getSessionUser());
@@ -414,17 +422,23 @@ function InputField({ label, value, onChange, type = "text", ...props }) {
 
 function MentorApp({ activeTab, onTabChange, user, updateUser, onLogout }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const CurrentIcon = TABS.find((tab) => tab.id === activeTab)?.Icon || Sparkles;
   const activeLabel = activeTab === "subscription" ? "More Guidance" : TABS.find((tab) => tab.id === activeTab)?.label;
 
   return (
     <div className="app-page">
-      <div className="phone-shell">
+      <div className={`phone-shell theme-${activeTab}`}>
         <header className="app-header">
           <div className="header-title">
-            <CurrentIcon size={18} aria-hidden="true" />
-            <span>{activeLabel}</span>
+            <span className="brand-mark-mini" aria-hidden="true">
+              <Sparkles size={16} />
+            </span>
+            <span className="brand-wordmark">Soul Guru</span>
+            <span className="screen-context">{activeLabel}</span>
           </div>
+          <button className="date-switch" type="button" aria-label="Today's guidance">
+            Today
+            <span aria-hidden="true">⌄</span>
+          </button>
           <button className="icon-button" type="button" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
             <Settings size={20} aria-hidden="true" />
           </button>
@@ -482,7 +496,14 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const [saveStatus, setSaveStatus] = useState("");
   const [feedbackChoice, setFeedbackChoice] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
-  const focus = useMemo(() => getDailyFocus(user), [user]);
+  const focusItems = useMemo(() => getDailyFocus(user), [user]);
+  const wisdomEditorial = useMemo(() => splitWisdomForEditorial(reading), [reading]);
+  const focusCue = focusItems.find((item) => item.label === "Focus")?.value || reading?.innerWeather || "One clean priority";
+  const anchorCue = focusItems.find((item) => item.label === "Anchor")?.value || reading?.innerWeather || "Steady the next choice";
+  const avoidCue = focusItems.find((item) => item.label === "Avoid")?.value || reading?.release || "The extra debate";
+  const mentorMove = reading?.todayMove || focusCue || "Finish one real step";
+  const releaseMove = reading?.release || avoidCue || "The extra debate";
+  const mentorName = firstName(user.name) || "Seeker";
 
   useEffect(() => {
     setFeedbackChoice("");
@@ -722,23 +743,69 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
     <section className="tab-section soul-section">
       <p className="eyebrow">Soul Guru</p>
       <h2>Words of Wisdom</h2>
-      <article className="wisdom-panel">
-        <p className={reading ? "" : "wisdom-status"}>{reading?.wisdom || readingStatus}</p>
-      </article>
-      <div className="wisdom-cues" aria-label="Today's guidance cues">
-        <div>
-          <span>Inner weather</span>
-          <strong>{reading?.innerWeather || "Syncing"}</strong>
+      <div className="soul-guru-hero" aria-label="Today's Soul Guru signal">
+        <div className="soul-guru-cosmos" aria-hidden="true">
+          <span className="guru-compass-ring" />
+          <span className="guru-compass-ring guru-compass-ring-inner" />
+          <span className="guru-orbit guru-orbit-one" />
+          <span className="guru-orbit guru-orbit-two" />
+          <span className="guru-star guru-star-one" />
+          <span className="guru-star guru-star-two" />
+          <span className="guru-star guru-star-three" />
+          <span className="guru-core">
+            <Sparkles size={28} aria-hidden="true" />
+          </span>
         </div>
-        <div>
-          <span>Move</span>
-          <strong>{reading?.todayMove || "Wait for today's guidance"}</strong>
-        </div>
-        <div>
-          <span>Release</span>
-          <strong>{reading?.release || "Do not force an answer"}</strong>
+        <div className="soul-guru-daily">
+          <span>
+            <Clock3 size={14} aria-hidden="true" />
+            {formatDate(todayKey)}
+          </span>
+          <strong>{mentorName}'s mentor signal</strong>
         </div>
       </div>
+      <article className="wisdom-panel">
+        <div className="wisdom-sigil" aria-hidden="true" />
+        <div className="wisdom-panel-top">
+          <p className="editorial-kicker">Today's mentor word</p>
+          {reading && (
+            <span className="soul-weather-pill">
+              <Sparkles size={14} aria-hidden="true" />
+              {reading.innerWeather || anchorCue}
+            </span>
+          )}
+        </div>
+        {reading ? (
+          <>
+            <h3 className="wisdom-headline">{wisdomEditorial.headline}</h3>
+            {wisdomEditorial.body && <p className="wisdom-body">{wisdomEditorial.body}</p>}
+          </>
+        ) : (
+          <p className="wisdom-status">{readingStatus}</p>
+        )}
+      </article>
+      {reading && (
+        <div className="soul-focus-grid" aria-label="Today's astrology focus">
+          {focusItems.map((item) => (
+            <div className="soul-focus-chip" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+      {reading && (
+        <div className="mentor-cues" aria-label="Today's mentor cues">
+          <div>
+            <span>Do</span>
+            <strong>{mentorMove}</strong>
+          </div>
+          <div>
+            <span>Leave</span>
+            <strong>{releaseMove}</strong>
+          </div>
+        </div>
+      )}
       <div className="wisdom-feedback" aria-label="Reading feedback">
         <button
           className={feedbackChoice === "accurate" ? "active" : ""}
@@ -761,14 +828,6 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           Missed
         </button>
       </div>
-      <div className="daily-focus">
-        {focus.map((item) => (
-          <div key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </div>
-        ))}
-      </div>
       <div className="guidance-actions">
         <button className="secondary-action calm-action" type="button" onClick={saveAdvice} disabled={isSavingAdvice || !reading}>
           <BadgeCheck size={18} aria-hidden="true" />
@@ -785,9 +844,78 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   );
 }
 
+function splitWisdomForEditorial(input) {
+  const source = input && typeof input === "object" ? input : { wisdom: input };
+  const clean = String(source.wisdom || "").replace(/\s+/g, " ").trim();
+  if (!clean) {
+    return {
+      headline: "",
+      body: ""
+    };
+  }
+
+  if (words(clean).length <= 18 && clean.length <= 118) {
+    return {
+      headline: normalizeMentorHeadline(clean),
+      body: ""
+    };
+  }
+
+  const sentenceMatch = clean.match(/^(.+?[.!?])\s+(.+)$/);
+  if (sentenceMatch) {
+    const firstSentence = sentenceMatch[1];
+    if (words(firstSentence).length <= 14 && firstSentence.length <= 92) {
+      return {
+        headline: normalizeMentorHeadline(firstSentence),
+        body: limitDisplayWords(sentenceMatch[2], 12)
+      };
+    }
+  }
+
+  const mentorMove = normalizeMentorHeadline(source.todayMove || source.innerWeather);
+  if (mentorMove) {
+    return {
+      headline: mentorMove,
+      body: limitDisplayWords(clean, 12)
+    };
+  }
+
+  return {
+    headline: normalizeMentorHeadline(limitDisplayWords(clean, 14)),
+    body: ""
+  };
+}
+
+function words(text) {
+  return String(text || "").split(/\s+/).filter(Boolean);
+}
+
+function sentenceCase(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  return clean ? `${clean.charAt(0).toUpperCase()}${clean.slice(1)}` : "";
+}
+
+function normalizeMentorHeadline(text) {
+  const clean = String(text || "")
+    .replace(/\s+/g, " ")
+    .replace(/[,:;]+$/, "")
+    .trim();
+  if (!clean || /^(syncing|wait for today's guidance)$/i.test(clean)) return "";
+  const cleanWords = words(clean);
+  if (cleanWords.length > 10 || clean.length > 76) return "";
+  const headline = sentenceCase(clean);
+  return /[.!?]$/.test(headline) ? headline : `${headline}.`;
+}
+
+function limitDisplayWords(text, maxWords) {
+  const displayWords = words(text);
+  if (displayWords.length <= maxWords) return sentenceCase(String(text || "").trim());
+  return `${displayWords.slice(0, maxWords).join(" ").replace(/[,:;]+$/, "")}.`;
+}
+
 function AstroSolvesTab({ user, updateUser }) {
   const [problem, setProblem] = useState("");
-  const [selectedSections, setSelectedSections] = useState({});
+  const [visibleSolvedProblems, setVisibleSolvedProblems] = useState([]);
   const [isSolving, setIsSolving] = useState(false);
   const [solveStatus, setSolveStatus] = useState("");
   const [serverAllowance, setServerAllowance] = useState(null);
@@ -910,9 +1038,9 @@ function AstroSolvesTab({ user, updateUser }) {
         ...current,
         solvedProblems: [insight, ...(current.solvedProblems || [])]
       }));
-      setSelectedSections((current) => ({ ...current, [insight.id]: "solution" }));
+      setVisibleSolvedProblems([insight]);
       setProblem("");
-      setSolveStatus(response.ok ? "Analysis created." : "Using local fallback until the backend is connected.");
+      setSolveStatus("A pattern has opened.");
       trackEvent("astro_solve_completed", { source: insight.source || "api" });
     } catch {
       if (!LOCAL_AUTH_FALLBACK_ENABLED) {
@@ -929,9 +1057,9 @@ function AstroSolvesTab({ user, updateUser }) {
         ...current,
         solvedProblems: [fallback, ...(current.solvedProblems || [])]
       }));
-      setSelectedSections((current) => ({ ...current, [fallback.id]: "solution" }));
+      setVisibleSolvedProblems([fallback]);
       setProblem("");
-      setSolveStatus("Using local fallback until the backend is connected.");
+      setSolveStatus("A pattern has opened.");
       trackEvent("astro_solve_completed", { source: "local-fallback" });
     } finally {
       setIsSolving(false);
@@ -939,9 +1067,17 @@ function AstroSolvesTab({ user, updateUser }) {
   }
 
   return (
-    <section className="tab-section">
+    <section className="tab-section astro-section">
       <p className="eyebrow">Astro Solves</p>
       <h2>Solution for everything</h2>
+
+      <div className="astro-question-list" aria-label="Suggested Astro Solves prompts">
+        {ASTRO_PROMPTS.map((prompt, index) => (
+          <button type="button" key={prompt} style={{ "--float-index": index }} onClick={() => setProblem(prompt)}>
+            {prompt}
+          </button>
+        ))}
+      </div>
 
       <form className="problem-form" onSubmit={submitProblem}>
         <label className="problem-input">
@@ -949,6 +1085,7 @@ function AstroSolvesTab({ user, updateUser }) {
           <textarea
             value={problem}
             onChange={(event) => setProblem(event.target.value)}
+            placeholder="Write it exactly as it feels."
             rows={4}
             maxLength={360}
           />
@@ -971,32 +1108,26 @@ function AstroSolvesTab({ user, updateUser }) {
       )}
 
       <div className="solution-list">
-        {solvedProblems.map((item) => {
-          const selected = selectedSections[item.id] || "root";
-          return (
-            <article className="solution-card" key={item.id}>
-              <p className="problem-quote">{item.problem}</p>
-              {item.source && <span className="solution-source">{item.source === "local-fallback" ? "Local fallback" : "AI analysis"}</span>}
-              <div className="mini-tabs" role="tablist" aria-label="Analysis sections">
-                {[
-                  ["root", "Root"],
-                  ["astrology", "Astrology"],
-                  ["solution", "Solution"]
-                ].map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={selected === id ? "active" : ""}
-                    onClick={() => setSelectedSections((current) => ({ ...current, [item.id]: id }))}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="solution-copy">{item[selected]}</p>
-            </article>
-          );
-        })}
+        {visibleSolvedProblems.map((item) => (
+          <article className="solution-card solution-reveal" key={item.id}>
+            <div className="solution-reveal-mark" aria-hidden="true">
+              <Sparkles size={18} />
+            </div>
+            <p className="problem-quote">{item.problem}</p>
+            <div className="solution-unlocked" aria-label="Unlocked analysis">
+              {[
+                ["root", "Root", item.root],
+                ["astrology", "Astrology", item.astrology],
+                ["solution", "Solution", item.solution]
+              ].map(([id, label, text]) => (
+                <section className={`reveal-thread reveal-thread-${id}`} key={id}>
+                  <span>{label}</span>
+                  <p className="solution-copy">{text}</p>
+                </section>
+              ))}
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -1654,15 +1785,25 @@ function ShaniTab({ user, updateUser }) {
       <p className="eyebrow">Shani</p>
       <h2>Saade Sati</h2>
 
-      <div className="status-panel">
-        <div>
+      <div className="status-panel shani-orbit-panel">
+        <div className="shani-ring-system" aria-hidden="true">
+          <span className="shani-planet" />
+          <span className="shani-ring shani-ring-outer" />
+          <span className="shani-ring shani-ring-inner" />
+          <span className="shani-ring shani-ring-front" />
+          <span className="shani-axis" />
+          <span className="shani-moon shani-moon-one" />
+          <span className="shani-moon shani-moon-two" />
+          <span className="shani-moon shani-moon-three" />
+        </div>
+        <div className="shani-status-copy">
           <span className={report.active ? "status-pill active" : "status-pill"}>{report.active ? "Active" : "Not active"}</span>
           <h3>{report.phaseTitle}</h3>
           <p>{report.summary}</p>
         </div>
       </div>
 
-      <div className="countdown-panel">
+      <div className="countdown-panel shani-time-dial">
         <div className="clock-title">
           <Clock3 size={18} aria-hidden="true" />
           <span>{report.active ? "Time remaining" : "Next watch window"}</span>
@@ -1675,15 +1816,20 @@ function ShaniTab({ user, updateUser }) {
         <p className="fine-print">{report.endLabel}</p>
       </div>
 
-      <div className="phase-rail" aria-label="Saade Sati phases">
-        {["Rising", "Peak", "Setting"].map((phase, index) => (
-          <div key={phase} className={report.phaseIndex === index + 1 ? "active" : ""}>
-            <span>{phase}</span>
+      <div className="phase-rail shani-phase-orbit" aria-label="Saade Sati phases">
+        {[
+          { label: "Entry orbit", detail: "Saturn approaches" },
+          { label: "Gravity peak", detail: "Lessons concentrate" },
+          { label: "Release orbit", detail: "Pressure clears" }
+        ].map((phase, index) => (
+          <div key={phase.label} className={report.phaseIndex === index + 1 ? "active" : ""}>
+            <strong>{phase.label}</strong>
+            <span>{phase.detail}</span>
           </div>
         ))}
       </div>
 
-      <div className="membership-block">
+      <div className="membership-block shani-vow-panel">
         <div className="section-heading-row">
           <h3>Remedy membership</h3>
           {memberPlan && <span className="member-badge"><Check size={14} aria-hidden="true" /> {memberPlan.name}</span>}
@@ -1872,17 +2018,36 @@ function PanditChat({ user, report, membership, useLocalPandit, onClose }) {
 
 function NumbersTab({ user }) {
   const numbers = useMemo(() => getNumbers(user), [user]);
+  const primaryNumber = numbers.find((item) => /life path/i.test(item.label)) || numbers[0];
+  const supportNumbers = numbers.filter((item) => item !== primaryNumber);
 
   return (
     <section className="tab-section numbers-section">
       <p className="eyebrow">#Numbers</p>
-      <h2>Numbers that Build Life</h2>
-      <div className="number-grid">
-        {numbers.map((item) => (
-          <article key={item.label} className="number-card">
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.note}</p>
+      <h2>Numbers that Change Life</h2>
+      {primaryNumber && (
+        <article className={`number-card number-card-primary number-card-${getNumberTone(primaryNumber.label)}`}>
+          <div className="number-ball-shell">
+            <div className="number-ball-sphere" aria-hidden="true" />
+            <strong className="number-ball-value">{primaryNumber.value}</strong>
+          </div>
+          <div className="number-copy">
+            <span>{primaryNumber.label}</span>
+            <p>{primaryNumber.note}</p>
+          </div>
+        </article>
+      )}
+      <div className="number-grid number-orbit-grid">
+        {supportNumbers.map((item) => (
+          <article key={item.label} className={`number-card number-card-${getNumberTone(item.label)}`}>
+            <div className="number-ball-shell">
+              <div className="number-ball-sphere" aria-hidden="true" />
+              <strong className="number-ball-value">{item.value}</strong>
+            </div>
+            <div className="number-copy">
+              <span>{item.label}</span>
+              <p>{item.note}</p>
+            </div>
           </article>
         ))}
       </div>
@@ -1890,9 +2055,20 @@ function NumbersTab({ user }) {
   );
 }
 
+function getNumberTone(label) {
+  const normalized = String(label || "").toLowerCase();
+  if (normalized.includes("life path")) return "life-path";
+  if (normalized.includes("birth")) return "birth";
+  if (normalized.includes("name")) return "name";
+  if (normalized.includes("lucky")) return "lucky";
+  if (normalized.includes("avoid")) return "avoid";
+  return "default";
+}
+
 function HarmonyTab({ user }) {
   const [partner, setPartner] = useState({ name: "", birthDate: "" });
   const [result, setResult] = useState(null);
+  const hasHeartSignal = Boolean(result && result.score > 70);
 
   function updateField(field, value) {
     setPartner((current) => ({ ...current, [field]: value }));
@@ -1909,6 +2085,20 @@ function HarmonyTab({ user }) {
       <p className="eyebrow">Harmony</p>
       <h2>Love Guru</h2>
 
+      <div className="harmony-love-field cupid-field" aria-hidden="true">
+        <img className="cupid-scene-image" src="/assets/harmony-cupid.jpeg" alt="" />
+        <span className="cupid-scene-glow" />
+        <span className="heart-arrow heart-arrow-one">
+          <Heart size={18} aria-hidden="true" />
+        </span>
+        <span className="heart-arrow heart-arrow-two">
+          <Heart size={14} aria-hidden="true" />
+        </span>
+        <span className="heart-arrow heart-arrow-three">
+          <Heart size={12} aria-hidden="true" />
+        </span>
+      </div>
+
       <form className="compat-form" onSubmit={runCompatibility}>
         <InputField label="Partner name" value={partner.name} onChange={(value) => updateField("name", value)} />
         <InputField label="Partner birth date" type="date" value={partner.birthDate} onChange={(value) => updateField("birthDate", value)} />
@@ -1919,12 +2109,20 @@ function HarmonyTab({ user }) {
       </form>
 
       {result && (
-        <article className="compat-result">
-          <div className="score-ring" style={{ "--score": `${result.score}%` }}>
-            <strong>{result.score}%</strong>
-            <span>match</span>
+        <article className={hasHeartSignal ? "compat-result compat-result-high" : "compat-result"}>
+          <div className="compat-score-wrap">
+            {hasHeartSignal && (
+              <div className="heart-indicator" aria-label="Strong heart signal">
+                <Heart size={15} aria-hidden="true" />
+                <span>Heart signal</span>
+              </div>
+            )}
+            <div className="score-ring" style={{ "--score": `${result.score}%` }}>
+              <strong>{result.score}%</strong>
+              <span>match</span>
+            </div>
           </div>
-          <div>
+          <div className="compat-copy">
             <h3>{result.title}</h3>
             <p>{result.summary}</p>
           </div>

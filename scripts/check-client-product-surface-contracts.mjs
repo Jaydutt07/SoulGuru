@@ -90,9 +90,6 @@ function checkSoulGuruSurface() {
     "<p className=\"eyebrow\">Soul Guru</p>",
     "<h2>Words of Wisdom</h2>",
     "wisdom-panel",
-    "Inner weather",
-    "Move",
-    "Release",
     "Save Advice",
     "wisdom-feedback",
     "sendWisdomFeedback(\"accurate\")",
@@ -161,13 +158,13 @@ function checkNumbersSurface() {
   pushCheck("#Numbers keeps the required title and playful numerology cards", [
     includesAll(blocks.numbers, [
       "<p className=\"eyebrow\">#Numbers</p>",
-      "<h2>Numbers that Build Life</h2>",
+      "<h2>Numbers that Change Life</h2>",
       "const numbers = useMemo(() => getNumbers(user), [user]);",
       "number-grid",
       "number-card",
       "item.note"
     ]),
-    !blocks.numbers.includes("<h2>numbers that build life</h2>")
+    !blocks.numbers.includes("<h2>numbers that change life</h2>")
   ].every(Boolean));
 }
 

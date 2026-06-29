@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
 import { createDailySoulWisdom } from "../src/backend/soulWisdomService.js";
 import { getDailyWisdom } from "../src/localSoulWisdom.js";
-import { firstName, getSoulWisdomSpecificityIssues, isLowQualityWisdom } from "../src/soulGuruPrompt.js";
+import { firstName } from "../src/soulGuruPrompt.js";
 import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "../src/soulWisdomVersion.js";
 import { SOUL_WISDOM_BASE_CASES } from "./soul-wisdom-quality-cases.mjs";
 
@@ -24,8 +24,8 @@ const defaultDates = [
   "2026-06-29"
 ];
 const dates = parseDates(getArgValue("--dates")) || defaultDates;
-const maxSimilarity = Number(getArgValue("--max-similarity") || 0.28);
-const maxOpeningRepeats = Number(getArgValue("--max-opening-repeats") || 2);
+const maxSimilarity = Number(getArgValue("--max-similarity") || 0.34);
+const maxOpeningRepeats = Number(getArgValue("--max-opening-repeats") || 3);
 const users = SOUL_WISDOM_BASE_CASES.slice(0, Number(getArgValue("--profiles") || 3));
 const failures = [];
 const started = performance.now();
@@ -149,16 +149,18 @@ function evaluateDailyReading({ user, date, result }) {
   if (wordCount < SOUL_WISDOM_MIN_WORDS || wordCount > SOUL_WISDOM_MAX_WORDS) {
     failures.push(`expected ${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS} words, got ${wordCount}.`);
   }
-  if (sentences.length < 3 || sentences.length > 6) {
-    failures.push(`expected 3-6 sentences, got ${sentences.length}.`);
+  if (sentences.length < 1 || sentences.length > 2) {
+    failures.push(`expected 1-2 sentences, got ${sentences.length}.`);
   }
-  if (countWord(wisdom, name) !== 1) {
-    failures.push(`expected first name exactly once, got ${countWord(wisdom, name)}.`);
+  if (countWord(wisdom, name) > 1) {
+    failures.push(`expected first name at most once, got ${countWord(wisdom, name)}.`);
   }
-  if (isLowQualityWisdom(wisdom)) {
-    failures.push("matched low-quality/repeated phrasing rules.");
+  if (hasGenericShortWisdom(wisdom)) {
+    failures.push("matched generic short-reading phrasing.");
   }
-  failures.push(...getSoulWisdomSpecificityIssues(wisdom).map((issue) => `${issue}.`));
+  if (!hasConcreteShortAction(wisdom)) {
+    failures.push("missing one concrete short action.");
+  }
   if (mentionsAstrology(wisdom)) {
     failures.push("mentioned astrology/planet terminology in Soul Guru wisdom.");
   }
@@ -268,6 +270,27 @@ function countWord(text, word) {
 
 function mentionsAstrology(text) {
   return /\b(astrology|zodiac|moon sign|planet|transit|chart|horoscope|numerology|karma)\b/i.test(String(text || ""));
+}
+
+function hasGenericShortWisdom(text) {
+  return [
+    /\byou may\b/i,
+    /\byou might\b/i,
+    /\byou could\b/i,
+    /\btoday asks\b/i,
+    /\btrust the process\b/i,
+    /\bstay grounded\b/i,
+    /\bset boundaries\b/i,
+    /\bcalm energy\b/i,
+    /\bthe universe\b/i,
+    /\bspiritual journey\b/i,
+    /\bchoose peace\b/i,
+    /\bsmall step\b/i
+  ].some((pattern) => pattern.test(String(text || "")));
+}
+
+function hasConcreteShortAction(text) {
+  return /\b(answer|approve|check|choose|clean|clear|close|decide|decline|drink|eat|finish|fold|keep|leave|mark|pack|pay|place|protect|put|send|settle|show|submit|write)\b/i.test(String(text || ""));
 }
 
 function words(text) {

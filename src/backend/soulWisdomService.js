@@ -116,10 +116,9 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   let outputText = await requestSoulWisdom(client, model, promptInput, env);
   let qualityAttempts = 1;
   let candidateIssues = getSoulWisdomContractIssues(
-    normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
+    extractWisdomCandidate(outputText),
     user,
-    contractContext,
-    { enforceArchitecture: true }
+    contractContext
   );
   const qualityIssueHistory = [{
     attempt: qualityAttempts,
@@ -143,10 +142,9 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     );
     qualityAttempts += 1;
     candidateIssues = getSoulWisdomContractIssues(
-      normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
+      extractWisdomCandidate(outputText),
       user,
-      contractContext,
-      { enforceArchitecture: true }
+      contractContext
     );
     qualityIssueHistory.push({
       attempt: qualityAttempts,
@@ -155,11 +153,11 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   }
 
   let reading = normalizeWisdomPayload(outputText, fallback);
-  const finalIssues = getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true });
+  const finalIssues = getSoulWisdomContractIssues(reading.wisdom, user, contractContext);
   if (finalIssues.length) {
     reading = fallback;
   }
-  const passedQuality = !getSoulWisdomContractIssues(reading.wisdom, user, contractContext, { enforceArchitecture: true }).length;
+  const passedQuality = !getSoulWisdomContractIssues(reading.wisdom, user, contractContext).length;
   const result = {
     reading,
     wisdom: reading.wisdom,
@@ -409,19 +407,46 @@ function buildMemoryQuery({ user, astrologyContext, date }) {
   ].filter(Boolean).join(" | ");
 }
 
-function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
+function extractWisdomCandidate(outputText) {
+  if (typeof outputText === "object" && outputText) {
+    return String(outputText.wisdom || "");
+  }
+  const text = String(outputText || "").trim();
+  if (!text) return "";
+  try {
+    const parsed = JSON.parse(text);
+    return String(parsed?.wisdom || text);
+  } catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[0]);
+        return String(parsed?.wisdom || text);
+      } catch {
+        return text;
+      }
+    }
+    return text;
+  }
+}
+
+function getSoulWisdomContractIssues(wisdom, user, context = {}) {
   const text = String(wisdom || "");
   const issues = [];
   const wordCount = words(text).length;
+  const sentences = splitSentences(text);
   if (isLowQualityWisdom(text)) {
     issues.push("matched low-quality or repeated phrasing rules");
   }
   if (wordCount < SOUL_WISDOM_MIN_WORDS || wordCount > SOUL_WISDOM_MAX_WORDS) {
     issues.push(`expected ${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS} words, got ${wordCount}`);
   }
+  if (sentences.length < 1 || sentences.length > 2) {
+    issues.push(`expected one or two sentences, got ${sentences.length}`);
+  }
   const nameCount = countWord(text, firstName(user.name));
-  if (nameCount !== 1) {
-    issues.push(`expected first name exactly once, got ${nameCount}`);
+  if (nameCount > 1) {
+    issues.push(`expected first name at most once, got ${nameCount}`);
   }
   if (hasMechanicalDirectAddressCasing(text, firstName(user.name))) {
     issues.push("direct address used mechanical capitalized imperative casing");
@@ -430,50 +455,15 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}, options = {}) {
     issues.push("used awkward assembled guidance phrasing");
   }
   issues.push(...getSoulWisdomSpecificityIssues(text));
+  if (hasMultipleDirections(text)) {
+    issues.push("gave more than one practical direction");
+  }
+  if (mentionsAstrology(text)) {
+    issues.push("mentioned astrology or chart terminology");
+  }
   const openingSeed = context.openingScene || context.dailyScene || "";
   if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
     issues.push(`opening did not use seeded scene "${openingSeed}"`);
-  }
-  if (options.enforceArchitecture) {
-    issues.push(...getParagraphArchitectureIssues(text, user, context.paragraphArchitecture));
-  }
-  return issues;
-}
-
-function getParagraphArchitectureIssues(text, user, architecture) {
-  const issues = [];
-  const sentenceCount = Number(String(architecture || "").match(/^(\d+) sentences?/)?.[1] || 0);
-  const nameSentence = Number(String(architecture || "").match(/first name plus [^;]+ in sentence (\d+)/)?.[1] || 0);
-  const expectedOpeningBucket = String(architecture || "").match(/Opening bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
-  const expectedFinalBucket = String(architecture || "").match(/Final bucket:\s*([a-z]+)/i)?.[1]?.toLowerCase();
-  const expectedImperativeTarget = Number(String(architecture || "").match(/Imperative target:\s*(\d+)/i)?.[1] || Number.NaN);
-  const sentences = splitSentences(text);
-  if (sentenceCount && sentences.length !== sentenceCount) {
-    issues.push(`expected paragraph architecture sentence count ${sentenceCount}, got ${sentences.length}`);
-  }
-  if (nameSentence) {
-    const nameIndex = sentences.findIndex((sentence) => countWord(sentence, firstName(user.name)) > 0);
-    if (nameIndex !== nameSentence - 1) {
-      issues.push(`expected first name in sentence ${nameSentence}, got ${nameIndex + 1 || 0}`);
-    }
-  }
-  if (expectedOpeningBucket && sentences[0]) {
-    const actualOpeningBucket = sentenceOpeningBucket(sentences[0]);
-    if (actualOpeningBucket !== expectedOpeningBucket) {
-      issues.push(`expected opening bucket ${expectedOpeningBucket}, got ${actualOpeningBucket}`);
-    }
-  }
-  if (expectedFinalBucket && sentences.at(-1)) {
-    const actualFinalBucket = sentenceOpeningBucket(sentences.at(-1));
-    if (actualFinalBucket !== expectedFinalBucket) {
-      issues.push(`expected final bucket ${expectedFinalBucket}, got ${actualFinalBucket}`);
-    }
-  }
-  if (Number.isFinite(expectedImperativeTarget)) {
-    const actualImperatives = sentences.filter((sentence) => sentenceOpeningBucket(sentence) === "imperative").length;
-    if (actualImperatives !== expectedImperativeTarget) {
-      issues.push(`expected imperative target ${expectedImperativeTarget}, got ${actualImperatives}`);
-    }
   }
   return issues;
 }
@@ -549,6 +539,15 @@ function hasAwkwardTemplateJoin(text) {
     /\bbody that has been included\b/i,
     /\basking small changes to explain\b/i
   ].some((pattern) => pattern.test(String(text || "")));
+}
+
+function hasMultipleDirections(text) {
+  const matches = String(text || "").match(/\b(answer|approve|check|choose|clean|clear|close|decide|decline|drink|eat|finish|fold|keep|leave|mark|pack|pay|place|protect|put|send|settle|show|submit|write)\b/gi) || [];
+  return new Set(matches.map((match) => match.toLowerCase())).size > 3;
+}
+
+function mentionsAstrology(text) {
+  return /\b(astrology|zodiac|moon sign|planet|transit|chart|horoscope|numerology|karma)\b/i.test(String(text || ""));
 }
 
 function openingUsesSeed(opening, seed) {

@@ -10,25 +10,7 @@ import {
 export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined), architectureKey = dateKey) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
-  const name = firstName(user.name);
-  const constraints = parseArchitectureConstraints(buildParagraphArchitecture(user, context, architectureKey));
-  const builders = [
-    buildTaskFirstWisdom,
-    buildBodyFirstWisdom,
-    buildRelationshipFirstWisdom,
-    buildQuietAuthorityWisdom,
-    buildPressureReleaseWisdom,
-    buildSceneFirstWisdom,
-    buildCoreNeedWisdom,
-    buildPersonalEdgeWisdom
-  ];
-  let wisdom = buildSignatureWisdom(user, context, seed, architectureKey);
-  for (let attempt = 1; !isUsableLocalWisdom(wisdom, name, constraints) && attempt <= 32; attempt += 1) {
-    wisdom = buildSignatureWisdom(user, context, seed + attempt * 97, architectureKey);
-  }
-  if (isLowQualityWisdom(wisdom)) {
-    wisdom = builders[seed % builders.length](user, context);
-  }
+  const wisdom = buildConciseDailyWisdom(user, context, seed);
 
   return {
     wisdom: normalizeLocalWisdom(polishLocalWisdom(wisdom)),
@@ -36,6 +18,323 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
     todayMove: toCue(context.decisionGate),
     release: toCue(avoidPhrase(context.avoid, seed + 31))
   };
+}
+
+function buildConciseDailyWisdom(user, context, seed) {
+  const name = firstName(user.name);
+  const action = conciseAction(context, seed, name);
+  const close = conciseClose(context, seed + 17, name);
+  return `${action}. ${name}, ${close}.`;
+}
+
+function conciseAction(context, seed = 0, name = "") {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const gate = String(context.decisionGate || context.mentorMove || "").toLowerCase();
+  const sceneAction = conciseSceneAction(context, seed, name);
+  if (sceneAction) return sceneAction;
+
+  if (area.includes("relationship") || area.includes("belonging") || area.includes("friendship")) {
+    return pickLine([
+      "Answer the message after choosing the time you can truly keep",
+      "Say the kind thing without reopening the whole emotional case",
+      "Answer the real request before offering more access"
+    ], seed, name, area, gate);
+  }
+
+  if (area.includes("money")) {
+    return pickLine([
+      "Check the amount once, then choose the payment or pause",
+      "Put the money question into one clear number before deciding",
+      "Separate value from panic before you approve the expense"
+    ], seed, name, area, gate);
+  }
+
+  if (area.includes("body") || area.includes("health")) {
+    return pickLine([
+      "Eat, drink water, then make the decision after the body settles",
+      "Handle food or rest before treating urgency as instruction",
+      "Give the body one repair before asking it for certainty"
+    ], seed, name, area, gate);
+  }
+
+  if (area.includes("creative") || area.includes("visibility")) {
+    return pickLine([
+      "Show the rough version before polishing the fear again",
+      "Send the usable draft before the inner critic edits the day",
+      "Make the idea visible before judging whether it is enough"
+    ], seed, name, area, gate);
+  }
+
+  if (area.includes("work") || area.includes("ambition") || area.includes("recognition") || area.includes("learning")) {
+    return pickLine([
+      "Finish the oldest visible task before improving the plan again",
+      "Submit the rough version before opening another private review",
+      "Put one finished mark on the work before measuring your worth"
+    ], seed, name, area, gate);
+  }
+
+  if (area.includes("home") || area.includes("family")) {
+    return pickLine([
+      "Clean the one place that keeps pulling your attention back",
+      "Do the house-level task before turning care into resentment",
+      "Settle the visible mess before explaining the invisible one"
+    ], seed, name, area, gate);
+  }
+
+  if (area.includes("closure") || area.includes("sleep")) {
+    return pickLine([
+      "Close the oldest open detail before giving the night another question",
+      "Write the final line, then stop negotiating with the same thought",
+      "End the repeated question with one finished detail"
+    ], seed, name, area, gate);
+  }
+
+  return pickLine([
+    "Finish the task that keeps returning before answering the emotional question",
+    "Choose the next clean action and refuse the extra debate",
+    "Do the practical thing first; let the feeling explain itself later"
+  ], seed, name, area, gate);
+}
+
+function conciseSceneAction(context, seed = 0, name = "") {
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const area = String(context.dailyArea || "").toLowerCase();
+  const gate = String(context.decisionGate || context.mentorMove || "").toLowerCase();
+  if (/\bcalendar\b|\bslot\b|\bcommitment\b/.test(scene)) {
+    return pickLine([
+      "Mark the calendar slot with one real commitment before the day bargains",
+      "Put one commitment on the calendar before the options multiply",
+      "Choose the calendar slot that can actually be kept today"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bmirror\b/.test(scene)) {
+    return pickLine([
+      "Decline the extra burden while the mirror still has your first answer",
+      "Use the mirror pause to refuse the yes that costs too much",
+      "Let the mirror moment end the agreement before it becomes automatic"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bworkspace\b|\bdesk edge\b|\bwork edge\b/.test(scene)) {
+    return pickLine([
+      "Clear the desk edge, then finish the smallest usable draft",
+      "Move one item off the workspace before sending the work",
+      "Put the next task on the desk and finish that first"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bkitchen counter\b|\bcounter before\b/.test(scene)) {
+    return pickLine([
+      "Clear the kitchen counter before the first task borrows the night",
+      "Use the kitchen counter as the first practical reset",
+      "Put the first task on the counter before the thought expands"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bchair\b|\bsame worry\b|\bworry keeps returning\b/.test(scene)) {
+    return pickLine([
+      "Stand up from the chair and name the cost before answering",
+      "Move from the chair before the same worry negotiates again",
+      "Use the chair as the stop mark and answer only the real request"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bcup\b|\btea\b|\bcoffee\b|\bcooling\b/.test(scene)) {
+    return pickLine([
+      "Let the cooling cup end the rehearsal before you approve the expense",
+      "Approve only the number that still makes sense beside the cup",
+      "Use the cooling cup as the stop mark before the answer grows"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bmeal\b|\bbreakfast\b|\blunch\b|\bdinner\b|\bfood\b/.test(scene)) {
+    return pickLine([
+      "Eat the first meal before deciding what still deserves attention",
+      "Protect the delayed meal before giving the thought another hearing",
+      "Finish the first meal before letting the question take over"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bduty\b|\bresentment\b/.test(scene)) {
+    return pickLine([
+      "Choose one time for the duty before resentment writes the answer",
+      "Put the duty into one hour before care turns into resentment",
+      "Write the duty into one slot before it starts asking for anger"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bunsent\b|\bdid not send\b/.test(scene)) {
+    return pickLine([
+      "Leave the unfinished line on the page and close the notebook",
+      "Keep the quiet room clear and stop editing the sentence",
+      "Leave the sentence aside for this hour"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(message|reply|conversation|call)\b/.test(scene)) {
+    return pickLine([
+      "Answer only the real request and leave the extra sentence alone",
+      "Keep the reply to two lines and do not reopen the case",
+      "Send the necessary answer, then let silence do the rest"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(wallet|receipt|payment|bill|amount)\b/.test(scene)) {
+    return pickLine([
+      "Check the receipt once, then decide the payment before reopening the worry",
+      "Write the amount clearly and make the money choice before dinner",
+      "Put the bill in one place and stop letting it follow every thought"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(shoes|door|errand|keys|bag|charger)\b/.test(scene)) {
+    return pickLine([
+      "Put on the shoes and finish the errand before the feeling negotiates",
+      "Place the keys by the door and leave within ten minutes",
+      "Pack the bag once, then stop reopening the same decision",
+      "Gather the charger and leave before delay becomes a mood",
+      "Leave through the door before the promise turns symbolic",
+      "Put the charger in the bag before the delay grows",
+      "Set the keys by the door and finish the errand"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(pen|page|notebook|sentence|draft)\b/.test(scene)) {
+    return pickLine([
+      "Use the waiting pen to write the decision in one line",
+      "Write the final sentence, then leave the page alone",
+      "Mark the page once and stop asking the thought to mature",
+      "Close the notebook after the unfinished line gets its answer",
+      "Put one sentence on the page before the mood edits it"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(laundry|drawer|room|floor|kitchen|counter)\b/.test(scene)) {
+    return pickLine([
+      "Close the open drawer before explaining the invisible mess",
+      "Clear the small surface first; let the room change before the story grows",
+      "Fold the laundry in front of you before carrying the whole house emotionally",
+      "Put the open drawer right before the mood claims the whole room",
+      "Clear the floor-level proof before asking the mind for certainty"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(meal|water|bed|sleep|rest|body|jaw)\b/.test(scene)) {
+    return pickLine([
+      "Drink water and eat before treating urgency as instruction",
+      "Rest the body first, then decide what still matters",
+      "Unclench the jaw before choosing words that must last"
+    ], seed, name, scene, area, gate);
+  }
+  return "";
+}
+
+function conciseClose(context, seed = 0, name = "") {
+  const tone = String(context.timingTone || context.innerWeather || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const area = String(context.dailyArea || "").toLowerCase();
+  const gate = String(context.decisionGate || context.mentorMove || "").toLowerCase();
+  if (/\bcalendar\b|\bslot\b|\bcommitment\b/.test(scene)) {
+    return pickLine([
+      "one commitment is kinder than four possible plans",
+      "the hour needs a promise it can hold",
+      "the rest of the day can stop auditioning"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bmirror\b/.test(scene)) {
+    return pickLine([
+      "the first answer is allowed to stay simple",
+      "agreement is not kindness when it costs your center",
+      "the clean no will protect more than a tired yes"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bworkspace\b|\bdesk edge\b|\bwork edge\b/.test(scene)) {
+    return pickLine([
+      "judge the work after one visible finish, not before",
+      "the draft will look clearer once the desk has changed",
+      "one finished piece will answer the private verdict"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bkitchen counter\b|\bcounter before\b/.test(scene)) {
+    return pickLine([
+      "the first task will shrink after the counter changes",
+      "the counter can hold the beginning better than the mind",
+      "one practical beginning is enough for this hour"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(wallet|receipt|payment|bill|amount)\b/.test(scene)) {
+    return pickLine([
+      "one clear number is enough for now",
+      "the day needs a decision, not another audit",
+      "money gets quieter when the next choice is named"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(shoes|door|errand|keys|bag|charger)\b/.test(scene)) {
+    if (area.includes("friendship") || area.includes("social") || area.includes("belonging")) {
+      return pickLine([
+        "the answer can stay brief once the real request is handled",
+        "access stays kinder when the extra sentence remains outside",
+        "the request gets easier when availability has a clear edge"
+      ], seed, name, scene, area, gate);
+    }
+    if (area.includes("work") || area.includes("authority") || area.includes("ambition")) {
+      return pickLine([
+        "the errand will give the unfinished work a cleaner start",
+        "the keys can carry the decision farther than another review",
+        "the task gets smaller once the first exit is real"
+      ], seed, name, scene, area, gate);
+    }
+    return pickLine([
+      "movement will settle what thinking keeps reopening",
+      "the errand carries more truth than the mood",
+      "the doorway has already made the choice smaller",
+      "outside air will make the decision less dramatic",
+      "the delay loses power once the threshold is crossed",
+      "the keys will feel lighter once the errand is finished",
+      "the threshold stops arguing once the errand is done"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\bunsent\b|\bdid not send\b/.test(scene)) {
+    return pickLine([
+      "the quiet room can hold that sentence for one more hour",
+      "silence stays kinder when the sentence is already set aside",
+      "the notebook can close before the answer asks for another edit"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(pen|page|notebook|sentence|draft|unsent)\b/.test(scene)) {
+    return pickLine([
+      "one finished line is enough before another review",
+      "the page needs a mark, not a private trial",
+      "the unfinished line has taken enough authority",
+      "read the sentence once after dinner, then stop editing",
+      "judge the mark after it exists, not while fearing it"
+    ], seed, name, scene, area, gate);
+  }
+  if (/\b(laundry|drawer|room|floor|kitchen|counter)\b/.test(scene)) {
+    return pickLine([
+      "the room can carry what thinking could not",
+      "order outside will lower the argument inside",
+      "one changed surface is enough proof for now",
+      "the drawer can stop carrying the whole mood",
+      "the surface is proof that care still happened"
+    ], seed, name, scene, area, gate);
+  }
+  if (tone.includes("delay") || tone.includes("slow")) {
+    return pickLine([
+      "the delay becomes useful when one thing is actually complete",
+      "progress returns when the day has one finished mark",
+      "patience works better when it has a real task"
+    ], seed, name, tone);
+  }
+  if (tone.includes("pressure") || tone.includes("urgent")) {
+    return pickLine([
+      "one completed detail will quiet the pressure more than another explanation",
+      "the pressure needs evidence, not a longer argument",
+      "let one result answer the urgency"
+    ], seed, name, tone);
+  }
+  if (tone.includes("tender") || tone.includes("emotional")) {
+    return pickLine([
+      "care stays clean when it has a limit you can keep",
+      "the heart trusts actions that do not abandon you",
+      "warmth becomes safer when timing is honest"
+    ], seed, name, tone);
+  }
+  return pickLine([
+    "let the next choice wait until food and water have had their turn",
+    "the rest can wait until one useful detail is actually finished",
+    "enough has been decided once the next hour has a real action",
+    "the next hour does not need a second argument before one task is done",
+    "the day gets easier when the instruction stays singular and checkable",
+    "one clean decision can carry the next hour without another private trial"
+  ], seed, name, tone, area, scene, gate);
 }
 
 function polishLocalWisdom(text) {
@@ -792,7 +1091,7 @@ function sceneStatementSubject(scene, seed = 0) {
     body: ["Mirror honesty", "Shoulder-level resistance", "Jaw-tight timing"],
     conversation: ["Unsent-sentence pressure", "Conversation timing", "Held-back wording"],
     task: ["List pressure", "Draft resistance", "The unnamed task"],
-    worry: ["Mental-tab pressure", "The returning thought", "Worry in its familiar chair"]
+    worry: ["Mental-tab pressure", "The returning thought", "A loop asking for closure"]
   };
   return pickLine(subjects[category] || ["The nearest detail", "Practical pressure", "The overlooked cue"], seed, scene);
 }
@@ -1003,7 +1302,7 @@ function openingTimingLine(lowerScene, pressure, window, seed = 0) {
     `The next useful move begins around ${lowerScene}, where ${pressure} is asking for size.`,
     `A ${window} block around ${lowerScene} gives ${pressure} a practical limit.`,
     `The scene around ${lowerScene} is not the issue; the hidden cost sits in ${pressure}.`,
-    `One decision near ${lowerScene} can make ${pressure} less expensive by evening.`,
+    `One practical action around ${lowerScene} can make ${pressure} less expensive by evening.`,
     `${capitalize(lowerScene)} shows where ${pressure} can become practical.`
   ], seed, lowerScene, pressure, window);
 }
@@ -1984,9 +2283,9 @@ function sceneVariants(raw) {
   }
   if (raw.includes("chair")) {
     return [
-      "the chair where the same worry returns",
-      "the chair where overthinking usually sits",
-      "that repeated worry in its familiar chair"
+      "the place where the same thought keeps returning",
+      "the room detail that keeps pulling attention",
+      "the repeated worry asking for a practical close"
     ];
   }
   if (raw.includes("shoes") || raw.includes("door")) {
@@ -2289,7 +2588,7 @@ function words(text) {
 }
 
 function normalizeLocalWisdom(text) {
-  return cleanWisdomText(text, text, 98);
+  return cleanWisdomText(text, text, 34);
 }
 
 function fragment(text) {
