@@ -55,7 +55,10 @@ const SOUL_WISDOM_PENDING_RETRY_MS = 5000;
 const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 60;
 const MORE_GUIDANCE_PENDING_RETRY_MS = 5000;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-const LOCAL_AUTH_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_AUTH_FALLBACK === "true" || import.meta.env.MODE !== "production";
+const LOCAL_AUTH_FALLBACK_SETTING = import.meta.env.VITE_LOCAL_AUTH_FALLBACK;
+const IS_NATIVE_MOBILE_SHELL = detectNativeMobileShell();
+const NATIVE_DEMO_AUTH_DEFAULT = IS_NATIVE_MOBILE_SHELL && !API_BASE_URL && LOCAL_AUTH_FALLBACK_SETTING !== "false";
+const LOCAL_AUTH_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_SETTING === "true" || import.meta.env.MODE !== "production" || NATIVE_DEMO_AUTH_DEFAULT;
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
@@ -84,6 +87,15 @@ const ASTRO_PROMPTS = [
   "What should I protect before I answer?",
   "How do I move without losing peace?"
 ];
+
+function detectNativeMobileShell() {
+  const capacitor = typeof window !== "undefined" ? window.Capacitor : null;
+  if (!capacitor) return false;
+  if (typeof capacitor.isNativePlatform === "function") {
+    return capacitor.isNativePlatform();
+  }
+  return ["android", "ios"].includes(capacitor.getPlatform?.());
+}
 
 function App() {
   const [splashDone, setSplashDone] = useState(false);

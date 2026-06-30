@@ -11,6 +11,7 @@ checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
 checkProductionDoesNotPersistLocalSessions();
+checkNativeDebugApkKeepsDemoOtpFallback();
 checkLoginAnalyticsDistinguishesOtpSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionSoulGuruRetriesPendingBackendReading();
@@ -75,6 +76,17 @@ function checkProductionDoesNotPersistLocalSessions() {
     source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n        window.localStorage.setItem(SESSION_KEY, next.phone);"),
     source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n    return enrichedAccount;\n  }"),
     source.includes("function getSessionUser() {\n  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;")
+  ].every(Boolean));
+}
+
+function checkNativeDebugApkKeepsDemoOtpFallback() {
+  pushCheck("Native APK without backend URL keeps demo OTP unless explicitly disabled", [
+    source.includes("const LOCAL_AUTH_FALLBACK_SETTING = import.meta.env.VITE_LOCAL_AUTH_FALLBACK;"),
+    source.includes("const IS_NATIVE_MOBILE_SHELL = detectNativeMobileShell();"),
+    source.includes("const NATIVE_DEMO_AUTH_DEFAULT = IS_NATIVE_MOBILE_SHELL && !API_BASE_URL && LOCAL_AUTH_FALLBACK_SETTING !== \"false\";"),
+    source.includes("const LOCAL_AUTH_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_SETTING === \"true\" || import.meta.env.MODE !== \"production\" || NATIVE_DEMO_AUTH_DEFAULT;"),
+    source.includes("function detectNativeMobileShell() {"),
+    source.includes("return [\"android\", \"ios\"].includes(capacitor.getPlatform?.());")
   ].every(Boolean));
 }
 
