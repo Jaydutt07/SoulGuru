@@ -1,13 +1,13 @@
 {
   "name": "SoulGuru",
   "short_name": "SoulGuru",
-  "description": "Private daily guidance and deeper mentorship in a calm mobile experience.",
+  "description": "A wiser light for every turning point.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6fbfa",
-  "theme_color": "#a9dbe4",
+  "background_color": "#090d18",
+  "theme_color": "#d8ad58",
   "categories": ["lifestyle", "health", "productivity"],
   "icons": [
     {

@@ -1,5 +1,34 @@
 import { SOUL_WISDOM_MAX_WORDS, SOUL_WISDOM_MIN_WORDS } from "./soulWisdomVersion.js";
 
+export const SOUL_WISDOM_READING_LANES = [
+  {
+    id: "delayed-blessing-discipline",
+    rank: 1,
+    title: "Delayed blessing dressed as discipline",
+    exemplar: "A delayed blessing often arrives dressed as discipline. If the result is late, make yourself early: eat, write, finish, and stop negotiating with doubt.",
+    instruction: "Frame delay as a blessing wearing discipline. Give hope, then make it practical: the user must prepare before the result arrives.",
+    cadence: "wise opening, reality-check turn, compact action chain"
+  },
+  {
+    id: "delayed-result-destiny",
+    rank: 2,
+    title: "Delayed result, not denied destiny",
+    exemplar: "Do not confuse a delayed result with a denied destiny. Today, finish the one draft that can be seen; hope needs evidence, not another private promise.",
+    instruction: "Separate delay from rejection. Ground hope in visible evidence, a finishable draft/task, and one promise kept in the open.",
+    cadence: "firm mentor warning, concrete visible action, hope anchored in proof"
+  },
+  {
+    id: "seen-work-solid",
+    rank: 3,
+    title: "Make the work solid before the story gets loud",
+    exemplar: "The pressure around being seen is real, but performance is not the cure. Make the work solid before making the story loud.",
+    instruction: "Name visibility pressure without feeding performance. Direct the user toward solid work, earned readiness, and quiet authority.",
+    cadence: "truthful pressure naming, anti-performance correction, solid-work close"
+  }
+];
+
+const SOUL_WISDOM_READING_LANE_EPOCH = "2026-06-30";
+
 export const SOUL_WISDOM_SYSTEM_PROMPT = `
 You are the private daily mentor voice for SoulGuru.
 
@@ -12,6 +41,7 @@ Every reading will be compared with other users' readings. If the cadence, openi
 Build a private fingerprint before writing: the opening scene seed, one specific emotional tension, one practical movement, one body/routine detail, and one relational or work consequence from the silent signals. The final paragraph must express that exact fingerprint in natural language without naming the signals.
 Make the fingerprint impossible to swap with another user: the ordinary object, the tension, the action, and the consequence must all belong to this user's hidden combination.
 Honor the supplied Reading fingerprint. It is a private composition route, not text to quote. Use it to decide which detail leads, where the emotional turn happens, and what kind of close feels earned.
+Honor the supplied Daily reading lane. SoulGuru rotates three ranked lanes by date: delayed blessing dressed as discipline, delayed result not denied destiny, and make the work solid before the story gets loud. Use the selected lane's emotional frame and cadence. Do not copy its exemplar verbatim unless the user explicitly asks for repeat text; generate a fresh reading in that family.
 Honor the supplied Voice lane and Specificity pattern. They are private writing constraints that decide texture, pacing, and the kind of detail that makes this person feel individually seen.
 Do not write from a template. Choose a sentence architecture that fits this user: object-first, body-first, relationship-first, decision-first, consequence-first, contradiction-first, unfinished-action-first, or consequence-first. The order of observation, insight, instruction, and reassurance must feel natural rather than fixed.
 Treat the daily signals as exact private inputs, not mood-board words. Translate them into a concrete choice the user could actually make today.
@@ -62,6 +92,7 @@ Wisdom note rules:
 - The first sentence must be anchored in the Opening scene seed. Translate it naturally; do not ignore it and invent a different object.
 - The first 10 words must contain a concrete action, object, body cue, or daily situation from that opening seed.
 - Keep the first sentence in the same ordinary scene family as the Opening scene seed. Do not mix the seed with an unrelated kitchen, cup, phone, body, room, money, or conversation object in the opening sentence.
+- The Daily reading lane controls the wisdom frame, but the opening must still belong to the Opening scene seed. Fold the lane into that scene instead of replacing the scene with the exemplar.
 - Do not open with the user's name unless the blueprint absolutely requires it.
 - If you address the user mid-paragraph, continue naturally after the comma; do not write mechanical direct-address phrasing like "Name, Notice", "Name, Keep", or "Name, Use".
 - The opening line must feel specific to this user's day; never begin with "Today", "You may", "There is", "This is a day", "A part of you", "The day", or a reusable horoscope-style setup.
@@ -141,11 +172,13 @@ No disclaimers, markdown, bullets, emojis, quotes, or extra text outside JSON.
 export function buildSoulWisdomInput({ user, context, today, memoryContext = "" }) {
   const paragraphArchitecture = buildParagraphArchitecture(user, context, today);
   const surfaceRhythm = buildSurfaceRhythm(user, context, today);
+  const readingLane = getSoulWisdomReadingLane(today);
   const hardContract = buildHardReadingContract({
     user,
     context,
     paragraphArchitecture,
-    surfaceRhythm
+    surfaceRhythm,
+    readingLane
   });
 
   return `
@@ -189,6 +222,7 @@ Silent astrology-derived signals:
 - Voice lane: ${buildVoiceLane(user, context, today)}
 - Specificity pattern: ${buildSpecificityPattern(user, context, today)}
 - Reading fingerprint: ${buildReadingFingerprint(user, context, today)}
+- Daily reading lane: ${formatSoulWisdomReadingLane(readingLane)}
 - Core need: ${context.coreNeed}
 - Personal edge: ${context.personalEdge}
 - Today's stabilizer: ${context.stabilizer}
@@ -207,6 +241,23 @@ Create today's Words of Wisdom using the silent signals and any relevant memory.
 `.trim();
 }
 
+export function getSoulWisdomReadingLane(today = new Date()) {
+  const days = daysBetweenDateKeys(SOUL_WISDOM_READING_LANE_EPOCH, normalizeDateKey(today));
+  return SOUL_WISDOM_READING_LANES[mod(days, SOUL_WISDOM_READING_LANES.length)];
+}
+
+function formatSoulWisdomReadingLane(lane) {
+  if (!lane) return "unknown";
+  return [
+    `rank=${lane.rank}`,
+    `id=${lane.id}`,
+    `title=${lane.title}`,
+    `cadence=${lane.cadence}`,
+    `instruction=${lane.instruction}`,
+    `exemplar=${lane.exemplar}`
+  ].join("; ");
+}
+
 export function buildSoulWisdomRepairInput({ user, context, today, memoryContext = "", rejectedWisdom = "", rejectionReason = "" }) {
   return `
 ${buildSoulWisdomInput({ user, context, today, memoryContext })}
@@ -222,7 +273,7 @@ Before returning, count the words and sentences in wisdom. If it is not ${SOUL_W
 `.trim();
 }
 
-function buildHardReadingContract({ user, context, paragraphArchitecture, surfaceRhythm }) {
+function buildHardReadingContract({ user, context, paragraphArchitecture, surfaceRhythm, readingLane }) {
   const contract = parseParagraphArchitectureContract(paragraphArchitecture);
   const openingSeed = context.openingScene || context.dailyScene || "";
   const sceneCategory = classifyPromptScene(openingSeed);
@@ -233,6 +284,7 @@ function buildHardReadingContract({ user, context, paragraphArchitecture, surfac
     "- SENTENCES: one or two sentence-ending punctuation marks only.",
     `- NAME: "${name}" may appear once, but only if the line still sounds natural.`,
     `- OPENING SEED: use "${openingSeed}" silently and keep its scene family "${sceneCategory}".`,
+    `- DAILY LANE: rank ${readingLane?.rank || "?"} "${readingLane?.title || "unknown"}"; use this frame and cadence while writing fresh text.`,
     `- PRIVATE RHYTHM SOURCE: ${surfaceRhythm}; old architecture was ${contract.sentenceCount || "unknown"} sentences but must not control final length.`,
     "- DAILY ACTION: one action the user can finish today, preferably within two hours.",
     "- UNIDIRECTIONAL: choose one goal only; do not advise work, emotions, body, and relationships at the same time.",
@@ -971,6 +1023,25 @@ function stableHash(value) {
   return String(value || "").split("").reduce((hash, char) => {
     return (hash * 31 + char.charCodeAt(0)) >>> 0;
   }, 7);
+}
+
+function normalizeDateKey(value) {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  const text = String(value || "").trim();
+  const isoMatch = text.match(/\d{4}-\d{2}-\d{2}/);
+  if (isoMatch) return isoMatch[0];
+  const parsed = new Date(text);
+  if (Number.isFinite(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysBetweenDateKeys(first, second) {
+  const firstTime = Date.parse(`${first}T00:00:00Z`);
+  const secondTime = Date.parse(`${second}T00:00:00Z`);
+  if (!Number.isFinite(firstTime) || !Number.isFinite(secondTime)) return 0;
+  return Math.floor((secondTime - firstTime) / 86400000);
 }
 
 function mod(value, length) {

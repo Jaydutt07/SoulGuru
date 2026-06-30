@@ -170,9 +170,9 @@ function checkAppShellMetadata() {
   const requiredSnippets = [
     "<title>SoulGuru | Personal Daily Guidance</title>",
     "name=\"description\"",
-    "name=\"theme-color\" content=\"#a9dbe4\"",
+    "name=\"theme-color\" content=\"#d8ad58\"",
     "rel=\"manifest\" href=\"/manifest.webmanifest\"",
-    "rel=\"icon\" type=\"image/svg+xml\" href=\"/icons/soulguru-icon.svg\"",
+    "rel=\"icon\" type=\"image/png\" href=\"/icons/soulguru-icon-192.png\"",
     "rel=\"apple-touch-icon\" href=\"/icons/apple-touch-icon.png\"",
     "property=\"og:title\" content=\"SoulGuru | Personal Daily Guidance\"",
     "name=\"twitter:card\" content=\"summary\""
@@ -192,8 +192,8 @@ function checkPwaManifest() {
     manifest?.scope === "/",
     manifest?.display === "standalone",
     manifest?.orientation === "portrait",
-    manifest?.theme_color === "#a9dbe4",
-    manifest?.background_color === "#f6fbfa",
+    manifest?.theme_color === "#d8ad58",
+    manifest?.background_color === "#090d18",
     iconMap.get("/icons/soulguru-icon-192.png")?.sizes === "192x192",
     iconMap.get("/icons/soulguru-icon-512.png")?.sizes === "512x512",
     iconMap.get("/icons/soulguru-icon-512.png")?.purpose?.includes("maskable")
@@ -206,7 +206,6 @@ function checkPwaManifest() {
 
 function checkInstallAssets() {
   const requiredFiles = [
-    "public/icons/soulguru-icon.svg",
     "public/icons/soulguru-icon-192.png",
     "public/icons/soulguru-icon-512.png",
     "public/icons/apple-touch-icon.png",

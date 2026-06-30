@@ -32,6 +32,8 @@ const PLACE_CATALOG = [
   ["ludhiana", "Ludhiana, India", 30.901, 75.8573, "Asia/Kolkata", 330],
   ["agra", "Agra, India", 27.1767, 78.0081, "Asia/Kolkata", 330],
   ["nashik", "Nashik, India", 19.9975, 73.7898, "Asia/Kolkata", 330],
+  ["umarga", "Umarga, Maharashtra, India", 17.839767, 76.622246, "Asia/Kolkata", 330],
+  ["omerga", "Umarga, Maharashtra, India", 17.839767, 76.622246, "Asia/Kolkata", 330],
   ["faridabad", "Faridabad, India", 28.4089, 77.3178, "Asia/Kolkata", 330],
   ["meerut", "Meerut, India", 28.9845, 77.7064, "Asia/Kolkata", 330],
   ["rajkot", "Rajkot, India", 22.3039, 70.8022, "Asia/Kolkata", 330],

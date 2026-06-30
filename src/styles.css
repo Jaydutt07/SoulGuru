@@ -4515,6 +4515,65 @@ body {
   color: rgba(248, 240, 223, 0.72);
 }
 
+.shani-source-note {
+  color: rgba(217, 179, 95, 0.86);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.shani-moon-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 13rem);
+  align-items: end;
+  gap: 0.85rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(217, 179, 95, 0.15);
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(248, 240, 223, 0.07), rgba(154, 168, 193, 0.06)),
+    rgba(7, 10, 20, 0.32);
+  box-shadow: inset 0 1px 0 rgba(248, 240, 223, 0.06);
+}
+
+.shani-moon-control div,
+.shani-moon-control label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.shani-moon-control span {
+  color: rgba(248, 240, 223, 0.58);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shani-moon-control strong {
+  color: #f8f0df;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.shani-moon-control select {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid rgba(217, 179, 95, 0.25);
+  border-radius: 0.75rem;
+  outline: 0;
+  background: rgba(8, 12, 23, 0.92);
+  color: #f8f0df;
+  padding: 0 0.8rem;
+  font: inherit;
+  font-weight: 800;
+}
+
+.shani-moon-control select:focus {
+  border-color: rgba(217, 179, 95, 0.55);
+  box-shadow: 0 0 0 4px rgba(217, 179, 95, 0.12);
+}
+
 .shani-time-dial {
   position: relative;
   padding: 0.2rem 0 0.45rem;
@@ -4781,6 +4840,10 @@ body {
 
   .shani-section .countdown-grid div {
     min-height: 6.2rem;
+  }
+
+  .shani-moon-control {
+    grid-template-columns: 1fr;
   }
 
   .shani-section .plan-grid,
@@ -6326,6 +6389,732 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .guru-astrolabe,
   .guru-astrolabe-inner {
+    animation: none;
+  }
+}
+
+/* Golden horizon entrance and reusable SoulGuru buffering ritual. */
+.splash-screen {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 19%, rgba(255, 242, 196, 0.34), transparent 10rem),
+    radial-gradient(circle at 18% 28%, rgba(56, 184, 168, 0.24), transparent 12rem),
+    radial-gradient(circle at 83% 32%, rgba(165, 74, 115, 0.24), transparent 12rem),
+    linear-gradient(180deg, #070b15 0%, #11172b 40%, #6e3f48 61%, #d8ad58 72%, #125d59 100%);
+}
+
+.splash-screen::before {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  content: "";
+  background:
+    repeating-linear-gradient(90deg, transparent 0 2.8rem, rgba(255, 244, 216, 0.045) 2.8rem 2.86rem),
+    radial-gradient(circle at 14% 16%, rgba(255, 248, 232, 0.9) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 72% 13%, rgba(229, 189, 99, 0.78) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 88% 35%, rgba(101, 217, 201, 0.72) 0 1px, transparent 1.8px);
+  background-size: auto, 8rem 8rem, 10rem 10rem, 7rem 7rem;
+  opacity: 0.64;
+}
+
+.splash-screen::after {
+  position: absolute;
+  right: -22%;
+  bottom: -15%;
+  left: -22%;
+  z-index: -1;
+  height: 48%;
+  border-radius: 50% 50% 0 0;
+  content: "";
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 249, 224, 0.64), transparent 34%),
+    linear-gradient(180deg, rgba(244, 214, 155, 0.62), rgba(18, 93, 89, 0.76) 54%, rgba(7, 11, 21, 0.78));
+  box-shadow: 0 -2rem 5rem rgba(216, 173, 88, 0.18);
+  transform: rotate(-2deg);
+}
+
+.splash-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.splash-horizon-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  width: min(82vw, 27rem);
+  height: 0.16rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 236, 173, 0.98), rgba(101, 217, 201, 0.72), transparent);
+  box-shadow:
+    0 0 2rem rgba(229, 189, 99, 0.54),
+    0 0 4.4rem rgba(101, 217, 201, 0.24);
+  transform: translateX(-50%);
+}
+
+.splash-star {
+  position: absolute;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 2px;
+  background: #fff5dc;
+  box-shadow: 0 0 1.1rem rgba(255, 245, 220, 0.76);
+  transform: rotate(45deg);
+  animation: splashStarDrift 4.8s ease-in-out infinite;
+}
+
+.splash-star-one {
+  left: 18%;
+  top: 17%;
+}
+
+.splash-star-two {
+  right: 22%;
+  top: 22%;
+  background: #65d9c9;
+  animation-delay: -1.4s;
+}
+
+.splash-star-three {
+  left: 68%;
+  bottom: 31%;
+  background: #e5bd63;
+  animation-delay: -2.8s;
+}
+
+.splash-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(88%, 28rem);
+  justify-items: center;
+  gap: 0.72rem;
+  margin: 0 0 2rem;
+  color: #fff7e6;
+  text-align: center;
+  text-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.24);
+}
+
+.splash-kicker {
+  margin: 0;
+  color: #f1cc7d;
+  font-size: 0.74rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.splash-content h1 {
+  margin: 0;
+  color: #fff5dc;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.6rem, 18vw, 5.55rem);
+  font-weight: 680;
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.splash-subtitle {
+  max-width: 18.4rem;
+  margin: 0.08rem 0 0.2rem;
+  color: rgba(255, 247, 226, 0.88);
+  font-size: 1.02rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.splash-skip {
+  position: absolute;
+  right: 1.15rem;
+  bottom: 1.15rem;
+  z-index: 2;
+  border: 1px solid rgba(255, 241, 201, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 248, 232, 0.12);
+  color: #fff5dc;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.cosmic-buffer {
+  --buffer-accent: #d8ad58;
+  --buffer-accent-2: #38b8a8;
+  --buffer-accent-3: #a54a73;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.78rem;
+  align-items: center;
+  width: 100%;
+  min-height: 5.1rem;
+  border: 1px solid rgba(216, 173, 88, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--buffer-accent) 20%, transparent), transparent 5rem),
+    linear-gradient(135deg, rgba(255, 250, 239, 0.92), rgba(246, 238, 219, 0.82));
+  padding: 0.72rem;
+  box-shadow: 0 16px 32px rgba(31, 23, 42, 0.1);
+}
+
+.cosmic-buffer.compact {
+  min-height: 3.9rem;
+  padding: 0.56rem 0.62rem;
+}
+
+.cosmic-buffer-astro {
+  --buffer-accent: #d8b86d;
+  --buffer-accent-2: #7ee6da;
+  --buffer-accent-3: #9f86ff;
+  border-color: rgba(126, 230, 218, 0.2);
+  background:
+    radial-gradient(circle at 16% 20%, rgba(126, 230, 218, 0.18), transparent 4.8rem),
+    linear-gradient(135deg, rgba(18, 31, 47, 0.92), rgba(9, 18, 29, 0.82));
+  color: #fff8eb;
+}
+
+.cosmic-buffer-shani {
+  --buffer-accent: #d9b35f;
+  --buffer-accent-2: #9aa8c1;
+  --buffer-accent-3: #5d6f93;
+  border-color: rgba(217, 179, 95, 0.2);
+  background:
+    radial-gradient(circle at 16% 20%, rgba(217, 179, 95, 0.16), transparent 4.8rem),
+    linear-gradient(135deg, rgba(25, 29, 39, 0.94), rgba(10, 13, 21, 0.86));
+  color: #fff8eb;
+}
+
+.cosmic-buffer-orb {
+  position: relative;
+  display: grid;
+  width: 3.45rem;
+  height: 3.45rem;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 26%, rgba(255, 255, 255, 0.72), transparent 18%),
+    linear-gradient(145deg, color-mix(in srgb, var(--buffer-accent-2) 66%, #07111b), color-mix(in srgb, var(--buffer-accent-3) 54%, #07111b));
+  box-shadow:
+    inset -0.55rem -0.6rem 1rem rgba(0, 0, 0, 0.24),
+    0 0 1.5rem color-mix(in srgb, var(--buffer-accent) 34%, transparent);
+}
+
+.cosmic-buffer.compact .cosmic-buffer-orb {
+  width: 2.9rem;
+  height: 2.9rem;
+}
+
+.buffer-ring,
+.buffer-horizon,
+.buffer-sun,
+.buffer-dot {
+  position: absolute;
+}
+
+.buffer-ring {
+  inset: -0.34rem;
+  border: 1px solid color-mix(in srgb, var(--buffer-accent) 52%, transparent);
+  border-radius: 50%;
+  animation: bufferSpin 5.2s linear infinite;
+}
+
+.buffer-ring-inner {
+  inset: 0.36rem;
+  border-color: color-mix(in srgb, var(--buffer-accent-2) 56%, transparent);
+  animation-duration: 3.8s;
+  animation-direction: reverse;
+}
+
+.buffer-ring::before,
+.buffer-ring-inner::before {
+  position: absolute;
+  top: 50%;
+  right: -0.22rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--buffer-accent);
+  box-shadow: 0 0 0.8rem var(--buffer-accent);
+  content: "";
+}
+
+.buffer-ring-inner::before {
+  right: auto;
+  left: -0.18rem;
+  width: 0.32rem;
+  height: 0.32rem;
+  background: var(--buffer-accent-2);
+}
+
+.buffer-horizon {
+  right: 0.7rem;
+  bottom: 1.27rem;
+  left: 0.7rem;
+  height: 0.13rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 248, 232, 0.92), transparent);
+}
+
+.buffer-sun {
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 50%;
+  background: #fff2c7;
+  box-shadow: 0 0 0.9rem var(--buffer-accent);
+  animation: bufferSunRise 1.9s ease-in-out infinite alternate;
+}
+
+.buffer-dot {
+  width: 0.26rem;
+  height: 0.26rem;
+  border-radius: 50%;
+  background: #fff8eb;
+  opacity: 0.84;
+  animation: bufferDotPulse 1.8s ease-in-out infinite;
+}
+
+.buffer-dot-one {
+  left: 0.78rem;
+  top: 0.9rem;
+}
+
+.buffer-dot-two {
+  right: 0.78rem;
+  top: 1.2rem;
+  background: var(--buffer-accent);
+  animation-delay: -0.6s;
+}
+
+.buffer-dot-three {
+  right: 1.2rem;
+  bottom: 0.8rem;
+  background: var(--buffer-accent-2);
+  animation-delay: -1.2s;
+}
+
+.cosmic-buffer-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.22rem;
+}
+
+.cosmic-buffer-copy strong {
+  color: #2a1723;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.cosmic-buffer-astro .cosmic-buffer-copy strong,
+.cosmic-buffer-shani .cosmic-buffer-copy strong {
+  color: #fff8eb;
+}
+
+.buffer-phrases {
+  position: relative;
+  min-height: 1.05rem;
+  color: color-mix(in srgb, var(--buffer-accent) 82%, #38261a);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.cosmic-buffer-astro .buffer-phrases,
+.cosmic-buffer-shani .buffer-phrases {
+  color: color-mix(in srgb, var(--buffer-accent) 82%, #fff8eb);
+}
+
+.buffer-phrases span {
+  position: absolute;
+  inset: 0 auto auto 0;
+  opacity: 0;
+  transform: translateY(0.35rem);
+  animation: bufferPhraseCycle 4.8s ease-in-out infinite;
+}
+
+.buffer-phrases span:nth-child(2) {
+  animation-delay: 1.6s;
+}
+
+.buffer-phrases span:nth-child(3) {
+  animation-delay: 3.2s;
+}
+
+.splash-content .cosmic-buffer {
+  width: min(100%, 19.5rem);
+  margin-top: 0.15rem;
+  border-color: rgba(255, 241, 201, 0.18);
+  background: rgba(7, 11, 21, 0.24);
+  color: #fff8eb;
+  box-shadow: inset 0 0 0 1px rgba(255, 248, 232, 0.04), 0 1rem 2.4rem rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(18px);
+}
+
+.splash-content .cosmic-buffer-copy strong {
+  color: #fff8eb;
+}
+
+.splash-content .buffer-phrases {
+  color: #f1cc7d;
+}
+
+.chat-messages .cosmic-buffer {
+  max-width: 86%;
+}
+
+@keyframes splashStarDrift {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: translateY(0) rotate(45deg) scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-0.34rem) rotate(45deg) scale(1.14);
+  }
+}
+
+@keyframes bufferSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bufferSunRise {
+  from {
+    transform: translateY(0.26rem) scale(0.9);
+  }
+
+  to {
+    transform: translateY(-0.16rem) scale(1.05);
+  }
+}
+
+@keyframes bufferDotPulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.78);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes bufferPhraseCycle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0.32rem);
+  }
+
+  12%,
+  27% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  39% {
+    opacity: 0;
+    transform: translateY(-0.24rem);
+  }
+}
+
+@media (max-width: 24rem) {
+  .splash-content {
+    width: min(90%, 22rem);
+    gap: 0.6rem;
+  }
+
+  .splash-subtitle {
+    font-size: 0.94rem;
+  }
+
+  .splash-skip {
+    right: 0.85rem;
+    bottom: 0.85rem;
+  }
+
+  .cosmic-buffer {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.58rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-star,
+  .buffer-ring,
+  .buffer-ring-inner,
+  .buffer-sun,
+  .buffer-dot,
+  .buffer-phrases span {
+    animation: none;
+  }
+
+  .buffer-phrases span:first-child {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Universal entity logo: source artwork plus live orbiting wisdom aura. */
+.universal-entity {
+  --entity-size: 10.8rem;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  width: var(--entity-size);
+  height: var(--entity-size);
+  place-items: center;
+  overflow: visible;
+}
+
+.universal-entity img {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 0 1rem rgba(101, 217, 201, 0.24))
+    drop-shadow(0 0 1.45rem rgba(216, 173, 88, 0.18))
+    saturate(1.14);
+  animation: entityBreath 5.8s ease-in-out infinite;
+}
+
+.entity-aura,
+.entity-orbit,
+.entity-star {
+  position: absolute;
+  pointer-events: none;
+}
+
+.entity-aura {
+  z-index: 0;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, rgba(255, 248, 232, 0.22), transparent 38%),
+    conic-gradient(from 20deg, rgba(101, 217, 201, 0.28), transparent 18%, rgba(216, 173, 88, 0.24), transparent 44%, rgba(210, 83, 162, 0.24), transparent 72%, rgba(101, 217, 201, 0.28));
+  filter: blur(0.35rem);
+  opacity: 0.78;
+  animation: entityAuraSpin 18s linear infinite, entityAuraPulse 4.4s ease-in-out infinite;
+}
+
+.entity-aura-two {
+  inset: -2%;
+  opacity: 0.38;
+  filter: blur(0.78rem);
+  animation-duration: 26s, 5.8s;
+  animation-direction: reverse, normal;
+}
+
+.entity-orbit {
+  z-index: 3;
+  border: 1px solid rgba(255, 248, 232, 0.24);
+  border-radius: 50%;
+  transform: rotateX(64deg) rotateZ(-10deg);
+}
+
+.entity-orbit-one {
+  inset: 16%;
+  animation: entityOrbitTilt 8s ease-in-out infinite alternate;
+}
+
+.entity-orbit-two {
+  inset: 25%;
+  border-color: rgba(101, 217, 201, 0.28);
+  transform: rotateX(64deg) rotateZ(34deg);
+  animation: entityOrbitTiltReverse 7.2s ease-in-out infinite alternate;
+}
+
+.entity-star {
+  --radius: 4.75rem;
+  --start: 0deg;
+  --scale: 1;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: #fff8e9;
+  box-shadow:
+    0 0 0.55rem rgba(255, 248, 233, 0.86),
+    0 0 1rem currentColor;
+  color: #fff8e9;
+  animation: entityStarOrbit var(--speed, 8s) linear infinite;
+}
+
+.entity-star-one {
+  --radius: 4.55rem;
+  --start: 10deg;
+  --speed: 7.8s;
+  --scale: 1.15;
+}
+
+.entity-star-two {
+  --radius: 5.25rem;
+  --start: 76deg;
+  --speed: 10.2s;
+  --scale: 0.82;
+  color: #65d9c9;
+  background: #65d9c9;
+}
+
+.entity-star-three {
+  --radius: 4.25rem;
+  --start: 142deg;
+  --speed: 8.8s;
+  --scale: 0.94;
+  color: #e5bd63;
+  background: #e5bd63;
+}
+
+.entity-star-four {
+  --radius: 5.65rem;
+  --start: 218deg;
+  --speed: 11.6s;
+  --scale: 0.76;
+  color: #f053bf;
+  background: #f053bf;
+}
+
+.entity-star-five {
+  --radius: 4.85rem;
+  --start: 284deg;
+  --speed: 9.4s;
+  --scale: 0.7;
+  color: #5bdfff;
+  background: #5bdfff;
+}
+
+.entity-star-six {
+  --radius: 3.7rem;
+  --start: 326deg;
+  --speed: 6.8s;
+  --scale: 0.62;
+  color: #fff8e9;
+  background: #fff8e9;
+}
+
+.splash-entity-mark {
+  --entity-size: 9.3rem;
+  margin-bottom: -0.1rem;
+}
+
+.soul-guru-cosmos.guru-sanctum.universal-entity {
+  --entity-size: 10.95rem;
+  align-self: center;
+  justify-self: center;
+}
+
+.soul-guru-cosmos.guru-sanctum.universal-entity::after {
+  position: absolute;
+  z-index: 1;
+  inset: 14% 12%;
+  border-radius: 50%;
+  content: "";
+  background: radial-gradient(circle at center, rgba(255, 248, 232, 0.12), transparent 58%);
+  mix-blend-mode: screen;
+}
+
+@keyframes entityBreath {
+  0%,
+  100% {
+    transform: scale(0.985);
+  }
+
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes entityAuraSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes entityAuraPulse {
+  0%,
+  100% {
+    opacity: 0.52;
+    scale: 0.96;
+  }
+
+  50% {
+    opacity: 0.86;
+    scale: 1.04;
+  }
+}
+
+@keyframes entityStarOrbit {
+  from {
+    transform: rotate(var(--start)) translateX(var(--radius)) rotate(calc(-1 * var(--start))) scale(var(--scale));
+  }
+
+  to {
+    transform: rotate(calc(var(--start) + 360deg)) translateX(var(--radius)) rotate(calc(-1 * (var(--start) + 360deg))) scale(var(--scale));
+  }
+}
+
+@keyframes entityOrbitTilt {
+  from {
+    transform: rotateX(64deg) rotateZ(-14deg);
+  }
+
+  to {
+    transform: rotateX(58deg) rotateZ(12deg);
+  }
+}
+
+@keyframes entityOrbitTiltReverse {
+  from {
+    transform: rotateX(58deg) rotateZ(38deg);
+  }
+
+  to {
+    transform: rotateX(66deg) rotateZ(12deg);
+  }
+}
+
+@media (max-width: 24rem) {
+  .splash-entity-mark {
+    --entity-size: 8.15rem;
+  }
+
+  .soul-guru-cosmos.guru-sanctum.universal-entity {
+    --entity-size: 8.65rem;
+  }
+
+  .entity-star {
+    --radius: 3.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .universal-entity img,
+  .entity-aura,
+  .entity-orbit,
+  .entity-star {
     animation: none;
   }
 }

@@ -36,10 +36,11 @@ if (failed.length > 0) {
 function checkWelcomeAndLoginSurface() {
   pushCheck("Splash keeps the calm Soul Guru entry promise", includesAll(blocks.splash, [
     "splash-screen",
-    "splash-water",
+    "splash-sky",
+    "UniversalEntityLogo",
     "<h1>Soul Guru</h1>",
-    "guardian angel for you",
-    "Enter"
+    "A wiser light for every turning point.",
+    "Begin"
   ]));
 
   pushCheck("Login keeps existing-account and new-account OTP flows", includesAll(blocks.auth, [

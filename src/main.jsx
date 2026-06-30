@@ -33,7 +33,7 @@ import {
   openClerkUserProfile,
   signOutClerk
 } from "./authClient.js";
-import { buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart } from "./astrologyEngine.js";
+import { SIDEREAL_SIGNS, buildAstrologyContext, buildTransitDateForUser, getSaadeSatiFromChart, normalizeSiderealSign } from "./astrologyEngine.js";
 import { buildFallbackAstroSolveInsight } from "./astroSolveGuidance.js";
 import { generateCompatibility } from "./compatibility.js";
 import { buildFallbackDeepGuidance } from "./deepGuidance.js";
@@ -170,18 +170,71 @@ function App() {
 function Splash({ onSkip }) {
   return (
     <section className="splash-screen">
-      <div className="splash-water" aria-hidden="true" />
+      <div className="splash-sky" aria-hidden="true">
+        <span className="splash-star splash-star-one" />
+        <span className="splash-star splash-star-two" />
+        <span className="splash-star splash-star-three" />
+        <span className="splash-horizon-glow" />
+      </div>
       <div className="splash-content">
-        <p className="splash-kicker">welcome to</p>
+        <UniversalEntityLogo className="splash-entity-mark" />
+        <p className="splash-kicker">Soul Guru is opening</p>
         <h1>Soul Guru</h1>
-        <p className="splash-subtitle">guardian angel for you</p>
+        <p className="splash-subtitle">A wiser light for every turning point.</p>
+        <CosmicBuffer label="Aligning your inner compass." tone="soul" compact />
       </div>
       <button className="icon-text splash-skip" type="button" onClick={onSkip}>
-        Enter
+        Begin
         <ChevronRight size={18} aria-hidden="true" />
       </button>
     </section>
   );
+}
+
+function UniversalEntityLogo({ className = "" }) {
+  return (
+    <div className={`universal-entity ${className}`} aria-hidden="true">
+      <span className="entity-aura entity-aura-one" />
+      <span className="entity-aura entity-aura-two" />
+      <img src="/assets/soulguru-universal-entity.png" alt="" />
+      <span className="entity-orbit entity-orbit-one" />
+      <span className="entity-orbit entity-orbit-two" />
+      <span className="entity-star entity-star-one" />
+      <span className="entity-star entity-star-two" />
+      <span className="entity-star entity-star-three" />
+      <span className="entity-star entity-star-four" />
+      <span className="entity-star entity-star-five" />
+      <span className="entity-star entity-star-six" />
+    </div>
+  );
+}
+
+function CosmicBuffer({ label, tone = "soul", compact = false }) {
+  return (
+    <div className={`cosmic-buffer cosmic-buffer-${tone}${compact ? " compact" : ""}`} role="status" aria-live="polite">
+      <div className="cosmic-buffer-orb" aria-hidden="true">
+        <span className="buffer-ring buffer-ring-outer" />
+        <span className="buffer-ring buffer-ring-inner" />
+        <span className="buffer-horizon" />
+        <span className="buffer-sun" />
+        <span className="buffer-dot buffer-dot-one" />
+        <span className="buffer-dot buffer-dot-two" />
+        <span className="buffer-dot buffer-dot-three" />
+      </div>
+      <div className="cosmic-buffer-copy">
+        <strong>{label}</strong>
+        <div className="buffer-phrases" aria-hidden="true">
+          <span>Reading the sky</span>
+          <span>Finding the thread</span>
+          <span>Polishing the next step</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function isBufferingStatus(status) {
+  return /preparing|finishing|syncing|checking|reading|opening|verifying|saving|sending|noting/i.test(String(status || ""));
 }
 
 function AuthScreen({ onLogin }) {
@@ -395,16 +448,20 @@ function AuthScreen({ onLogin }) {
               <span className="otp-demo">Check your OTP message</span>
             )}
             <InputField label="Enter OTP" inputMode="numeric" value={otpValue} onChange={setOtpValue} />
+            {isVerifyingOtp && <CosmicBuffer label="Verifying your entry." tone="soul" compact />}
             <button className="primary-action" type="button" onClick={verifyOtp} disabled={isVerifyingOtp}>
               <ShieldCheck size={18} aria-hidden="true" />
               {isVerifyingOtp ? "Verifying" : "Verify and enter"}
             </button>
           </div>
         ) : (
-          <button className="primary-action" type="button" onClick={sendOtp} disabled={isSendingOtp}>
-            <Send size={18} aria-hidden="true" />
-            {isSendingOtp ? "Checking account" : "Send OTP"}
-          </button>
+          <>
+            {isSendingOtp && <CosmicBuffer label="Sending a quiet signal." tone="soul" compact />}
+            <button className="primary-action" type="button" onClick={sendOtp} disabled={isSendingOtp}>
+              <Send size={18} aria-hidden="true" />
+              {isSendingOtp ? "Checking account" : "Send OTP"}
+            </button>
+          </>
         )}
       </section>
     </main>
@@ -750,23 +807,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   return (
     <section className="tab-section soul-section">
       <div className="soul-guru-hero" aria-label="Today's Soul Guru room">
-        <div className="soul-guru-cosmos guru-sanctum" aria-hidden="true">
-          <span className="guru-arch" />
-          <span className="guru-astrolabe" />
-          <span className="guru-astrolabe guru-astrolabe-inner" />
-          <span className="guru-orbit guru-orbit-one" />
-          <span className="guru-orbit guru-orbit-two" />
-          <span className="guru-advisor">
-            <span className="guru-advisor-head" />
-            <span className="guru-advisor-robe" />
-          </span>
-          <span className="guru-book">
-            <span />
-          </span>
-          <span className="guru-star guru-star-one" />
-          <span className="guru-star guru-star-two" />
-          <span className="guru-star guru-star-three" />
-        </div>
+        <UniversalEntityLogo className="soul-guru-cosmos guru-sanctum" />
         <div className="soul-guru-daily">
           <p className="eyebrow">Soul Guru</p>
           <h2>Words of Wisdom</h2>
@@ -807,7 +848,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
             </div>
           </>
         ) : (
-          <p className="wisdom-status">{readingStatus}</p>
+          <CosmicBuffer label={readingStatus || "Soul Guru is opening today's guidance."} tone="soul" />
         )}
       </article>
       {reading && (
@@ -854,8 +895,16 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           More Guidance
         </button>
       </div>
-      {saveStatus && <p className="checkout-note">{saveStatus}</p>}
-      {feedbackStatus && <p className="checkout-note">{feedbackStatus}</p>}
+      {saveStatus && (
+        isSavingAdvice
+          ? <CosmicBuffer label={saveStatus} tone="soul" compact />
+          : <p className="checkout-note">{saveStatus}</p>
+      )}
+      {feedbackStatus && (
+        isBufferingStatus(feedbackStatus)
+          ? <CosmicBuffer label={feedbackStatus} tone="soul" compact />
+          : <p className="checkout-note">{feedbackStatus}</p>
+      )}
     </section>
   );
 }
@@ -1151,7 +1200,11 @@ function AstroSolvesTab({ user, updateUser }) {
           </button>
         </div>
       </form>
-      {solveStatus && <p className="checkout-note">{solveStatus}</p>}
+      {solveStatus && (
+        isSolving
+          ? <CosmicBuffer label={solveStatus} tone="astro" compact />
+          : <p className="checkout-note">{solveStatus}</p>
+      )}
 
       {remaining === 0 && (
         <div className="locked-note">
@@ -1557,8 +1610,16 @@ function SubscriptionPage({ user, updateUser, onBack }) {
         <Check size={18} aria-hidden="true" />
         {isActive ? "Subscription active" : isActivating ? "Opening checkout" : "Activate 3 months"}
       </button>
-      {checkoutStatus && <p className="checkout-note">{checkoutStatus}</p>}
-      {dashboardStatus && <p className="checkout-note">{dashboardStatus}</p>}
+      {checkoutStatus && (
+        isActivating
+          ? <CosmicBuffer label={checkoutStatus} tone="soul" compact />
+          : <p className="checkout-note">{checkoutStatus}</p>
+      )}
+      {dashboardStatus && (
+        isBufferingStatus(dashboardStatus)
+          ? <CosmicBuffer label={dashboardStatus} tone="soul" compact />
+          : <p className="checkout-note">{dashboardStatus}</p>
+      )}
 
       {isActive && (
         <>
@@ -1588,7 +1649,11 @@ function SubscriptionPage({ user, updateUser, onBack }) {
 
           <article className="deep-guidance-panel">
             <h3>Deeper guidance map</h3>
-            {deepGuidanceStatus && <p className="deep-guidance-status">{deepGuidanceStatus}</p>}
+            {deepGuidanceStatus && (
+              !activeDeepGuidance && isBufferingStatus(deepGuidanceStatus)
+                ? <CosmicBuffer label={deepGuidanceStatus} tone="soul" compact />
+                : <p className="deep-guidance-status">{deepGuidanceStatus}</p>
+            )}
             {activeDeepGuidance ? (
               <>
                 <div className="deep-guidance-cues">
@@ -1605,7 +1670,11 @@ function SubscriptionPage({ user, updateUser, onBack }) {
                     {isSavingDeepGuidance ? "Saving" : "Save Advice"}
                   </button>
                 </div>
-                {deepSaveStatus && <p className="deep-guidance-status">{deepSaveStatus}</p>}
+                {deepSaveStatus && (
+                  isSavingDeepGuidance
+                    ? <CosmicBuffer label={deepSaveStatus} tone="soul" compact />
+                    : <p className="deep-guidance-status">{deepSaveStatus}</p>
+                )}
               </>
             ) : (
               <p>Your deeper guidance will appear here after the paid backend sync completes.</p>
@@ -1669,6 +1738,7 @@ function ShaniTab({ user, updateUser }) {
   const [activatingPlanId, setActivatingPlanId] = useState("");
   const report = useMemo(() => getSaadeSatiReport(user, now), [user, now]);
   const countdown = useMemo(() => getCountdown(report.endDate, now), [report.endDate, now]);
+  const verifiedMoonSign = normalizeSiderealSign(user.vedicMoonSignOverride);
   const serverMembership = serverDashboard?.membership?.active ? serverDashboard.membership : null;
   const localMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : "";
   const effectiveMemberPlanId = serverMembership?.planId || localMemberPlanId;
@@ -1719,7 +1789,8 @@ function ShaniTab({ user, updateUser }) {
           birthTimezone: user.birthTimezone,
           birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
           birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-          birthPlaceResolutionSource: user.birthPlaceResolutionSource
+          birthPlaceResolutionSource: user.birthPlaceResolutionSource,
+          vedicMoonSignOverride: user.vedicMoonSignOverride
         }
       })
     })
@@ -1743,7 +1814,13 @@ function ShaniTab({ user, updateUser }) {
     return () => {
       cancelled = true;
     };
-  }, [user.birthDate, user.birthLatitude, user.birthLongitude, user.birthPlace, user.birthPlaceResolutionSource, user.birthPlaceResolvedLabel, user.birthTime, user.birthTimezone, user.birthTimezoneOffsetMinutes, user.email, user.id, user.name, user.phone]);
+  }, [user.birthDate, user.birthLatitude, user.birthLongitude, user.birthPlace, user.birthPlaceResolutionSource, user.birthPlaceResolvedLabel, user.birthTime, user.birthTimezone, user.birthTimezoneOffsetMinutes, user.email, user.id, user.name, user.phone, user.vedicMoonSignOverride]);
+
+  function updateVerifiedMoonSign(value) {
+    const sign = normalizeSiderealSign(value);
+    updateUser({ vedicMoonSignOverride: sign });
+    setServerDashboard(null);
+  }
 
   async function selectPlan(planId) {
     if (serverMembership?.active) {
@@ -1850,10 +1927,29 @@ function ShaniTab({ user, updateUser }) {
           <span className="shani-moon shani-moon-three" />
         </div>
         <div className="shani-status-copy">
-          <span className={report.active ? "status-pill active" : "status-pill"}>{report.active ? "Active" : "Not active"}</span>
+          <span className={report.active || report.secondaryActive ? "status-pill active" : "status-pill"}>{report.active ? "Active" : report.secondaryActive ? "Shani pressure" : "Not active"}</span>
           <h3>{report.phaseTitle}</h3>
           <p>{report.summary}</p>
+          {report.moonSignSource === "verified" && report.computedMoonSign && report.computedMoonSign !== report.moonSign && (
+            <span className="shani-source-note">Verified Moon sign is overriding the calculated {report.computedMoonSign} Moon for Shani timing.</span>
+          )}
         </div>
+      </div>
+
+      <div className="shani-moon-control">
+        <div>
+          <span>Vedic Moon sign</span>
+          <strong>{verifiedMoonSign ? `Verified ${verifiedMoonSign}` : `Calculated ${report.computedMoonSign || report.moonSign}`}</strong>
+        </div>
+        <label>
+          <span>Moon source</span>
+          <select value={verifiedMoonSign} onChange={(event) => updateVerifiedMoonSign(event.target.value)}>
+            <option value="">Use calculated</option>
+            {SIDEREAL_SIGNS.map((sign) => (
+              <option key={sign} value={sign}>{sign}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="countdown-panel shani-time-dial">
@@ -1901,8 +1997,16 @@ function ShaniTab({ user, updateUser }) {
             </button>
           ))}
         </div>
-        {planStatus && <p className="checkout-note">{planStatus}</p>}
-        {dashboardStatus && <p className="checkout-note">{dashboardStatus}</p>}
+        {planStatus && (
+          activatingPlanId
+            ? <CosmicBuffer label={planStatus} tone="shani" compact />
+            : <p className="checkout-note">{planStatus}</p>
+        )}
+        {dashboardStatus && (
+          isBufferingStatus(dashboardStatus)
+            ? <CosmicBuffer label={dashboardStatus} tone="shani" compact />
+            : <p className="checkout-note">{dashboardStatus}</p>
+        )}
       </div>
 
       {remedyMap && <ShaniRemedyMap map={remedyMap} />}
@@ -2015,7 +2119,8 @@ function PanditChat({ user, report, membership, useLocalPandit, onClose }) {
             birthTimezone: user.birthTimezone,
             birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
             birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-            birthPlaceResolutionSource: user.birthPlaceResolutionSource
+            birthPlaceResolutionSource: user.birthPlaceResolutionSource,
+            vedicMoonSignOverride: user.vedicMoonSignOverride
           }
         })
       });
@@ -2057,6 +2162,7 @@ function PanditChat({ user, report, membership, useLocalPandit, onClose }) {
             {message.text}
           </p>
         ))}
+        {isSending && <CosmicBuffer label="Pandit is weighing the remedy." tone="shani" compact />}
       </div>
       <form className="chat-form" onSubmit={sendMessage}>
         <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask about your remedy" disabled={isSending} />
@@ -2624,7 +2730,8 @@ function buildPaymentUserPayload(user, { includeBirth = false } = {}) {
       birthTimezone: user.birthTimezone,
       birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
       birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-      birthPlaceResolutionSource: user.birthPlaceResolutionSource
+      birthPlaceResolutionSource: user.birthPlaceResolutionSource,
+      vedicMoonSignOverride: user.vedicMoonSignOverride
     } : {})
   };
 }
@@ -2644,7 +2751,8 @@ function buildProfileUserPayload(account) {
     birthTimezone: account.birthTimezone,
     birthTimezoneOffsetMinutes: account.birthTimezoneOffsetMinutes,
     birthPlaceResolvedLabel: account.birthPlaceResolvedLabel,
-    birthPlaceResolutionSource: account.birthPlaceResolutionSource
+    birthPlaceResolutionSource: account.birthPlaceResolutionSource,
+    vedicMoonSignOverride: account.vedicMoonSignOverride
   };
 }
 
@@ -2679,6 +2787,7 @@ function mergeAccountProfile(account, profile) {
     birthTimezoneOffsetMinutes: profile.birthTimezoneOffsetMinutes ?? account.birthTimezoneOffsetMinutes ?? null,
     birthPlaceResolvedLabel: profile.birthPlaceResolvedLabel || account.birthPlaceResolvedLabel || "",
     birthPlaceResolutionSource: profile.birthPlaceResolutionSource || account.birthPlaceResolutionSource || "",
+    vedicMoonSignOverride: profile.vedicMoonSignOverride || account.vedicMoonSignOverride || "",
     syncedAt: profile.updatedAt || new Date().toISOString()
   };
 }
@@ -3061,6 +3170,10 @@ function getSaadeSatiReport(user, now) {
   };
   const saturnSign = currentTransit.sign || chartReport.saturnSign;
   const phaseIndex = chartReport.phaseIndex;
+  const shaniInfluence = chartReport.shaniInfluence || { active: false };
+  const moonDescription = chartReport.moonSignSource === "verified"
+    ? `Using your verified Vedic Moon sign ${moonSign}`
+    : `Your calculated Moon sign is ${moonSign}`;
 
   if (phaseIndex) {
     const endDate = parseDate(chartReport.activeEndDate || currentTransit.endDate || addYears(now, 2));
@@ -3075,21 +3188,45 @@ function getSaadeSatiReport(user, now) {
       active: true,
       phaseIndex,
       phaseTitle: phaseTitles[phaseIndex],
+      moonSign,
+      moonSignSource: chartReport.moonSignSource,
+      computedMoonSign: chartReport.computedMoonSign,
+      saturnSign,
+      saturnFromMoon: chartReport.saturnFromMoon,
+      secondaryActive: false,
+      secondaryTitle: "",
       endDate,
       endLabel: `Estimated completion: ${formatDate(endDate)}`,
-      summary: `Your calculated Moon sign is ${moonSign}, with Saturn currently in ${saturnSign}. In this ${phaseTitles[phaseIndex].toLowerCase()}, ${experiences[phaseIndex]}. There is nothing to fear about Saade Sati. With steady remedies, practical discipline, and timely guidance, this period can pass with fewer struggles and more inner strength.`
+      summary: `${moonDescription}, with Saturn currently in ${saturnSign}. In this ${phaseTitles[phaseIndex].toLowerCase()}, ${experiences[phaseIndex]}. There is nothing to fear about Saade Sati. With steady remedies, practical discipline, and timely guidance, this period can pass with fewer struggles and more inner strength.`
     };
   }
 
   const nextStart = parseDate(chartReport.nextStartDate || currentTransit.endDate || addYears(now, 1));
+  const secondaryText = shaniInfluence.active
+    ? ` Saturn is also ${formatOrdinal(shaniInfluence.houseFromMoon)} from your Moon, which many Vedic traditions read as ${shaniInfluence.title}; that can still feel like pressure around ${shaniInfluence.focus}.`
+    : "";
   return {
     active: false,
     phaseIndex: 0,
     phaseTitle: "Outside Saade Sati",
+    moonSign,
+    moonSignSource: chartReport.moonSignSource,
+    computedMoonSign: chartReport.computedMoonSign,
+    saturnSign,
+    saturnFromMoon: chartReport.saturnFromMoon,
+    secondaryActive: Boolean(shaniInfluence.active),
+    secondaryTitle: shaniInfluence.active ? shaniInfluence.title : "",
     endDate: nextStart,
     endLabel: chartReport.nextStartDate ? `Next watch begins around ${formatDate(nextStart)}` : `Current Saturn window changes around ${formatDate(nextStart)}`,
-    summary: `Your calculated Moon sign is ${moonSign}, and Saturn is currently in ${saturnSign}. Saade Sati does not appear active right now. Keep your routine clean, repay obligations slowly, and treat discipline as protection rather than pressure.`
+    summary: `${moonDescription}, and Saturn is currently in ${saturnSign}. Saade Sati does not appear active right now.${secondaryText} Keep your routine clean, repay obligations slowly, and treat discipline as protection rather than pressure.`
   };
+}
+
+function formatOrdinal(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "unknown";
+  const suffix = number === 1 ? "st" : number === 2 ? "nd" : number === 3 ? "rd" : "th";
+  return `${number}${suffix}`;
 }
 
 function getCountdown(endDate, now) {

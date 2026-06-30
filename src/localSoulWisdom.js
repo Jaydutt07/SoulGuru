@@ -3,6 +3,7 @@ import {
   buildParagraphArchitecture,
   cleanWisdomText,
   firstName,
+  getSoulWisdomReadingLane,
   getSoulWisdomSpecificityIssues,
   isLowQualityWisdom
 } from "./soulGuruPrompt.js";
@@ -10,7 +11,8 @@ import {
 export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined), architectureKey = dateKey) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
-  const wisdom = buildConciseDailyWisdom(user, context, seed);
+  const readingLane = getSoulWisdomReadingLane(architectureKey || dateKey);
+  const wisdom = buildConciseDailyWisdom(user, context, seed, readingLane);
 
   return {
     wisdom: normalizeLocalWisdom(polishLocalWisdom(wisdom)),
@@ -20,11 +22,218 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
   };
 }
 
-function buildConciseDailyWisdom(user, context, seed) {
+function buildConciseDailyWisdom(user, context, seed, readingLane = getSoulWisdomReadingLane()) {
+  const laneWisdom = buildLaneWisdom(context, seed, readingLane);
+  if (laneWisdom) return laneWisdom;
+
   const name = firstName(user.name);
   const action = conciseAction(context, seed, name);
   const close = conciseClose(context, seed + 17, name);
   return `${action}. ${name}, ${close}.`;
+}
+
+function buildLaneWisdom(context, seed, readingLane) {
+  if (readingLane?.id === "delayed-blessing-discipline") {
+    const detail = laneSceneDetail(context, seed);
+    return pickLine([
+      `A delayed blessing often arrives dressed as discipline beside ${detail}. If the result is late, make yourself early: ${laneDisciplineChain(context, seed)}.`,
+      `When the result comes late, discipline becomes the doorway beside ${detail}. Make yourself early: ${laneDisciplineChain(context, seed)}.`,
+      `Slow blessings test whether ${detail} can meet them with discipline. Start early: ${laneDisciplineChain(context, seed)}.`
+    ], seed, readingLane.id, detail);
+  }
+
+  if (readingLane?.id === "delayed-result-destiny") {
+    return laneDestinyWisdom(context, seed);
+  }
+
+  if (readingLane?.id === "seen-work-solid") {
+    return laneVisibilityWisdom(context, seed);
+  }
+
+  return "";
+}
+
+function laneDestinyWisdom(context, seed = 0) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const detail = laneSceneDetail(context, seed);
+  const task = laneVisibleTask(context, seed);
+
+  if (area.includes("body") || area.includes("health") || /\b(meal|water|body|sleep|rest)\b/.test(scene)) {
+    return pickLine([
+      `The body moving slowly is not destiny saying no. Finish ${task} today; hope needs evidence the body can feel.`,
+      `Do not turn a tired body into a denied future. Finish ${task} today and let hope become physical evidence.`,
+      `Delay inside ${detail} needs care before it becomes a verdict. Finish ${task} today; hope should have proof in the body.`
+    ], seed, area, scene, detail);
+  }
+
+  if (area.includes("relationship") || area.includes("family") || area.includes("belonging") || /\b(reply|conversation|message|sentence)\b/.test(scene)) {
+    return pickLine([
+      `Do not confuse a slow conversation with a denied destiny. Today, finish ${task}; hope needs evidence, not another private promise.`,
+      `A late answer around ${detail} is not destiny closing the door. Finish ${task} today and stop making silence carry the whole future.`,
+      `Delay around ${detail} still needs behavior before the mind calls it denial. Finish ${task} today and let hope become visible.`
+    ], seed, area, scene, detail);
+  }
+
+  if (area.includes("money") || /\b(receipt|bill|wallet|payment)\b/.test(scene)) {
+    return pickLine([
+      `Do not confuse a delayed number with a denied destiny. Today, finish ${task}; hope needs evidence, not another private promise.`,
+      `A late result around ${detail} is not destiny saying no. Finish ${task} today and let the facts carry hope.`,
+      `Delay around ${detail} still needs evidence before the mind calls it denial. Finish ${task} today and leave panic unpaid.`
+    ], seed, area, scene, detail);
+  }
+
+  return pickLine([
+    `Do not confuse the delayed result around ${detail} with a denied destiny. Today, finish ${task}; hope needs evidence, not another private promise.`,
+    `A late result around ${detail} is not destiny saying no. Finish ${task} today; hope needs evidence, not another private promise.`,
+    `Delay around ${detail} still needs evidence before the mind calls it denial. Finish ${task} today and let hope become visible.`
+  ], seed, area, scene, detail);
+}
+
+function laneVisibilityWisdom(context, seed = 0) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const detail = laneVisibilityDetail(context, seed);
+
+  if (area.includes("relationship") || area.includes("family") || area.includes("belonging") || /\b(reply|conversation|message|sentence)\b/.test(scene)) {
+    if (detail.includes("promise")) {
+      return "A promise does not become safer because the story gets louder. Finish the duty it names, then let behavior carry the explanation.";
+    }
+    if (detail.includes("conversation")) {
+      return "A conversation seen too early becomes performance. Finish the honest sentence first, then let the rest wait for behavior.";
+    }
+    return "The reply does not need a louder story to prove care. Finish the clean answer, then stop defending its softness.";
+  }
+
+  if (area.includes("money") || /\b(receipt|bill|wallet|payment)\b/.test(scene)) {
+    return pickLine([
+      `The pressure around ${detail} being judged is real, but performance is not the cure. Finish the number before making the story loud.`,
+      `A money story gets louder when the number stays soft. Check the amount first; let the finished decision carry dignity.`,
+      `Being seen through ${detail} asks for proof, not performance. Finish the bill, receipt, or agreement before explaining your worth.`
+    ], seed, area, scene, detail);
+  }
+
+  if (area.includes("body") || area.includes("health") || /\b(meal|water|body|sleep|rest)\b/.test(scene)) {
+    return pickLine([
+      `The pressure around ${detail} being visible is real, but pushing harder is not the cure. Finish the care before judging the day.`,
+      `A tired body does not need a louder story. Finish the food, water, or rest cue before asking yourself to perform.`,
+      `Being seen through ${detail} asks for recovery before performance. Finish the care task until the body has evidence.`
+    ], seed, area, scene, detail);
+  }
+
+  return pickLine([
+    `The pressure around ${detail} being seen is real, but performance is not the cure. Finish the solid part before making the story loud.`,
+    `Visibility pressure around ${detail} is real; a louder story will not carry weak work. Finish the useful part before asking for attention.`,
+    `Being seen through ${detail} asks for substance before performance. Finish the work until it can stand without a louder story.`
+  ], seed, area, scene, detail);
+}
+
+function laneSceneDetail(context, seed = 0) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+
+  if (area.includes("money") || /\b(receipt|bill|wallet|payment)\b/.test(scene)) {
+    return pickLine(["the bill", "the receipt", "the payment line"], seed, area, scene);
+  }
+  if (area.includes("relationship") || area.includes("family") || area.includes("belonging") || /\b(reply|conversation|message|sentence)\b/.test(scene)) {
+    return pickLine(["the reply", "the conversation", "the promise"], seed, area, scene);
+  }
+  if (area.includes("body") || area.includes("health") || /\b(meal|water|body|sleep|rest)\b/.test(scene)) {
+    return pickLine(["the body", "the water glass", "the rest cue"], seed, area, scene);
+  }
+  if (/\b(room|drawer|desk|counter|floor|laundry)\b/.test(scene)) {
+    return pickLine(["the desk", "the room", "the open drawer"], seed, area, scene);
+  }
+  if (/\b(page|pen|notebook|line)\b/.test(scene)) {
+    return pickLine(["the page", "the pen", "the notebook line"], seed, area, scene);
+  }
+  return pickLine(["the draft", "the task", "the work"], seed, area, scene);
+}
+
+function laneVisibilityDetail(context, seed = 0) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+
+  if (area.includes("relationship") || area.includes("family") || area.includes("belonging") || /\b(reply|conversation|message|sentence)\b/.test(scene)) {
+    return pickLine(["the reply", "the promise", "the conversation"], seed, area, scene);
+  }
+  if (area.includes("money") || /\b(receipt|bill|wallet|payment)\b/.test(scene)) {
+    return pickLine(["the number", "the agreement", "the decision"], seed, area, scene);
+  }
+  if (area.includes("body") || area.includes("health") || /\b(meal|water|body|sleep|rest)\b/.test(scene)) {
+    return pickLine(["the routine", "the recovery", "the care"], seed, area, scene);
+  }
+  return pickLine(["the draft", "the work", "the next visible piece"], seed, area, scene);
+}
+
+function laneDisciplineChain(context, seed = 0) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+
+  if (area.includes("body") || area.includes("health") || /\b(meal|water|body|sleep|rest)\b/.test(scene)) {
+    return pickLine([
+      "eat, drink water, finish one task, and stop negotiating with doubt",
+      "eat, rest the body, write one line, and stop bargaining with worry",
+      "drink water, make the choice, finish the task, and leave doubt unfed"
+    ], seed, area, scene);
+  }
+
+  if (area.includes("relationship") || area.includes("family") || area.includes("belonging") || /\b(reply|conversation|message|sentence)\b/.test(scene)) {
+    return pickLine([
+      "eat, write the shorter reply, finish one duty, and stop negotiating with doubt",
+      "drink water, answer only what is real, finish one task, and let doubt wait",
+      "eat, shorten the answer, complete one duty, and stop feeding the old fear"
+    ], seed, area, scene);
+  }
+
+  if (area.includes("money") || /\b(receipt|bill|wallet|payment)\b/.test(scene)) {
+    return pickLine([
+      "check the number, write the next payment, finish one task, and stop negotiating with doubt",
+      "eat, name the amount, finish the decision, and leave fear without a vote",
+      "write the number, choose the next payment, finish the errand, and stop bargaining with worry"
+    ], seed, area, scene);
+  }
+
+  return pickLine([
+    "eat, write one line, finish one task, and stop negotiating with doubt",
+    "drink water, write the first line, finish the draft, and let doubt stand outside",
+    "eat, mark one finish, write the next line, and stop bargaining with fear"
+  ], seed, area, scene);
+}
+
+function laneVisibleTask(context, seed = 0) {
+  const area = String(context.dailyArea || "").toLowerCase();
+  const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+
+  if (area.includes("money") || /\b(receipt|bill|wallet|payment)\b/.test(scene)) {
+    return pickLine([
+      "the one number that can be checked",
+      "the payment decision that can be written",
+      "the bill or receipt that can be closed"
+    ], seed, area, scene);
+  }
+
+  if (area.includes("relationship") || area.includes("family") || area.includes("belonging") || /\b(reply|conversation|message|sentence)\b/.test(scene)) {
+    return pickLine([
+      "the one honest reply that can be kept",
+      "the duty that can be completed without a speech",
+      "the sentence that says enough and stops"
+    ], seed, area, scene);
+  }
+
+  if (area.includes("body") || area.includes("health") || /\b(meal|water|body|sleep|rest)\b/.test(scene)) {
+    return pickLine([
+      "the care task your body can feel",
+      "the meal, rest, or walk that can be completed",
+      "the body-level repair that can be seen"
+    ], seed, area, scene);
+  }
+
+  return pickLine([
+    "the one draft that can be seen",
+    "the task that can carry a finish mark",
+    "the page, reply, or checklist item that can be shown"
+  ], seed, area, scene);
 }
 
 function conciseAction(context, seed = 0, name = "") {

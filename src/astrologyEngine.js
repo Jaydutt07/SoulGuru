@@ -1,7 +1,7 @@
 import * as Astronomy from "astronomy-engine";
 import { resolveBirthPlace } from "./placeResolver.js";
 
-const SIDEREAL_SIGNS = [
+export const SIDEREAL_SIGNS = [
   "Aries",
   "Taurus",
   "Gemini",
@@ -14,6 +14,38 @@ const SIDEREAL_SIGNS = [
   "Capricorn",
   "Aquarius",
   "Pisces"
+];
+
+const VEDIC_SIGN_ALIASES = {
+  mesha: "Aries",
+  vrishabha: "Taurus",
+  vrishabh: "Taurus",
+  mithuna: "Gemini",
+  mithun: "Gemini",
+  karkataka: "Cancer",
+  kark: "Cancer",
+  simha: "Leo",
+  singh: "Leo",
+  kanya: "Virgo",
+  tula: "Libra",
+  vrishchika: "Scorpio",
+  vrischika: "Scorpio",
+  vrishchik: "Scorpio",
+  dhanu: "Sagittarius",
+  dhanus: "Sagittarius",
+  makar: "Capricorn",
+  makara: "Capricorn",
+  kumbha: "Aquarius",
+  kumbh: "Aquarius",
+  meena: "Pisces",
+  meen: "Pisces"
+};
+
+const MOON_SIGN_OVERRIDE_FIELDS = [
+  "vedicMoonSignOverride",
+  "birthMoonSignOverride",
+  "moonSignOverride",
+  "verifiedMoonSign"
 ];
 
 const ELEMENTS = {
@@ -512,13 +544,16 @@ export function buildTransitDateForUser(user = {}, dateKey = new Date().toISOStr
 
 export function getSaadeSatiFromChart(user, date = new Date()) {
   const birthMoon = siderealBody("Moon", buildBirthDate(user, resolveBirthPlace(user.birthPlace, user)));
+  const overrideMoonSign = getVerifiedMoonSign(user);
+  const moonSign = overrideMoonSign || birthMoon.sign;
+  const moonIndex = SIDEREAL_SIGNS.indexOf(moonSign);
   const today = new Date(date);
   const transitSaturn = siderealBody("Saturn", today);
-  const distance = signDistance(birthMoon.sign, transitSaturn.sign);
+  const distance = signDistance(moonSign, transitSaturn.sign);
   const active = [12, 1, 2].includes(distance);
   const phaseIndex = distance === 12 ? 1 : distance === 1 ? 2 : distance === 2 ? 3 : 0;
   const phaseTitle = ["Outside Saade Sati", "Rising phase", "Peak phase", "Setting phase"][phaseIndex];
-  const moonIndex = birthMoon.signIndex;
+  const shaniInfluence = getShaniInfluence(distance);
   const activeSignIndexes = [
     mod(moonIndex - 1, SIDEREAL_SIGNS.length),
     moonIndex,
@@ -532,11 +567,78 @@ export function getSaadeSatiFromChart(user, date = new Date()) {
     active,
     phaseIndex,
     phaseTitle,
-    moonSign: birthMoon.sign,
+    moonSign,
+    moonSignSource: overrideMoonSign ? "verified" : "calculated",
+    computedMoonSign: birthMoon.sign,
     saturnSign: transitSaturn.sign,
+    saturnFromMoon: distance,
+    shaniInfluence,
     saturnTransit,
     activeEndDate,
     nextStartDate
+  };
+}
+
+export function getVerifiedMoonSign(user = {}) {
+  for (const field of MOON_SIGN_OVERRIDE_FIELDS) {
+    const sign = normalizeSiderealSign(user[field]);
+    if (sign) return sign;
+  }
+  return "";
+}
+
+export function normalizeSiderealSign(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\b(vedic|moon|sign|rashi|rasi)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return "";
+  const english = SIDEREAL_SIGNS.find((sign) => normalized === sign.toLowerCase() || normalized.includes(sign.toLowerCase()));
+  if (english) return english;
+  const alias = Object.entries(VEDIC_SIGN_ALIASES).find(([key]) => normalized === key || normalized.includes(key));
+  return alias?.[1] || "";
+}
+
+function getShaniInfluence(distance) {
+  if (distance === 12 || distance === 1 || distance === 2) {
+    return {
+      active: true,
+      type: "saade-sati",
+      title: "Saade Sati",
+      houseFromMoon: distance,
+      focus: "patience, responsibility, and emotional maturity"
+    };
+  }
+
+  if (distance === 4) {
+    return {
+      active: true,
+      type: "dhaiya",
+      title: "Shani Dhaiya",
+      houseFromMoon: 4,
+      focus: "home, inner steadiness, duties, and emotional weight"
+    };
+  }
+
+  if (distance === 8) {
+    return {
+      active: true,
+      type: "ashtama-shani",
+      title: "Ashtama Shani",
+      houseFromMoon: 8,
+      focus: "uncertainty, endurance, health rhythm, and hidden responsibilities"
+    };
+  }
+
+  return {
+    active: false,
+    type: "none",
+    title: "No major Shani pressure",
+    houseFromMoon: distance,
+    focus: "preparation, routine, and prevention"
   };
 }
 
@@ -831,20 +933,71 @@ function buildDateWithOffset(date, time, offsetMinutes = 330) {
 }
 
 function parseDateParts(date) {
-  const [year, month, day] = String(date).split("-").map(Number);
-  return {
-    year: year || 2000,
-    month: month || 1,
-    day: day || 1
-  };
+  const value = String(date || "").trim();
+  const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    return clampDateParts({
+      year: Number(isoMatch[1]),
+      month: Number(isoMatch[2]),
+      day: Number(isoMatch[3])
+    });
+  }
+
+  const separatedMatch = value.match(/^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})$/);
+  if (separatedMatch) {
+    const first = Number(separatedMatch[1]);
+    const second = Number(separatedMatch[2]);
+    const third = Number(separatedMatch[3]);
+    const startsWithYear = separatedMatch[1].length === 4;
+    const monthFirst = first <= 12 && second > 12;
+
+    return clampDateParts(startsWithYear
+      ? { year: first, month: second, day: third }
+      : {
+        year: normalizeYear(separatedMatch[3]),
+        month: monthFirst ? first : second,
+        day: monthFirst ? second : first
+      });
+  }
+
+  return clampDateParts({ year: 2000, month: 1, day: 1 });
 }
 
 function parseTimeParts(time) {
-  const [hour = 12, minute = 0] = String(time || "12:00").split(":").map(Number);
+  const value = String(time || "12:00").trim().toLowerCase();
+  const match = value.match(/^(\d{1,2})(?::(\d{1,2}))?\s*([ap]\.?m\.?)?$/i);
+  if (match) {
+    const suffix = String(match[3] || "").replace(/\./g, "");
+    let hour = Number(match[1]);
+    const minute = Number(match[2] || 0);
+    if (suffix === "pm" && hour < 12) hour += 12;
+    if (suffix === "am" && hour === 12) hour = 0;
+    return {
+      hour: Number.isFinite(hour) ? Math.min(23, Math.max(0, hour)) : 12,
+      minute: Number.isFinite(minute) ? Math.min(59, Math.max(0, minute)) : 0
+    };
+  }
+
+  const [hour = 12, minute = 0] = value.split(":").map(Number);
   return {
-    hour: Number.isFinite(hour) ? hour : 12,
-    minute: Number.isFinite(minute) ? minute : 0
+    hour: Number.isFinite(hour) ? Math.min(23, Math.max(0, hour)) : 12,
+    minute: Number.isFinite(minute) ? Math.min(59, Math.max(0, minute)) : 0
   };
+}
+
+function clampDateParts({ year, month, day }) {
+  return {
+    year: Number.isFinite(year) && year > 0 ? year : 2000,
+    month: Number.isFinite(month) ? Math.min(12, Math.max(1, month)) : 1,
+    day: Number.isFinite(day) ? Math.min(31, Math.max(1, day)) : 1
+  };
+}
+
+function normalizeYear(value) {
+  const year = Number(value);
+  if (!Number.isFinite(year)) return 2000;
+  if (String(value).length === 2) return year >= 50 ? 1900 + year : 2000 + year;
+  return year;
 }
 
 function getTimeZoneOffsetMinutes(date, timeZone) {

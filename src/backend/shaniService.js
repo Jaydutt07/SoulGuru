@@ -232,6 +232,10 @@ export function buildShaniReport(user, now = new Date()) {
   };
   const saturnSign = currentTransit.sign || chartReport.saturnSign;
   const phaseIndex = chartReport.phaseIndex;
+  const shaniInfluence = chartReport.shaniInfluence || { active: false };
+  const moonDescription = chartReport.moonSignSource === "verified"
+    ? `Using your verified Vedic Moon sign ${moonSign}`
+    : `Your calculated Moon sign is ${moonSign}`;
 
   if (phaseIndex) {
     const endDate = parseDate(chartReport.activeEndDate || currentTransit.endDate || addYears(now, 2));
@@ -248,23 +252,36 @@ export function buildShaniReport(user, now = new Date()) {
       phaseIndex,
       phaseTitle: phaseTitles[phaseIndex],
       moonSign,
+      moonSignSource: chartReport.moonSignSource,
+      computedMoonSign: chartReport.computedMoonSign,
       saturnSign,
+      saturnFromMoon: chartReport.saturnFromMoon,
+      secondaryActive: false,
+      secondaryTitle: "",
       endDate: endDate.toISOString(),
       endLabel: `Estimated completion: ${formatDate(endDate)}`,
-      summary: `Your calculated Moon sign is ${moonSign}, with Saturn currently in ${saturnSign}. In this ${phaseTitles[phaseIndex].toLowerCase()}, ${experiences[phaseIndex]}. There is nothing to fear about Saade Sati. With steady remedies, practical discipline, and timely guidance, this period can pass with fewer struggles and more inner strength.`
+      summary: `${moonDescription}, with Saturn currently in ${saturnSign}. In this ${phaseTitles[phaseIndex].toLowerCase()}, ${experiences[phaseIndex]}. There is nothing to fear about Saade Sati. With steady remedies, practical discipline, and timely guidance, this period can pass with fewer struggles and more inner strength.`
     };
   }
 
   const nextStart = parseDate(chartReport.nextStartDate || currentTransit.endDate || addYears(now, 1));
+  const secondaryText = shaniInfluence.active
+    ? ` Saturn is also ${formatOrdinal(shaniInfluence.houseFromMoon)} from your Moon, which many Vedic traditions read as ${shaniInfluence.title}; that can still feel like pressure around ${shaniInfluence.focus}.`
+    : "";
   return {
     active: false,
     phaseIndex: 0,
     phaseTitle: "Outside Saade Sati",
     moonSign,
+    moonSignSource: chartReport.moonSignSource,
+    computedMoonSign: chartReport.computedMoonSign,
     saturnSign,
+    saturnFromMoon: chartReport.saturnFromMoon,
+    secondaryActive: Boolean(shaniInfluence.active),
+    secondaryTitle: shaniInfluence.active ? shaniInfluence.title : "",
     endDate: nextStart.toISOString(),
     endLabel: chartReport.nextStartDate ? `Next watch begins around ${formatDate(nextStart)}` : `Current Saturn window changes around ${formatDate(nextStart)}`,
-    summary: `Your calculated Moon sign is ${moonSign}, and Saturn is currently in ${saturnSign}. Saade Sati does not appear active right now. Keep your routine clean, repay obligations slowly, and treat discipline as protection rather than pressure.`
+    summary: `${moonDescription}, and Saturn is currently in ${saturnSign}. Saade Sati does not appear active right now.${secondaryText} Keep your routine clean, repay obligations slowly, and treat discipline as protection rather than pressure.`
   };
 }
 
@@ -463,6 +480,9 @@ function getMemberPressure(report = {}) {
   if (report.active) {
     return `Moon in ${report.moonSign || "your chart"} and Saturn in ${report.saturnSign || "the current transit"} point to pressure around patience, responsibility, and cleaner timing.`;
   }
+  if (report.secondaryActive) {
+    return `Saade Sati is not active, but ${report.secondaryTitle || "current Shani pressure"} is active with Moon in ${report.moonSign || "your chart"} and Saturn in ${report.saturnSign || "the current transit"}. Keep the work practical: order, duty, repayment, and restraint.`;
+  }
   return `Saade Sati is not active now, so the useful work is prevention: order, repayment, humility, and steady service.`;
 }
 
@@ -478,6 +498,8 @@ Shani context:
 - Saade Sati active: ${report.active ? "yes" : "no"}
 - Phase: ${report.phaseTitle}
 - Moon sign: ${report.moonSign || "unknown"}
+- Moon sign source: ${report.moonSignSource || "calculated"}
+- Computed Moon sign: ${report.computedMoonSign || report.moonSign || "unknown"}
 - Saturn sign: ${report.saturnSign || "unknown"}
 - Timeline label: ${report.endLabel || "unknown"}
 - Summary: ${report.summary || "none"}
@@ -787,4 +809,11 @@ function formatDate(date) {
     day: "numeric",
     year: "numeric"
   }).format(parseDate(date));
+}
+
+function formatOrdinal(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "unknown";
+  const suffix = number === 1 ? "st" : number === 2 ? "nd" : number === 3 ? "rd" : "th";
+  return `${number}${suffix}`;
 }

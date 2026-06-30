@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import {
+  buildShaniReport,
   buildShaniRemedyMap,
   createPanditGuidance,
   getShaniDashboard,
@@ -61,6 +62,38 @@ function checkPromptRepairKeepsQualityFixesDirect() {
     source.includes("direct qualified-support wording inside caution"),
     source.includes("If the rejection mentions the question or phase"),
     source.includes("report's exact phase title")
+  ].every(Boolean));
+}
+
+function checkShaniReportSeparatesDhaiyaFromSaadeSati() {
+  const user = {
+    name: "Soul Tester",
+    birthDate: "7/3/2002",
+    birthTime: "10:44 pm",
+    birthPlace: "Umarga"
+  };
+  const report = buildShaniReport(user, new Date("2026-06-30T06:30:00.000Z"));
+  const overrideReport = buildShaniReport({
+    ...user,
+    vedicMoonSignOverride: "Aquarius"
+  }, new Date("2026-06-30T06:30:00.000Z"));
+
+  pushCheck("Shani report separates current Dhaiya pressure from Saade Sati", [
+    report.active === false,
+    report.phaseTitle === "Outside Saade Sati",
+    report.moonSign === "Sagittarius",
+    report.saturnSign === "Pisces",
+    report.secondaryActive === true,
+    report.secondaryTitle === "Shani Dhaiya",
+    report.summary.includes("Saade Sati does not appear active"),
+    report.summary.includes("Shani Dhaiya"),
+    overrideReport.active === true,
+    overrideReport.phaseTitle === "Setting phase",
+    overrideReport.moonSign === "Aquarius",
+    overrideReport.moonSignSource === "verified",
+    overrideReport.computedMoonSign === "Sagittarius",
+    overrideReport.summary.includes("verified Vedic Moon sign Aquarius"),
+    overrideReport.endDate.startsWith("2027-06")
   ].every(Boolean));
 }
 
@@ -555,6 +588,7 @@ async function main() {
   checkPromptRequiresPhaseQuestionAndRemedySpecificity();
   checkPromptRequiresQualifiedSupportForAnxietySleepAndLegalRisk();
   checkPromptRepairKeepsQualityFixesDirect();
+  checkShaniReportSeparatesDhaiyaFromSaadeSati();
   await checkDashboardWorksWithoutMembershipBackend();
   await checkDashboardReturnsMemberRemedyMap();
   await checkLocalAccessRequiresExplicitFlag();

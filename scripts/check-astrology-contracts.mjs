@@ -13,6 +13,7 @@ import { enrichUserWithPlace, resolveBirthPlace } from "../src/placeResolver.js"
 const checks = [];
 
 checkPlaceResolutionContract();
+checkFlexibleBirthInputParsing();
 await checkServerAstrologyContextUsesResolvedPlace();
 await checkServerAstrologyContextFailsClosedWhenPlaceIsRequired();
 checkBackendAiServicesUseServerAstrologyContext();
@@ -31,6 +32,7 @@ if (failed.length > 0) {
 
 function checkPlaceResolutionContract() {
   const bombay = resolveBirthPlace("Bombay");
+  const omerga = resolveBirthPlace("Omerga");
   const profile = resolveBirthPlace("Mumbai", {
     birthLatitude: 40.7128,
     birthLongitude: -74.006,
@@ -46,11 +48,56 @@ function checkPlaceResolutionContract() {
     bombay.source === "catalog",
     approx(bombay.latitude, 19.076, 0.001),
     approx(bombay.longitude, 72.8777, 0.001),
+    omerga.label === "Umarga, Maharashtra, India",
+    omerga.source === "catalog",
+    approx(omerga.latitude, 17.839767, 0.001),
+    approx(omerga.longitude, 76.622246, 0.001),
     profile.label === "New York custom",
     profile.source === "profile",
     profile.timezone === "America/New_York",
     toronto.birthPlaceResolvedLabel === "Toronto, Canada",
     toronto.birthTimezone === "America/Toronto"
+  ].every(Boolean));
+}
+
+function checkFlexibleBirthInputParsing() {
+  const shorthandUser = {
+    name: "Soul Tester",
+    birthDate: "7/3/2002",
+    birthTime: "10:44 pm",
+    birthPlace: "Umarga"
+  };
+  const isoUser = {
+    ...shorthandUser,
+    birthDate: "2002-03-07",
+    birthTime: "22:44"
+  };
+  const date = buildTransitDateForUser(shorthandUser, "2026-06-30");
+  const shorthandContext = buildAstrologyContext(shorthandUser, date);
+  const isoContext = buildAstrologyContext(isoUser, date);
+  const shaniReport = getSaadeSatiFromChart(shorthandUser, date);
+  const overrideReport = getSaadeSatiFromChart({
+    ...shorthandUser,
+    vedicMoonSignOverride: "Kumbha"
+  }, date);
+
+  pushCheck("Birth parser handles Indian slash dates, PM times, and Umarga resolution", [
+    shorthandContext.birthLocation.label === "Umarga, Maharashtra, India",
+    shorthandContext.birthLocation.source === "catalog",
+    shorthandContext.moonSign === isoContext.moonSign,
+    shorthandContext.moonSign === "Sagittarius",
+    approx(shorthandContext.birthChart.moon.degree, isoContext.birthChart.moon.degree, 0.01),
+    approx(shorthandContext.birthChart.ascendant.degree, isoContext.birthChart.ascendant.degree, 0.01),
+    shaniReport.active === false,
+    shaniReport.shaniInfluence.active === true,
+    shaniReport.shaniInfluence.title === "Shani Dhaiya",
+    overrideReport.moonSign === "Aquarius",
+    overrideReport.computedMoonSign === "Sagittarius",
+    overrideReport.moonSignSource === "verified",
+    overrideReport.active === true,
+    overrideReport.phaseTitle === "Setting phase",
+    overrideReport.activeEndDate instanceof Date,
+    overrideReport.activeEndDate.getUTCFullYear() === 2027
   ].every(Boolean));
 }
 
@@ -344,6 +391,25 @@ function checkSaadeSatiContract() {
     saturnWindow.endDate.getTime() > date.getTime(),
     saadeSati.nextStartDate instanceof Date,
     saadeSati.nextStartDate.getUTCFullYear() >= 2036
+  ].every(Boolean));
+
+  const aquariusMoonUser = {
+    name: "Kumbha Moon",
+    birthDate: "2002-01-16",
+    birthTime: "12:00",
+    birthPlace: "Mumbai"
+  };
+  const activeSaadeSati = getSaadeSatiFromChart(aquariusMoonUser, date);
+
+  pushCheck("Saade Sati setting phase ends when Saturn leaves Pisces for Aquarius Moon", [
+    activeSaadeSati.moonSign === "Aquarius",
+    activeSaadeSati.saturnSign === "Pisces",
+    activeSaadeSati.active === true,
+    activeSaadeSati.phaseIndex === 3,
+    activeSaadeSati.phaseTitle === "Setting phase",
+    activeSaadeSati.activeEndDate instanceof Date,
+    activeSaadeSati.activeEndDate.getUTCFullYear() === 2027,
+    activeSaadeSati.activeEndDate.getUTCMonth() === 5
   ].every(Boolean));
 }
 
