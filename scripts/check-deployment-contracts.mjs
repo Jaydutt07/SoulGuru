@@ -6,10 +6,13 @@ const vercelIgnore = readLines(".vercelignore");
 const indexHtml = readFile("index.html");
 const manifest = readJson("public/manifest.webmanifest");
 const viteConfig = readFile("vite.config.js");
+const astrologyEngine = readFile("src/astrologyEngine.js");
+const astronomyAdapter = readFile("src/vendor/astronomy-engine.cjs");
 
 checkVercelBuildConfig();
 checkViteChunkingConfig();
 checkVercelApiFunctionConfig();
+checkVercelAstronomyRuntimeAdapter();
 checkVercelHobbyFunctionCount();
 checkVercelSecurityHeaders();
 checkVercelCacheHeaders();
@@ -59,6 +62,16 @@ function checkVercelApiFunctionConfig() {
     Number(apiFunction?.maxDuration) >= 30
   ].every(Boolean), [
     "Expected functions[\"api/**/*.js\"].maxDuration to be at least 30."
+  ]);
+}
+
+function checkVercelAstronomyRuntimeAdapter() {
+  pushCheck("Vercel API uses CommonJS astronomy runtime adapter", [
+    astrologyEngine.includes("import Astronomy from \"./vendor/astronomy-engine.cjs\";"),
+    astronomyAdapter.includes("astronomy-engine/astronomy.js"),
+    !astrologyEngine.includes("from \"astronomy-engine\"")
+  ].every(Boolean), [
+    "Expected server-shared astrology code to avoid astronomy-engine's ESM export path, which Vercel loads as CommonJS."
   ]);
 }
 

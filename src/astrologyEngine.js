@@ -1,4 +1,4 @@
-import * as Astronomy from "astronomy-engine";
+import Astronomy from "./vendor/astronomy-engine.cjs";
 import { resolveBirthPlace } from "./placeResolver.js";
 
 export const SIDEREAL_SIGNS = [
