@@ -59,6 +59,7 @@ const LOCAL_AUTH_FALLBACK_SETTING = import.meta.env.VITE_LOCAL_AUTH_FALLBACK;
 const IS_NATIVE_MOBILE_SHELL = detectNativeMobileShell();
 const NATIVE_DEMO_AUTH_DEFAULT = IS_NATIVE_MOBILE_SHELL && !API_BASE_URL && LOCAL_AUTH_FALLBACK_SETTING !== "false";
 const LOCAL_AUTH_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_SETTING === "true" || import.meta.env.MODE !== "production" || NATIVE_DEMO_AUTH_DEFAULT;
+const LOCAL_READING_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_ENABLED && !API_BASE_URL;
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 
@@ -559,8 +560,8 @@ function MentorApp({ activeTab, onTabChange, user, updateUser, onLogout }) {
 function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const todayKey = useMemo(() => getTodayKey(new Date(), user.birthTimezone || undefined), [user.birthTimezone]);
   const fallbackReading = useMemo(() => getDailyWisdom(user, todayKey), [user, todayKey]);
-  const [reading, setReading] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? fallbackReading : null);
-  const [readingStatus, setReadingStatus] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? "" : "Preparing today's guidance...");
+  const [reading, setReading] = useState(LOCAL_READING_FALLBACK_ENABLED ? fallbackReading : null);
+  const [readingStatus, setReadingStatus] = useState(LOCAL_READING_FALLBACK_ENABLED ? "" : "Preparing today's guidance...");
   const [isSavingAdvice, setIsSavingAdvice] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
   const [feedbackChoice, setFeedbackChoice] = useState("");
@@ -602,7 +603,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       };
     }
 
-    if (LOCAL_AUTH_FALLBACK_ENABLED) {
+    if (LOCAL_READING_FALLBACK_ENABLED) {
       setReading(fallbackReading);
       setReadingStatus("");
     } else {
@@ -659,7 +660,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           if (cancelled) return;
 
           if (ok && (data?.reading || data?.wisdom)) {
-            if (data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {
+            if (data.stored === false && !LOCAL_READING_FALLBACK_ENABLED) {
               setReading(null);
               setReadingStatus("Today's guidance could not be saved. Please try again shortly.");
               trackEvent("soul_wisdom_failed", { reason: "not_stored" });
@@ -669,7 +670,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
             const nextReading = normalizeWisdomPayload(data.reading || data.wisdom, fallbackReading);
             setReading(nextReading);
             setReadingStatus("");
-            if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {
+            if (data.stored !== false || LOCAL_READING_FALLBACK_ENABLED) {
               writeDailyReadingCache(user, todayKey, nextReading, {
                 cached: Boolean(data.cached),
                 model: data.model,
@@ -681,7 +682,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           }
 
           if (status === 409 && /already being prepared/.test(data?.error || "")) {
-            if (LOCAL_AUTH_FALLBACK_ENABLED) {
+            if (LOCAL_READING_FALLBACK_ENABLED) {
               setReading(fallbackReading);
               setReadingStatus("Using local guidance while today's backend reading finishes.");
               return;
@@ -699,7 +700,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
             return;
           }
 
-          if (LOCAL_AUTH_FALLBACK_ENABLED) {
+          if (LOCAL_READING_FALLBACK_ENABLED) {
             setReading(fallbackReading);
             setReadingStatus("Using local guidance until the backend is connected.");
             return;
@@ -711,7 +712,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         })
         .catch(() => {
           if (!cancelled) {
-            if (LOCAL_AUTH_FALLBACK_ENABLED) {
+            if (LOCAL_READING_FALLBACK_ENABLED) {
               setReading(fallbackReading);
               setReadingStatus("Using local guidance until the backend is connected.");
               return;
@@ -2952,7 +2953,7 @@ function readDailyReadingCache(user, dateKey) {
     if (cached?.dateKey !== dateKey || cached?.promptVersion !== SOUL_READING_CACHE_VERSION || !cached?.reading) {
       return null;
     }
-    if (!LOCAL_AUTH_FALLBACK_ENABLED && (cached.stored === false || cached.source === "local-fallback")) {
+    if (!LOCAL_READING_FALLBACK_ENABLED && (cached.stored === false || cached.source === "local-fallback")) {
       return null;
     }
     return {

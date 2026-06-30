@@ -85,6 +85,7 @@ function checkNativeDebugApkKeepsDemoOtpFallback() {
     source.includes("const IS_NATIVE_MOBILE_SHELL = detectNativeMobileShell();"),
     source.includes("const NATIVE_DEMO_AUTH_DEFAULT = IS_NATIVE_MOBILE_SHELL && !API_BASE_URL && LOCAL_AUTH_FALLBACK_SETTING !== \"false\";"),
     source.includes("const LOCAL_AUTH_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_SETTING === \"true\" || import.meta.env.MODE !== \"production\" || NATIVE_DEMO_AUTH_DEFAULT;"),
+    source.includes("const LOCAL_READING_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_ENABLED && !API_BASE_URL;"),
     source.includes("function detectNativeMobileShell() {"),
     source.includes("return [\"android\", \"ios\"].includes(capacitor.getPlatform?.());")
   ].every(Boolean));
@@ -106,9 +107,9 @@ function checkLoginAnalyticsDistinguishesOtpSource() {
 
 function checkProductionSoulGuruRequiresStoredBackendReading() {
   pushCheck("Production Soul Guru does not show or cache unstored local fallback readings", [
-    source.includes("const [reading, setReading] = useState(LOCAL_AUTH_FALLBACK_ENABLED ? fallbackReading : null);"),
-    source.includes("if (data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
-    source.includes("if (data.stored !== false || LOCAL_AUTH_FALLBACK_ENABLED) {"),
+    source.includes("const [reading, setReading] = useState(LOCAL_READING_FALLBACK_ENABLED ? fallbackReading : null);"),
+    source.includes("if (data.stored === false && !LOCAL_READING_FALLBACK_ENABLED) {"),
+    source.includes("if (data.stored !== false || LOCAL_READING_FALLBACK_ENABLED) {"),
     source.includes("cached.stored === false || cached.source === \"local-fallback\""),
     source.includes("disabled={isSavingAdvice || !reading}")
   ].every(Boolean));
