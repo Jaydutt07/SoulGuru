@@ -3,6 +3,7 @@ import fs from "node:fs";
 import {
   getClientIp,
   getHttpMethod,
+  handleCorsPreflight,
   parseJsonRequest,
   readRequestBody,
   sendErrorJson,
@@ -27,6 +28,14 @@ if (failed.length > 0) {
 function checkBasicRequestHelpers() {
   const response = createResponse();
   sendJson(response, 202, { ok: true }, { "Cache-Control": "no-store" });
+  const preflightResponse = createResponse();
+  const handledPreflight = handleCorsPreflight({
+    method: "OPTIONS",
+    headers: {
+      origin: "https://localhost",
+      "access-control-request-method": "POST"
+    }
+  }, preflightResponse);
 
   pushCheck("Request helpers normalize methods, IPs, and JSON responses", [
     getHttpMethod({ method: "post" }) === "POST",
@@ -38,7 +47,18 @@ function checkBasicRequestHelpers() {
     response.statusCode === 202,
     response.headers["Content-Type"] === "application/json",
     response.headers["Cache-Control"] === "no-store",
+    response.headers["Access-Control-Allow-Origin"] === "*",
     JSON.parse(response.body).ok === true
+  ].every(Boolean));
+
+  pushCheck("Request helpers answer mobile CORS preflights", [
+    handledPreflight === true,
+    preflightResponse.statusCode === 204,
+    preflightResponse.headers["Access-Control-Allow-Origin"] === "*",
+    preflightResponse.headers["Access-Control-Allow-Methods"].includes("POST"),
+    preflightResponse.headers["Access-Control-Allow-Headers"].includes("Content-Type"),
+    preflightResponse.headers["Access-Control-Allow-Headers"].includes("Authorization"),
+    preflightResponse.body === undefined
   ].every(Boolean));
 }
 

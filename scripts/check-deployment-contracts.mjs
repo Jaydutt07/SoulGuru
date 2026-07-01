@@ -8,11 +8,13 @@ const manifest = readJson("public/manifest.webmanifest");
 const viteConfig = readFile("vite.config.js");
 const astrologyEngine = readFile("src/astrologyEngine.js");
 const astronomyAdapter = readFile("src/vendor/astronomy-engine.cjs");
+const requestHelper = readFile("src/backend/request.js");
 
 checkVercelBuildConfig();
 checkViteChunkingConfig();
 checkVercelApiFunctionConfig();
 checkVercelAstronomyRuntimeAdapter();
+checkVercelApiCorsPreflight();
 checkVercelHobbyFunctionCount();
 checkVercelSecurityHeaders();
 checkVercelCacheHeaders();
@@ -73,6 +75,22 @@ function checkVercelAstronomyRuntimeAdapter() {
   ].every(Boolean), [
     "Expected server-shared astrology code to avoid astronomy-engine's ESM export path, which Vercel loads as CommonJS."
   ]);
+}
+
+function checkVercelApiCorsPreflight() {
+  const apiFunctions = listFiles("api")
+    .filter((file) => file.endsWith(".js"))
+    .sort();
+  const missing = apiFunctions.filter((file) => !readFile(file).includes("handleCorsPreflight(req, res)"));
+
+  pushCheck("Vercel API routes answer mobile CORS preflight", [
+    requestHelper.includes("export function handleCorsPreflight(req, res)"),
+    requestHelper.includes("\"Access-Control-Allow-Origin\": \"*\""),
+    requestHelper.includes("\"Access-Control-Allow-Methods\": \"GET,POST,OPTIONS\""),
+    requestHelper.includes("\"Access-Control-Allow-Headers\": \"Content-Type, Authorization, X-Requested-With\""),
+    viteConfig.includes("server.middlewares.use(\"/api\", (req, res, next) => {"),
+    missing.length === 0
+  ].every(Boolean), missing);
 }
 
 function checkVercelHobbyFunctionCount() {

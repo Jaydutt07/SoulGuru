@@ -1,5 +1,5 @@
 import { processRazorpayWebhook, verifyRazorpayWebhookSignature } from "../src/backend/payments.js";
-import { getHttpMethod, readRequestBody, sendErrorJson, sendJson } from "../src/backend/request.js";
+import { getHttpMethod, handleCorsPreflight, readRequestBody, sendErrorJson, sendJson } from "../src/backend/request.js";
 
 export const config = {
   api: {
@@ -8,6 +8,8 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  if (handleCorsPreflight(req, res)) return;
+
   if (getHttpMethod(req) !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;

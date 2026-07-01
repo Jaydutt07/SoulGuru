@@ -17,13 +17,18 @@ import { createPanditGuidance, getShaniDashboard } from "./src/backend/shaniServ
 import { submitSoulWisdomFeedback } from "./src/backend/soulWisdomFeedbackService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
-import { parseJsonRequest, sendErrorJson, sendJson } from "./src/backend/request.js";
+import { handleCorsPreflight, parseJsonRequest, sendErrorJson, sendJson } from "./src/backend/request.js";
 
 function soulGuruApiPlugin() {
   return {
     name: "soulguru-api",
     configureServer(server) {
       const env = loadEnv(server.config.mode, process.cwd(), "");
+
+      server.middlewares.use("/api", (req, res, next) => {
+        if (handleCorsPreflight(req, res)) return;
+        next();
+      });
 
       server.middlewares.use("/api/health", (_req, res) => {
         sendJson(res, 200, {

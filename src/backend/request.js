@@ -1,12 +1,29 @@
 import { captureApiError } from "./observabilityService.js";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+  "Access-Control-Max-Age": "86400",
+  "Vary": "Origin"
+};
+
 export function sendJson(res, statusCode, payload, headers = {}) {
   res.statusCode = statusCode;
+  applyCorsHeaders(res);
   res.setHeader("Content-Type", "application/json");
   for (const [name, value] of Object.entries(headers)) {
     res.setHeader(name, value);
   }
   res.end(JSON.stringify(payload));
+}
+
+export function handleCorsPreflight(req, res) {
+  applyCorsHeaders(res);
+  if (getHttpMethod(req) !== "OPTIONS") return false;
+  res.statusCode = 204;
+  res.end();
+  return true;
 }
 
 export async function sendErrorJson(req, res, error, options = {}) {
@@ -24,6 +41,12 @@ export async function sendErrorJson(req, res, error, options = {}) {
 
 export function getHttpMethod(req) {
   return String(req.method || "GET").toUpperCase();
+}
+
+function applyCorsHeaders(res) {
+  for (const [name, value] of Object.entries(CORS_HEADERS)) {
+    res.setHeader(name, value);
+  }
 }
 
 export async function readRequestBody(req, maxBytes = 50000) {

@@ -6,7 +6,7 @@ import {
   verifyShaniRazorpayCheckoutPayment
 } from "../src/backend/payments.js";
 import { buildRateLimitKey, checkRateLimit } from "../src/backend/rateLimit.js";
-import { getHttpMethod, parseJsonRequest, sendErrorJson, sendJson } from "../src/backend/request.js";
+import { getHttpMethod, handleCorsPreflight, parseJsonRequest, sendErrorJson, sendJson } from "../src/backend/request.js";
 
 const PAYMENT_ACTIONS = new Set([
   "create-razorpay-order",
@@ -16,6 +16,8 @@ const PAYMENT_ACTIONS = new Set([
 ]);
 
 export default async function handler(req, res) {
+  if (handleCorsPreflight(req, res)) return;
+
   if (getHttpMethod(req) !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;
