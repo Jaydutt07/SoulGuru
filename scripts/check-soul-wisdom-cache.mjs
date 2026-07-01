@@ -5,7 +5,7 @@ import {
   SOUL_WISDOM_PROMPT_VERSION
 } from "../src/backend/soulWisdomService.js";
 import { buildBackendUserKey, isBackendUserKey } from "../src/backend/userIdentity.js";
-import { getDailyWisdom } from "../src/localSoulWisdom.js";
+import { buildAstrologyContext, buildTransitDateForUser } from "../src/astrologyEngine.js";
 
 const checks = [];
 
@@ -50,7 +50,7 @@ async function checkExplicitUncachedModeReturnsUnstoredReading() {
   const user = soulUser("uncached-enabled");
   const date = "2026-06-24";
   const today = "Wednesday, June 24, 2026";
-  const wisdomJson = JSON.stringify(getDailyWisdom(user, date, today));
+  const wisdomJson = contractWisdomJson(user, date);
   const openAiRequests = [];
   const memoryUpserts = [];
 
@@ -61,6 +61,8 @@ async function checkExplicitUncachedModeReturnsUnstoredReading() {
   }, {
     OPENAI_API_KEY: "test-openai-key",
     OPENAI_MODEL: "gpt-contract",
+    SOUL_WISDOM_MODEL: "gpt-soul-contract",
+    SOUL_WISDOM_MAX_OUTPUT_TOKENS: "180",
     SOUL_WISDOM_ALLOW_UNCACHED: "true"
   }, {
     supabase: null,
@@ -84,9 +86,11 @@ async function checkExplicitUncachedModeReturnsUnstoredReading() {
   pushCheck("Explicit uncached Soul Guru mode returns unstored quality-test reading", [
     result.cached === false,
     result.stored === false,
-    result.model === "gpt-contract",
+    result.model === "gpt-soul-contract",
     result.promptVersion === SOUL_WISDOM_PROMPT_VERSION,
     openAiRequests.length === 1,
+    openAiRequests[0].model === "gpt-soul-contract",
+    openAiRequests[0].max_output_tokens === 180,
     memoryUpserts.length === 1
   ].every(Boolean));
 }
@@ -239,7 +243,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     birthTime: "19:42",
     birthPlace: "Kochi"
   };
-  const wisdomJson = JSON.stringify(getDailyWisdom(user, date, today));
+  const wisdomJson = contractWisdomJson(user, date);
   const supabase = createFakeSupabase();
   const openAiRequests = [];
   const memoryUpserts = [];
@@ -295,6 +299,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
 
   pushCheck("Cache miss calls backend OpenAI once", [
     openAiRequests.length === 1,
+    openAiRequests[0].max_output_tokens === 220,
     first.cached === false,
     first.stored === true,
     first.model === "gpt-contract",
@@ -347,6 +352,56 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
     memoryUpserts[0].sourceId === `${date}-${SOUL_WISDOM_PROMPT_VERSION}`,
     memoryUpserts[0].metadata?.model === "gpt-contract"
   ].every(Boolean));
+}
+
+async function checkMemoryUpsertDoesNotBlockReadingResponse() {
+  const date = "2026-06-24";
+  const user = soulUser("memory-nonblocking");
+  const wisdomJson = contractWisdomJson(user, date);
+  const supabase = createFakeSupabase();
+  let resolveMemory;
+  let memoryStarted = false;
+  let memorySettled = false;
+
+  const result = await createDailySoulWisdom({
+    user,
+    date
+  }, {
+    OPENAI_API_KEY: "test-openai-key",
+    OPENAI_MODEL: "gpt-contract"
+  }, {
+    supabase,
+    searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+    upsertGuidanceMemory: async () => {
+      memoryStarted = true;
+      return new Promise((resolve) => {
+        resolveMemory = () => {
+          memorySettled = true;
+          resolve({ configured: true, upserted: true });
+        };
+      });
+    },
+    createOpenAIClient() {
+      return {
+        responses: {
+          create: async () => ({ output_text: wisdomJson })
+        }
+      };
+    }
+  });
+
+  await Promise.resolve();
+
+  pushCheck("Soul Guru returns cached reading response before deferred memory upsert settles", [
+    result.stored === true,
+    result.cached === false,
+    result.quality?.passed === true,
+    memoryStarted === true,
+    memorySettled === false
+  ].every(Boolean));
+
+  resolveMemory?.();
+  await Promise.resolve();
 }
 
 async function checkGenerationLockContentionDoesNotCallOpenAI() {
@@ -416,7 +471,7 @@ async function checkSeedMismatchRepairsBeforeCaching() {
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
   });
-  const repairedWisdom = getDailyWisdom(user, date);
+  const repairedWisdom = buildContractReading(user, date);
   const supabase = createFakeSupabase();
   const openAiRequests = [];
   const memoryUpserts = [];
@@ -481,7 +536,7 @@ async function checkQualityDiagnosticsAreOptIn() {
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
   });
-  const repairedWisdom = getDailyWisdom(user, date);
+  const repairedWisdom = buildContractReading(user, date);
 
   const withoutDiagnostics = await runUncachedRepairScenario({
     user,
@@ -561,7 +616,7 @@ async function checkMechanicalDirectAddressRepairsBeforeCaching() {
     todayMove: "Give one promise an edge",
     release: "Stop feeding the debate"
   });
-  const repairedWisdom = getDailyWisdom(user, date);
+  const repairedWisdom = buildContractReading(user, date);
   const supabase = createFakeSupabase();
   const openAiRequests = [];
 
@@ -615,7 +670,7 @@ async function checkAwkwardTemplateJoinRepairsBeforeCaching() {
     birthTime: "06:35",
     birthPlace: "Mumbai"
   };
-  const repairedWisdom = getDailyWisdom(user, date);
+  const repairedWisdom = buildContractReading(user, date);
   const awkwardWisdomJson = JSON.stringify({
     ...repairedWisdom,
     wisdom: `Let turn the useful part into one finish. ${repairedWisdom.wisdom}`
@@ -666,7 +721,7 @@ async function checkAwkwardTemplateJoinRepairsBeforeCaching() {
 async function checkCacheWriteFailureDoesNotReturnReading() {
   const user = soulUser("cache-failure");
   const date = "2026-06-24";
-  const wisdomJson = JSON.stringify(getDailyWisdom(user, date));
+  const wisdomJson = contractWisdomJson(user, date);
   const supabase = createFakeSupabase({ failDailyUpsert: true });
   const openAiRequests = [];
   const memoryUpserts = [];
@@ -974,6 +1029,34 @@ function soulUser(id) {
   };
 }
 
+function contractWisdomJson(user, date) {
+  return JSON.stringify(buildContractReading(user, date));
+}
+
+function buildContractReading(user, date) {
+  const context = buildAstrologyContext(user, buildTransitDateForUser(user, date));
+  const scene = sentenceCase(context.openingScene || context.dailyScene || "the desk detail that keeps returning");
+  const name = firstName(user.name);
+  const nameClause = name ? `, ${name}` : "";
+
+  return {
+    wisdom: `${scene} can stay small${nameClause}; finish one task by lunchtime today before making the story louder.`,
+    innerWeather: "Focused under visible pressure",
+    todayMove: "Finish one task before lunchtime",
+    release: "Stop making the story louder"
+  };
+}
+
+function sentenceCase(text) {
+  const cleaned = String(text || "").replace(/[.!?]+$/g, "").trim();
+  if (!cleaned) return "The desk detail";
+  return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
+}
+
+function firstName(name) {
+  return String(name || "friend").trim().split(/\s+/)[0] || "";
+}
+
 function pushCheck(label, passed) {
   checks.push({ label, passed });
 }
@@ -993,6 +1076,7 @@ async function main() {
   await checkCachedReadingBypassesOpenAI();
   await checkCachedReaderBypassesRateLimitedGenerationPath();
   await checkCacheMissWritesAndSecondReadUsesCache();
+  await checkMemoryUpsertDoesNotBlockReadingResponse();
   await checkGenerationLockContentionDoesNotCallOpenAI();
   await checkSeedMismatchRepairsBeforeCaching();
   await checkQualityDiagnosticsAreOptIn();

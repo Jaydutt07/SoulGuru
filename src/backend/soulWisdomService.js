@@ -47,7 +47,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   let user = payload.user || {};
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const timezone = payload.timezone || "Asia/Kolkata";
-  const model = env.OPENAI_MODEL || "gpt-5.5";
+  const model = env.SOUL_WISDOM_MODEL || env.OPENAI_MODEL || "gpt-5.5";
   const userKey = buildBackendUserKey(user);
   const supabase = hasOwn(deps, "supabase") ? deps.supabase : createSupabaseAdmin(env);
   const searchMemory = deps.searchGuidanceMemory || searchGuidanceMemory;
@@ -93,123 +93,123 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
   }
 
   try {
-  const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
-  user = serverContext.user;
-  const astrologyContext = serverContext.astrologyContext;
-  const memory = await searchMemory({
-    user,
-    query: buildMemoryQuery({ user, astrologyContext, date }),
-    topK: Number(env.PINECONE_TOP_K || 4)
-  }, env);
-  const memoryContext = buildMemoryContext(memory);
-  const client = makeOpenAIClient(apiKey, env);
-  const contractContext = {
-    ...astrologyContext,
-    paragraphArchitecture: buildParagraphArchitecture(user, astrologyContext, payload.today || date)
-  };
-  const promptInput = buildSoulWisdomInput({
-    user,
-    context: astrologyContext,
-    today: payload.today || date,
-    memoryContext
-  });
-  let outputText = await requestSoulWisdom(client, model, promptInput, env);
-  let qualityAttempts = 1;
-  let candidateIssues = getSoulWisdomContractIssues(
-    extractWisdomCandidate(outputText),
-    user,
-    contractContext
-  );
-  const qualityIssueHistory = [{
-    attempt: qualityAttempts,
-    issues: candidateIssues
-  }];
-
-  const fallback = payload.fallback || getDailyWisdom(user, date, payload.today || date);
-  while (candidateIssues.length && qualityAttempts < 3) {
-    outputText = await requestSoulWisdom(
-      client,
-      model,
-      buildSoulWisdomRepairInput({
-        user,
-        context: astrologyContext,
-        today: payload.today || date,
-        memoryContext,
-        rejectedWisdom: normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
-        rejectionReason: candidateIssues.join("; ")
-      }),
-      env
-    );
-    qualityAttempts += 1;
-    candidateIssues = getSoulWisdomContractIssues(
+    const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
+    user = serverContext.user;
+    const astrologyContext = serverContext.astrologyContext;
+    const memory = await searchMemory({
+      user,
+      query: buildMemoryQuery({ user, astrologyContext, date }),
+      topK: Number(env.PINECONE_TOP_K || 4)
+    }, env);
+    const memoryContext = buildMemoryContext(memory);
+    const client = makeOpenAIClient(apiKey, env);
+    const contractContext = {
+      ...astrologyContext,
+      paragraphArchitecture: buildParagraphArchitecture(user, astrologyContext, payload.today || date)
+    };
+    const promptInput = buildSoulWisdomInput({
+      user,
+      context: astrologyContext,
+      today: payload.today || date,
+      memoryContext
+    });
+    let outputText = await requestSoulWisdom(client, model, promptInput, env);
+    let qualityAttempts = 1;
+    let candidateIssues = getSoulWisdomContractIssues(
       extractWisdomCandidate(outputText),
       user,
       contractContext
     );
-    qualityIssueHistory.push({
+    const qualityIssueHistory = [{
       attempt: qualityAttempts,
       issues: candidateIssues
-    });
-  }
+    }];
 
-  let reading = normalizeWisdomPayload(outputText, fallback);
-  const finalIssues = getSoulWisdomContractIssues(reading.wisdom, user, contractContext);
-  if (finalIssues.length) {
-    reading = fallback;
-  }
-  const passedQuality = !getSoulWisdomContractIssues(reading.wisdom, user, contractContext).length;
-  const result = {
-    reading,
-    wisdom: reading.wisdom,
-    astrologyContext,
-    cached: false,
-    stored: false,
-    model,
-    promptVersion: SOUL_WISDOM_PROMPT_VERSION,
-    readingDate: date,
-    quality: {
-      attempts: qualityAttempts,
-      repaired: qualityAttempts > 1,
-      passed: passedQuality,
-      ...(shouldExposeSoulWisdomQualityDiagnostics(env) ? { issueHistory: qualityIssueHistory } : {})
-    },
-    memory: {
-      configured: Boolean(memory.configured),
-      used: Boolean(memoryContext),
-      degraded: Boolean(memory.degraded),
-      matches: memory.matches?.length || 0
+    const fallback = payload.fallback || getDailyWisdom(user, date, payload.today || date);
+    while (candidateIssues.length && qualityAttempts < 3) {
+      outputText = await requestSoulWisdom(
+        client,
+        model,
+        buildSoulWisdomRepairInput({
+          user,
+          context: astrologyContext,
+          today: payload.today || date,
+          memoryContext,
+          rejectedWisdom: normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
+          rejectionReason: candidateIssues.join("; ")
+        }),
+        env
+      );
+      qualityAttempts += 1;
+      candidateIssues = getSoulWisdomContractIssues(
+        extractWisdomCandidate(outputText),
+        user,
+        contractContext
+      );
+      qualityIssueHistory.push({
+        attempt: qualityAttempts,
+        issues: candidateIssues
+      });
     }
-  };
 
-  if (supabase) {
-    const cacheResult = await writeCachedReading(supabase, {
-      user,
-      userKey,
-      date,
-      timezone,
+    let reading = normalizeWisdomPayload(outputText, fallback);
+    const finalIssues = getSoulWisdomContractIssues(reading.wisdom, user, contractContext);
+    if (finalIssues.length) {
+      reading = fallback;
+    }
+    const passedQuality = !getSoulWisdomContractIssues(reading.wisdom, user, contractContext).length;
+    const result = {
       reading,
+      wisdom: reading.wisdom,
       astrologyContext,
-      model
-    });
-    if (!cacheResult.stored) {
-      throwHttpError("Soul Guru reading could not be cached. Please try again.", 503);
-    }
-    result.stored = true;
-  }
-
-  await upsertMemory({
-    user,
-    kind: "daily-soul-reading",
-    sourceId: `${date}-${SOUL_WISDOM_PROMPT_VERSION}`,
-    text: reading.wisdom,
-    metadata: {
-      readingDate: date,
+      cached: false,
+      stored: false,
+      model,
       promptVersion: SOUL_WISDOM_PROMPT_VERSION,
-      model
-    }
-  }, env);
+      readingDate: date,
+      quality: {
+        attempts: qualityAttempts,
+        repaired: qualityAttempts > 1,
+        passed: passedQuality,
+        ...(shouldExposeSoulWisdomQualityDiagnostics(env) ? { issueHistory: qualityIssueHistory } : {})
+      },
+      memory: {
+        configured: Boolean(memory.configured),
+        used: Boolean(memoryContext),
+        degraded: Boolean(memory.degraded),
+        matches: memory.matches?.length || 0
+      }
+    };
 
-  return result;
+    if (supabase) {
+      const cacheResult = await writeCachedReading(supabase, {
+        user,
+        userKey,
+        date,
+        timezone,
+        reading,
+        astrologyContext,
+        model
+      });
+      if (!cacheResult.stored) {
+        throwHttpError("Soul Guru reading could not be cached. Please try again.", 503);
+      }
+      result.stored = true;
+    }
+
+    scheduleMemoryUpsert(upsertMemory, {
+      user,
+      kind: "daily-soul-reading",
+      sourceId: `${date}-${SOUL_WISDOM_PROMPT_VERSION}`,
+      text: reading.wisdom,
+      metadata: {
+        readingDate: date,
+        promptVersion: SOUL_WISDOM_PROMPT_VERSION,
+        model
+      }
+    }, env);
+
+    return result;
   } finally {
     if (generationLock?.acquired) {
       await releaseDailyReadingLock(supabase, generationLock);
@@ -229,9 +229,22 @@ async function requestSoulWisdom(client, model, input, env = process.env) {
   const response = await requestOpenAIResponse(client, {
     model,
     instructions: SOUL_WISDOM_SYSTEM_PROMPT,
-    input
+    input,
+    max_output_tokens: getSoulWisdomMaxOutputTokens(env)
   }, env);
   return response.output_text;
+}
+
+function getSoulWisdomMaxOutputTokens(env = process.env) {
+  return parseBoundedInteger(env.SOUL_WISDOM_MAX_OUTPUT_TOKENS, 220, 120, 600);
+}
+
+function scheduleMemoryUpsert(upsertMemory, payload, env) {
+  Promise.resolve()
+    .then(() => upsertMemory(payload, env))
+    .catch((error) => {
+      console.warn("Soul Guru memory upsert deferred", error.message);
+    });
 }
 
 async function readCachedReading(supabase, userKey, date) {

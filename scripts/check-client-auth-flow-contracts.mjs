@@ -15,6 +15,7 @@ checkNativeDebugApkKeepsDemoOtpFallback();
 checkLoginAnalyticsDistinguishesOtpSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionSoulGuruRetriesPendingBackendReading();
+checkProductionSoulGuruPrefetchesAndDedupesDailyReading();
 checkSoulGuruCacheUsesCurrentPromptVersion();
 checkProductionAstroSolvesSyncsBackendAllowance();
 checkProductionAstroSolvesRequiresStoredBackendAnswer();
@@ -131,6 +132,20 @@ function checkProductionSoulGuruRetriesPendingBackendReading() {
     source.includes("if (retryTimer) window.clearTimeout(retryTimer);"),
     source.includes("setReadingStatus(\"Soul Guru is still preparing today's guidance. Keep this tab open or check again shortly.\");"),
     source.includes("trackEvent(\"soul_wisdom_failed\", { reason: \"pending_timeout\" });")
+  ].every(Boolean));
+}
+
+function checkProductionSoulGuruPrefetchesAndDedupesDailyReading() {
+  pushCheck("Production Soul Guru prefetches and dedupes today's backend reading", [
+    source.includes("const SOUL_READING_REQUESTS = new Map();"),
+    source.includes("if (readDailyReadingCache(user, todayKey)?.reading) return;"),
+    source.includes("const payload = buildDailyReadingPayload(user, todayKey, fallbackReading);"),
+    source.includes("requestDailyReadingFromServer(user, todayKey, payload)"),
+    source.includes("function buildDailyReadingPayload(user, todayKey, fallbackReading) {"),
+    source.includes("function requestDailyReadingFromServer(user, todayKey, payload) {"),
+    source.includes("if (SOUL_READING_REQUESTS.has(requestKey)) {"),
+    source.includes("SOUL_READING_REQUESTS.set(requestKey, request);"),
+    source.includes("SOUL_READING_REQUESTS.delete(requestKey);")
   ].every(Boolean));
 }
 

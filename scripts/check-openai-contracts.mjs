@@ -26,6 +26,7 @@ await checkResponsesUseBoundedRequestOptions();
 await checkEmbeddingsUseBoundedRequestOptions();
 checkClientReceivesBoundedDefaults();
 checkBackendServicesUseSharedHelper();
+checkSoulWisdomUsesLatencyControls();
 checkPromptVersionsAreDocumented();
 
 const failed = checks.filter((check) => !check.passed);
@@ -169,6 +170,18 @@ function checkBackendServicesUseSharedHelper() {
   }
 
   pushCheck("Backend OpenAI calls are centralized through the timeout helper", violations.length === 0);
+}
+
+function checkSoulWisdomUsesLatencyControls() {
+  const soulWisdomSource = fs.readFileSync(path.join(process.cwd(), "src", "backend", "soulWisdomService.js"), "utf8");
+
+  pushCheck("Soul Guru daily readings keep model, output, and memory latency configurable", [
+    soulWisdomSource.includes("const model = env.SOUL_WISDOM_MODEL || env.OPENAI_MODEL || \"gpt-5.5\";"),
+    soulWisdomSource.includes("max_output_tokens: getSoulWisdomMaxOutputTokens(env)"),
+    soulWisdomSource.includes("return parseBoundedInteger(env.SOUL_WISDOM_MAX_OUTPUT_TOKENS, 220, 120, 600);"),
+    soulWisdomSource.includes("scheduleMemoryUpsert(upsertMemory, {"),
+    soulWisdomSource.includes(".then(() => upsertMemory(payload, env))")
+  ].every(Boolean));
 }
 
 function checkPromptVersionsAreDocumented() {

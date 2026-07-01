@@ -50,6 +50,7 @@ const SESSION_KEY = "soulguru.session.v1";
 const SOUL_READING_CACHE_VERSION = SOUL_WISDOM_PROMPT_VERSION;
 const SOUL_READING_CACHE_PREFIX = `soulguru.dailySoulReading.${SOUL_READING_CACHE_VERSION}`;
 const SOUL_READING_HISTORY_PREFIX = `soulguru.dailySoulReadingHistory.${SOUL_READING_CACHE_VERSION}`;
+const SOUL_READING_REQUESTS = new Map();
 const SOUL_WISDOM_PENDING_RETRY_LIMIT = 60;
 const SOUL_WISDOM_PENDING_RETRY_MS = 5000;
 const MORE_GUIDANCE_PENDING_RETRY_LIMIT = 60;
@@ -110,6 +111,27 @@ function App() {
 
   useEffect(() => {
     identifyUser(user);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || LOCAL_READING_FALLBACK_ENABLED) return;
+    const todayKey = getTodayKey(new Date(), user.birthTimezone || undefined);
+    if (readDailyReadingCache(user, todayKey)?.reading) return;
+
+    const fallbackReading = getDailyWisdom(user, todayKey);
+    const payload = buildDailyReadingPayload(user, todayKey, fallbackReading);
+    requestDailyReadingFromServer(user, todayKey, payload)
+      .then(({ ok, data }) => {
+        if (!ok || !(data?.reading || data?.wisdom) || data.stored === false) return;
+        const nextReading = normalizeWisdomPayload(data.reading || data.wisdom, fallbackReading);
+        writeDailyReadingCache(user, todayKey, nextReading, {
+          cached: Boolean(data.cached),
+          model: data.model,
+          source: data.source || "api",
+          stored: data.stored !== false
+        });
+      })
+      .catch(() => {});
   }, [user]);
 
   useEffect(() => {
@@ -591,8 +613,6 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   useEffect(() => {
     let cancelled = false;
     let retryTimer = null;
-    const todayDate = buildDateFromKey(todayKey, user);
-    const context = buildAstrologyContext(user, todayDate);
     const cached = readDailyReadingCache(user, todayKey);
 
     if (cached?.reading) {
@@ -611,33 +631,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       setReadingStatus("Preparing today's guidance...");
     }
 
-    const payload = {
-      user: {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        email: user.email,
-        birthDate: user.birthDate,
-        birthTime: user.birthTime,
-        birthPlace: user.birthPlace,
-        birthLatitude: user.birthLatitude,
-        birthLongitude: user.birthLongitude,
-        birthTimezone: user.birthTimezone,
-        birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
-        birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
-        birthPlaceResolutionSource: user.birthPlaceResolutionSource
-      },
-      date: todayKey,
-      timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
-      context,
-      today: todayDate.toLocaleDateString(undefined, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric"
-      }),
-      fallback: fallbackReading
-    };
+    const payload = buildDailyReadingPayload(user, todayKey, fallbackReading);
 
     const requestDailyReading = (attempt = 0) => {
       const freshCached = readDailyReadingCache(user, todayKey);
@@ -647,15 +641,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         return;
       }
 
-      authFetch(getApiUrl("/api/soul-wisdom"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      })
-        .then(async (response) => {
-          const data = await response.json().catch(() => null);
-          return { ok: response.ok, status: response.status, data };
-        })
+      requestDailyReadingFromServer(user, todayKey, payload)
         .then(({ ok, status, data }) => {
           if (cancelled) return;
 
@@ -2844,6 +2830,61 @@ function stableHash(value) {
 
 function getApiUrl(path) {
   return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
+function buildDailyReadingPayload(user, todayKey, fallbackReading) {
+  const todayDate = buildDateFromKey(todayKey, user);
+  const context = buildAstrologyContext(user, todayDate);
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      birthDate: user.birthDate,
+      birthTime: user.birthTime,
+      birthPlace: user.birthPlace,
+      birthLatitude: user.birthLatitude,
+      birthLongitude: user.birthLongitude,
+      birthTimezone: user.birthTimezone,
+      birthTimezoneOffsetMinutes: user.birthTimezoneOffsetMinutes,
+      birthPlaceResolvedLabel: user.birthPlaceResolvedLabel,
+      birthPlaceResolutionSource: user.birthPlaceResolutionSource
+    },
+    date: todayKey,
+    timezone: user.birthTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
+    context,
+    today: todayDate.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }),
+    fallback: fallbackReading
+  };
+}
+
+function requestDailyReadingFromServer(user, todayKey, payload) {
+  const requestKey = `${getSoulReadingUserKey(user)}.${todayKey}`;
+  if (SOUL_READING_REQUESTS.has(requestKey)) {
+    return SOUL_READING_REQUESTS.get(requestKey);
+  }
+
+  const request = authFetch(getApiUrl("/api/soul-wisdom"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(async (response) => {
+      const data = await response.json().catch(() => null);
+      return { ok: response.ok, status: response.status, data };
+    })
+    .finally(() => {
+      SOUL_READING_REQUESTS.delete(requestKey);
+    });
+
+  SOUL_READING_REQUESTS.set(requestKey, request);
+  return request;
 }
 
 async function openRazorpayCheckout({ order, user, description = "Soul Guru + Astro Solve", notes = {}, onSuccess, onFailure }) {
