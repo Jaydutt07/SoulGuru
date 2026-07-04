@@ -40,7 +40,7 @@ import { buildFallbackDeepGuidance } from "./deepGuidance.js";
 import { getDailyFocus, getDailyWisdom } from "./localSoulWisdom.js";
 import { getNumbers } from "./numerology.js";
 import { clearObservedUser, identifyUser, initializeObservability, trackEvent } from "./observability.js";
-import { enrichUserWithPlace } from "./placeResolver.js";
+import { enrichUserWithPlace, suggestCatalogBirthPlaces } from "./placeResolver.js";
 import { buildFallbackPanditAnswer } from "./shaniGuidance.js";
 import { firstName, normalizeWisdomPayload } from "./soulGuruPrompt.js";
 import { SOUL_WISDOM_PROMPT_VERSION } from "./soulWisdomVersion.js";
@@ -63,6 +63,8 @@ const LOCAL_AUTH_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_SETTING === "true" || im
 const LOCAL_READING_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_ENABLED && !API_BASE_URL;
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
+const PLACE_SUGGESTION_MIN_CHARS = 2;
+const PLACE_SUGGESTION_LIMIT = 6;
 
 initializeObservability();
 initializeClerkAuth();
@@ -154,7 +156,7 @@ function App() {
       setUser((current) => current?.phone === syncedAccount.phone ? mergeAccountProfile(current, profile) : current);
     });
     trackEvent("login_completed", {
-      method: loginMeta.method || (LOCAL_AUTH_FALLBACK_ENABLED ? "local_demo_otp" : "backend_otp"),
+      method: loginMeta.method || "direct_profile",
       flow: loginMeta.flow || "unknown",
       server_backed: Boolean(loginMeta.serverBacked)
     });
@@ -282,25 +284,68 @@ function AuthScreen({ onLogin }) {
     phone: "",
     email: ""
   });
-  const [pendingOtp, setPendingOtp] = useState(null);
-  const [otpValue, setOtpValue] = useState("");
   const [error, setError] = useState("");
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [birthPlaceOptions, setBirthPlaceOptions] = useState([]);
+  const [selectedBirthPlace, setSelectedBirthPlace] = useState(null);
 
   useEffect(() => {
-    setPendingOtp(null);
-    setOtpValue("");
     setError("");
-    setIsVerifyingOtp(false);
+    setBirthPlaceOptions([]);
   }, [mode]);
+
+  useEffect(() => {
+    const query = form.birthPlace.trim();
+    if (
+      mode !== "create" ||
+      query.length < PLACE_SUGGESTION_MIN_CHARS ||
+      isSameBirthPlaceLabel(query, selectedBirthPlace?.label)
+    ) {
+      setBirthPlaceOptions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const localSuggestions = suggestCatalogBirthPlaces(query, PLACE_SUGGESTION_LIMIT);
+    setBirthPlaceOptions(localSuggestions);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(getApiUrl(`/api/place-suggestions?q=${encodeURIComponent(query)}`));
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || cancelled) return;
+        const suggestions = mergeBirthPlaceSuggestions(data.suggestions, localSuggestions);
+        setBirthPlaceOptions(suggestions);
+      } catch {
+        if (!cancelled) {
+          setBirthPlaceOptions(localSuggestions);
+        }
+      }
+    }, 260);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [mode, form.birthPlace, selectedBirthPlace?.label]);
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+    if (field === "birthPlace") {
+      setSelectedBirthPlace(null);
+    }
   }
 
-  async function sendOtp() {
-    if (isSendingOtp) return;
+  function selectBirthPlaceOption(option) {
+    const suggestion = normalizeBirthPlaceSuggestion(option);
+    if (!suggestion) return;
+    setForm((current) => ({ ...current, birthPlace: suggestion.label }));
+    setSelectedBirthPlace(suggestion);
+    setBirthPlaceOptions([]);
+  }
+
+  async function continueToSoulGuru() {
+    if (isContinuing) return;
     const phone = normalizePhone(form.phone);
     const accounts = readAccounts();
     setError("");
@@ -310,7 +355,7 @@ function AuthScreen({ onLogin }) {
       return;
     }
 
-    setIsSendingOtp(true);
+    setIsContinuing(true);
 
     try {
       if (mode === "existing") {
@@ -319,26 +364,14 @@ function AuthScreen({ onLogin }) {
           setError("No account found for this number.");
           return;
         }
-        const otp = await requestOtpFromServer({
-          phone,
-          email: account.email,
-          purpose: "login"
-        });
-        const enrichedAccount = saveAccount(account);
-        setPendingOtp({
-          phone,
-          ...otp,
-          account: enrichedAccount,
-          payload: enrichedAccount
-        });
-        setOtpValue("");
+        onLogin(account, { flow: "existing", method: "direct_profile" });
         return;
       }
 
       const requiredFields = ["name", "birthDate", "birthPlace", "birthTime", "email"];
       const missingField = requiredFields.find((field) => !String(form[field]).trim());
       if (missingField) {
-        setError("Complete all details before verification.");
+        setError("Complete all details before continuing.");
         return;
       }
       const serverAccount = await lookupAccountFromServer(phone);
@@ -347,57 +380,18 @@ function AuthScreen({ onLogin }) {
         setError("This number already has an account.");
         return;
       }
-      const otp = await requestOtpFromServer({
-        phone,
-        email: form.email,
-        purpose: "create"
-      });
 
-      setPendingOtp({
-        phone,
-        ...otp,
-        payload: { ...form, phone }
-      });
-      setOtpValue("");
-    } catch (error) {
-      setError(error.message || "Unable to send OTP.");
-    } finally {
-      setIsSendingOtp(false);
-    }
-  }
-
-  async function verifyOtp() {
-    if (!pendingOtp) return;
-    if (isVerifyingOtp) return;
-    setError("");
-    setIsVerifyingOtp(true);
-
-    try {
-      const verified = await verifyOtpWithServer(pendingOtp, otpValue);
-      if (!verified) {
-        setError("OTP did not match.");
-        return;
-      }
-
-      if (mode === "existing") {
-        const account = pendingOtp.account || readAccounts()[pendingOtp.phone];
-        if (!account) {
-          setError("No account found for this number.");
-          return;
-        }
-        onLogin(account, buildLoginMeta(pendingOtp, "existing"));
-        return;
-      }
-
+      const selectedBirthPlaceDetails = getSelectedBirthPlaceForSubmit(form.birthPlace, selectedBirthPlace);
       const account = enrichUserWithPlace({
         id: `sg-${Date.now()}`,
-        name: pendingOtp.payload.name.trim(),
-        birthDate: pendingOtp.payload.birthDate,
-        birthPlace: pendingOtp.payload.birthPlace.trim(),
-        birthTime: pendingOtp.payload.birthTime,
-        phone: pendingOtp.phone,
-        email: pendingOtp.payload.email.trim(),
+        name: form.name.trim(),
+        birthDate: form.birthDate,
+        birthPlace: form.birthPlace.trim(),
+        birthTime: form.birthTime,
+        phone,
+        email: form.email.trim(),
         createdAt: new Date().toISOString(),
+        ...(selectedBirthPlaceDetails ? buildBirthPlaceUserFields(selectedBirthPlaceDetails) : {}),
         solvedProblems: [],
         memberPlan: "",
         guidanceHistory: [],
@@ -410,15 +404,15 @@ function AuthScreen({ onLogin }) {
           setError("Unable to save your account profile. Please try again shortly.");
           return;
         }
-        onLogin(mergeAccountProfile(account, profile), buildLoginMeta(pendingOtp, "create"));
+        onLogin(mergeAccountProfile(account, profile), { flow: "create", method: "direct_profile" });
         return;
       }
 
-      onLogin(account, buildLoginMeta(pendingOtp, "create"));
+      onLogin(account, { flow: "create", method: "direct_profile" });
     } catch (error) {
-      setError(error.message || "Unable to verify OTP.");
+      setError(error.message || "Unable to continue.");
     } finally {
-      setIsVerifyingOtp(false);
+      setIsContinuing(false);
     }
   }
 
@@ -462,7 +456,12 @@ function AuthScreen({ onLogin }) {
                 <InputField label="Birth date" type="date" value={form.birthDate} onChange={(value) => updateField("birthDate", value)} />
                 <InputField label="Birth time" type="time" value={form.birthTime} onChange={(value) => updateField("birthTime", value)} />
               </div>
-              <InputField label="Birth place" value={form.birthPlace} onChange={(value) => updateField("birthPlace", value)} autoComplete="address-level2" />
+              <BirthPlaceField
+                value={form.birthPlace}
+                onChange={(value) => updateField("birthPlace", value)}
+                options={birthPlaceOptions}
+                onSelect={selectBirthPlaceOption}
+              />
               <InputField label="Email" type="email" value={form.email} onChange={(value) => updateField("email", value)} autoComplete="email" />
             </>
           )}
@@ -471,33 +470,11 @@ function AuthScreen({ onLogin }) {
 
         {error && <p className="form-error">{error}</p>}
 
-        {pendingOtp ? (
-          <div className="otp-box">
-            <div>
-              <p className="eyebrow">OTP sent</p>
-              <strong>{maskPhone(pendingOtp.phone)}</strong>
-            </div>
-            {pendingOtp.code ? (
-              <span className="otp-demo">Demo OTP {pendingOtp.code}</span>
-            ) : (
-              <span className="otp-demo">Check your OTP message</span>
-            )}
-            <InputField label="Enter OTP" inputMode="numeric" value={otpValue} onChange={setOtpValue} />
-            {isVerifyingOtp && <CosmicBuffer label="Verifying your entry." tone="soul" compact />}
-            <button className="primary-action" type="button" onClick={verifyOtp} disabled={isVerifyingOtp}>
-              <ShieldCheck size={18} aria-hidden="true" />
-              {isVerifyingOtp ? "Verifying" : "Verify and enter"}
-            </button>
-          </div>
-        ) : (
-          <>
-            {isSendingOtp && <CosmicBuffer label="Sending a quiet signal." tone="soul" compact />}
-            <button className="primary-action" type="button" onClick={sendOtp} disabled={isSendingOtp}>
-              <Send size={18} aria-hidden="true" />
-              {isSendingOtp ? "Checking account" : "Send OTP"}
-            </button>
-          </>
-        )}
+        {isContinuing && <CosmicBuffer label="Opening Soul Guru." tone="soul" compact />}
+        <button className="primary-action" type="button" onClick={continueToSoulGuru} disabled={isContinuing}>
+          <ChevronRight size={18} aria-hidden="true" />
+          {isContinuing ? "Opening" : "Continue to Soul Guru"}
+        </button>
       </section>
     </main>
   );
@@ -510,6 +487,101 @@ function InputField({ label, value, onChange, type = "text", ...props }) {
       <input type={type} value={value} onChange={(event) => onChange(event.target.value)} {...props} />
     </label>
   );
+}
+
+function BirthPlaceField({ value, onChange, options = [], onSelect }) {
+  const hasOptions = options.length > 0;
+  return (
+    <div className="input-field place-field">
+      <label htmlFor="birth-place-input">Birth place</label>
+      <input
+        id="birth-place-input"
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={hasOptions}
+        aria-controls="birth-place-options"
+      />
+      {hasOptions && (
+        <div className="place-suggestions" id="birth-place-options" role="listbox">
+          {options.map((option) => (
+            <button
+              className="place-suggestion"
+              type="button"
+              key={`${option.label}-${option.latitude}-${option.longitude}`}
+              role="option"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onSelect(option)}
+            >
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function mergeBirthPlaceSuggestions(...lists) {
+  const suggestions = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const item of Array.isArray(list) ? list : []) {
+      const suggestion = normalizeBirthPlaceSuggestion(item);
+      if (!suggestion) continue;
+      const key = `${suggestion.label.toLowerCase()}|${suggestion.latitude.toFixed(4)}|${suggestion.longitude.toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      suggestions.push(suggestion);
+      if (suggestions.length >= PLACE_SUGGESTION_LIMIT) return suggestions;
+    }
+  }
+  return suggestions;
+}
+
+function normalizeBirthPlaceSuggestion(item) {
+  const label = String(item?.label || "").replace(/\s+/g, " ").trim();
+  const latitude = optionalNumber(item?.latitude);
+  const longitude = optionalNumber(item?.longitude);
+  if (!label || latitude === null || longitude === null) return null;
+  return {
+    label,
+    latitude,
+    longitude,
+    timezone: String(item?.timezone || "").trim(),
+    timezoneOffsetMinutes: optionalNumber(item?.timezoneOffsetMinutes),
+    source: String(item?.source || "geocoder").trim() || "geocoder"
+  };
+}
+
+function getSelectedBirthPlaceForSubmit(input, selectedBirthPlace) {
+  if (!selectedBirthPlace || !isSameBirthPlaceLabel(input, selectedBirthPlace.label)) return null;
+  return selectedBirthPlace;
+}
+
+function buildBirthPlaceUserFields(place) {
+  return {
+    birthLatitude: place.latitude,
+    birthLongitude: place.longitude,
+    birthTimezone: place.timezone,
+    birthTimezoneOffsetMinutes: place.timezoneOffsetMinutes,
+    birthPlaceResolvedLabel: place.label,
+    birthPlaceResolutionSource: place.source
+  };
+}
+
+function isSameBirthPlaceLabel(left, right) {
+  return String(left || "").replace(/\s+/g, " ").trim().toLowerCase() ===
+    String(right || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function optionalNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function MentorApp({ activeTab, onTabChange, user, updateUser, onLogout }) {
@@ -527,10 +599,6 @@ function MentorApp({ activeTab, onTabChange, user, updateUser, onLogout }) {
             <span className="brand-wordmark">Soul Guru</span>
             <span className="screen-context">{activeLabel}</span>
           </div>
-          <button className="date-switch" type="button" aria-label="Today's guidance">
-            Today
-            <span aria-hidden="true">⌄</span>
-          </button>
           <button className="icon-button" type="button" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
             <Settings size={20} aria-hidden="true" />
           </button>
@@ -584,26 +652,14 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
   const fallbackReading = useMemo(() => getDailyWisdom(user, todayKey), [user, todayKey]);
   const [reading, setReading] = useState(LOCAL_READING_FALLBACK_ENABLED ? fallbackReading : null);
   const [readingStatus, setReadingStatus] = useState(LOCAL_READING_FALLBACK_ENABLED ? "" : "Preparing today's guidance...");
-  const [isSavingAdvice, setIsSavingAdvice] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("");
   const [feedbackChoice, setFeedbackChoice] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
   const focusItems = useMemo(() => getDailyFocus(user), [user]);
   const wisdomEditorial = useMemo(() => splitWisdomForEditorial(reading), [reading]);
   const focusCue = focusItems.find((item) => item.label === "Focus")?.value || reading?.innerWeather || "One clean priority";
-  const anchorCue = focusItems.find((item) => item.label === "Anchor")?.value || reading?.innerWeather || "Steady the next choice";
   const avoidCue = focusItems.find((item) => item.label === "Avoid")?.value || reading?.release || "The extra debate";
   const mentorMove = reading?.todayMove || focusCue || "Finish one real step";
   const releaseMove = reading?.release || avoidCue || "The extra debate";
-  const mentorName = firstName(user.name) || "Seeker";
-  const readingDeck = useMemo(() => buildSoulGuruReadingDeck({
-    reading,
-    focusCue,
-    anchorCue,
-    avoidCue,
-    mentorMove,
-    releaseMove
-  }), [anchorCue, avoidCue, focusCue, mentorMove, reading, releaseMove]);
 
   useEffect(() => {
     setFeedbackChoice("");
@@ -718,46 +774,6 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
     };
   }, [fallbackReading, todayKey, user]);
 
-  async function saveAdvice() {
-    if (isSavingAdvice || !reading) return;
-
-    const savedItem = {
-      id: `saved-${Date.now()}`,
-      date: new Date().toISOString(),
-      reading
-    };
-
-    setIsSavingAdvice(true);
-    setSaveStatus("Saving advice...");
-
-    try {
-      const result = await saveGuidanceToServer(user, reading, savedItem.id);
-      const storedItem = result.item || savedItem;
-      updateUser((current) => ({
-        ...current,
-        savedGuidance: [storedItem, ...(current.savedGuidance || [])].slice(0, 30),
-        guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
-      }));
-      setSaveStatus(result.saved ? "Advice saved." : "Saved locally until the backend is connected.");
-      trackEvent("guidance_saved", { source: result.saved ? "server" : "local-fallback" });
-    } catch {
-      if (LOCAL_PAID_FALLBACK_ENABLED) {
-        updateUser((current) => ({
-          ...current,
-          savedGuidance: [savedItem, ...(current.savedGuidance || [])].slice(0, 30),
-          guidanceHistory: upsertHistory(current.guidanceHistory || [], reading)
-        }));
-        setSaveStatus("Saved locally until the backend is connected.");
-        trackEvent("guidance_saved", { source: "local-fallback" });
-      } else {
-        setSaveStatus("Advice could not sync. Please try again shortly.");
-        trackEvent("guidance_save_failed");
-      }
-    } finally {
-      setIsSavingAdvice(false);
-    }
-  }
-
   async function sendWisdomFeedback(rating) {
     if (!reading) return;
 
@@ -808,44 +824,15 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       <div className="soul-guru-hero" aria-label="Today's Soul Guru room">
         <UniversalEntityLogo className="soul-guru-cosmos guru-sanctum" />
         <div className="soul-guru-daily">
-          <p className="eyebrow">Soul Guru</p>
           <h2>Words of Wisdom</h2>
-          <span>
-            <Clock3 size={14} aria-hidden="true" />
-            {formatDate(todayKey)}
-          </span>
-          <strong>{mentorName}, keep today's answer close.</strong>
         </div>
       </div>
       <article className="wisdom-panel">
-        <div className="wisdom-sigil" aria-hidden="true" />
-        <div className="wisdom-panel-top">
-          <p className="editorial-kicker">Today's private note</p>
-          {reading && (
-            <span className="soul-weather-pill">
-              <Sparkles size={14} aria-hidden="true" />
-              Chart signal
-            </span>
-          )}
-        </div>
         {reading ? (
-          <>
-            <div className="soul-note-frame">
-              <h3 className="wisdom-headline">{wisdomEditorial.headline}</h3>
-              {wisdomEditorial.body && <p className="wisdom-body">{wisdomEditorial.body}</p>}
-            </div>
-            <div className="soul-reading-briefing" aria-label="Soul Guru reading briefing">
-              {readingDeck.map((layer, index) => (
-                <section className={`soul-briefing-row soul-briefing-row-${layer.id}`} key={layer.id}>
-                  <span className="soul-briefing-index">{String(index + 1).padStart(2, "0")}</span>
-                  <div>
-                    <span>{layer.label}</span>
-                    <p>{layer.value}</p>
-                  </div>
-                </section>
-              ))}
-            </div>
-          </>
+          <div className="soul-note-frame">
+            <h3 className="wisdom-headline">{wisdomEditorial.headline}</h3>
+            {wisdomEditorial.body && <p className="wisdom-body">{wisdomEditorial.body}</p>}
+          </div>
         ) : (
           <CosmicBuffer label={readingStatus || "Soul Guru is opening today's guidance."} tone="soul" />
         )}
@@ -885,20 +872,11 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
         </button>
       </div>
       <div className="guidance-actions">
-        <button className="secondary-action calm-action" type="button" onClick={saveAdvice} disabled={isSavingAdvice || !reading}>
-          <BadgeCheck size={18} aria-hidden="true" />
-          {isSavingAdvice ? "Saving" : "Save Advice"}
-        </button>
         <button className="primary-action guidance-action" type="button" onClick={onMoreGuidance}>
           <Crown size={18} aria-hidden="true" />
           More Guidance
         </button>
       </div>
-      {saveStatus && (
-        isSavingAdvice
-          ? <CosmicBuffer label={saveStatus} tone="soul" compact />
-          : <p className="checkout-note">{saveStatus}</p>
-      )}
       {feedbackStatus && (
         isBufferingStatus(feedbackStatus)
           ? <CosmicBuffer label={feedbackStatus} tone="soul" compact />
@@ -958,24 +936,6 @@ function splitWisdomForEditorial(input) {
   };
 }
 
-function buildSoulGuruReadingDeck({ reading, focusCue, anchorCue, avoidCue, mentorMove, releaseMove }) {
-  if (!reading) return [];
-  const layers = [];
-  pushUniqueReadingLayer(layers, "signal", "Today's pressure", focusCue || reading.innerWeather);
-  pushUniqueReadingLayer(layers, "move", "The move to make", mentorMove || reading.todayMove);
-  pushUniqueReadingLayer(layers, "anchor", "Steadying anchor", anchorCue || reading.innerWeather);
-  pushUniqueReadingLayer(layers, "release", "Stop feeding", releaseMove || avoidCue || reading.release);
-  return layers.slice(0, 4);
-}
-
-function pushUniqueReadingLayer(layers, id, label, value) {
-  const clean = ensureSentence(value);
-  if (!clean) return;
-  const normalized = clean.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  if (layers.some((layer) => layer.normalized === normalized)) return;
-  layers.push({ id, label, value: clean, normalized });
-}
-
 function words(text) {
   return String(text || "").split(/\s+/).filter(Boolean);
 }
@@ -1001,11 +961,6 @@ function normalizeReadingHeadline(text) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   if (!clean) return "";
   return sentenceCase(limitDisplayWords(clean.replace(/[.!?]+$/, ""), 8));
-}
-
-function ensureSentence(text) {
-  const clean = sentenceCase(String(text || "").replace(/\s+/g, " ").trim());
-  return clean && !/[.!?]$/.test(clean) ? `${clean}.` : clean;
 }
 
 function limitDisplayWords(text, maxWords) {
@@ -2560,88 +2515,6 @@ async function lookupAccountFromServer(phone) {
   }
 }
 
-async function requestOtpFromServer({ phone, email, purpose }) {
-  try {
-    const response = await authFetch(getApiUrl("/api/auth-otp"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "request",
-        phone: normalizePhone(phone),
-        email,
-        purpose
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.error || "Unable to send OTP.");
-    }
-    const serverBacked = Boolean(data.configured && data.challengeId);
-    const fallbackCode = LOCAL_AUTH_FALLBACK_ENABLED
-      ? data.demoCode || (!data.configured ? createOtp() : "")
-      : "";
-
-    if (!serverBacked && !fallbackCode) {
-      throw new Error("OTP login is not configured for this build. Please try again later.");
-    }
-
-    return {
-      challengeId: data.challengeId || null,
-      serverBacked,
-      expiresAt: data.expiresAt || null,
-      delivery: data.delivery || {},
-      code: fallbackCode
-    };
-  } catch (error) {
-    if (!LOCAL_AUTH_FALLBACK_ENABLED) {
-      if (error.message && error.message !== "Failed to fetch") {
-        throw error;
-      }
-      throw new Error("Unable to reach OTP service. Please try again shortly.");
-    }
-
-    return {
-      challengeId: null,
-      serverBacked: false,
-      expiresAt: null,
-      delivery: { channel: "local-demo", sent: false },
-      code: createOtp()
-    };
-  }
-}
-
-async function verifyOtpWithServer(pendingOtp, code) {
-  const cleanedCode = String(code || "").replace(/\D/g, "");
-  if (!pendingOtp.serverBacked) {
-    return cleanedCode === String(pendingOtp.code || "");
-  }
-
-  const response = await authFetch(getApiUrl("/api/auth-otp"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "verify",
-      challengeId: pendingOtp.challengeId,
-      phone: pendingOtp.phone,
-      code: cleanedCode
-    })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || "OTP did not match.");
-  }
-  return Boolean(data.verified);
-}
-
-function buildLoginMeta(pendingOtp, flow) {
-  const serverBacked = Boolean(pendingOtp?.serverBacked);
-  return {
-    flow,
-    serverBacked,
-    method: serverBacked ? "backend_otp" : "local_demo_otp"
-  };
-}
-
 async function syncUserProfileToServer(account) {
   if (!account?.phone || !account?.birthDate) return null;
   try {
@@ -2818,10 +2691,6 @@ function maskPhone(phone) {
   return `${phone.slice(0, Math.max(0, phone.length - 4)).replace(/\d/g, "*")}${digits.slice(-4)}`;
 }
 
-function createOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 function stableHash(value) {
   return String(value || "").split("").reduce((hash, char) => {
     return (hash * 31 + char.charCodeAt(0)) >>> 0;
@@ -2835,6 +2704,13 @@ function getApiUrl(path) {
 function buildDailyReadingPayload(user, todayKey, fallbackReading) {
   const todayDate = buildDateFromKey(todayKey, user);
   const context = buildAstrologyContext(user, todayDate);
+  const priorReadings = readGuidanceHistoryRaw(user)
+    .filter((item) => item.dateKey !== todayKey && item.reading?.wisdom)
+    .slice(0, 8)
+    .map((item) => ({
+      dateKey: item.dateKey || "",
+      wisdom: item.reading.wisdom
+    }));
   return {
     user: {
       id: user.id,
@@ -2860,6 +2736,7 @@ function buildDailyReadingPayload(user, todayKey, fallbackReading) {
       day: "numeric",
       year: "numeric"
     }),
+    priorReadings,
     fallback: fallbackReading
   };
 }

@@ -1,10 +1,12 @@
 import tzLookup from "tz-lookup";
-import { enrichUserWithPlace, resolveBirthPlace } from "../placeResolver.js";
+import { enrichUserWithPlace, resolveBirthPlace, suggestCatalogBirthPlaces } from "../placeResolver.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
 
 const MAX_GEOCODER_QUERY_LENGTH = 160;
 const MIN_GEOCODER_LABEL_LENGTH = 3;
 const MIN_GEOCODER_USER_AGENT_LENGTH = 8;
+const MIN_PLACE_SUGGESTION_QUERY_LENGTH = 2;
+const MAX_PLACE_SUGGESTIONS = 6;
 
 export async function enrichUserWithServerPlace(user = {}, env = process.env, deps = {}) {
   const profilePlace = resolveProfileCoordinates(user);
@@ -46,7 +48,7 @@ export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
   if (typeof fetchImpl !== "function") return null;
 
   try {
-    const url = buildGeocoderUrl(geocoderUrl, query);
+    const url = buildGeocoderUrl(geocoderUrl, query, 1);
     const response = await fetchWithTimeout(url.toString(), {
       method: "GET",
       headers: {
@@ -61,7 +63,7 @@ export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
     if (!response?.ok) return null;
 
     const body = await response.json();
-    const item = normalizeGeocoderResult(body);
+    const item = normalizeGeocoderResults(body)[0] || null;
     if (!item) return null;
 
     const timezone = lookupTimezone(item.latitude, item.longitude);
@@ -78,6 +80,18 @@ export async function geocodeBirthPlace(input, env = process.env, deps = {}) {
   } catch {
     return null;
   }
+}
+
+export async function suggestBirthPlaces(input, env = process.env, deps = {}) {
+  const query = normalizeGeocoderQuery(input);
+  if (query.length < MIN_PLACE_SUGGESTION_QUERY_LENGTH) return [];
+
+  const catalogSuggestions = suggestCatalogBirthPlaces(query, MAX_PLACE_SUGGESTIONS);
+  const geocoderSuggestions = await fetchGeocoderSuggestions(query, env, deps);
+  return dedupePlaceSuggestions([
+    ...geocoderSuggestions,
+    ...catalogSuggestions
+  ]).slice(0, MAX_PLACE_SUGGESTIONS);
 }
 
 function resolveProfileCoordinates(user = {}) {
@@ -110,8 +124,64 @@ function mergeResolvedPlace(user, place) {
   };
 }
 
-function buildGeocoderUrl(baseUrl, query) {
+async function fetchGeocoderSuggestions(query, env, deps = {}) {
+  const geocoderUrl = getConfiguredGeocoderUrl(env);
+  const userAgent = getConfiguredGeocoderUserAgent(env);
+  if (!query || !geocoderUrl || !userAgent) return [];
+
+  const fetchImpl = deps.fetch || globalThis.fetch;
+  if (typeof fetchImpl !== "function") return [];
+
+  try {
+    const url = buildGeocoderUrl(geocoderUrl, query, MAX_PLACE_SUGGESTIONS);
+    const response = await fetchWithTimeout(url.toString(), {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": userAgent
+      }
+    }, {
+      env,
+      fetchImpl,
+      label: "Birth place suggestions"
+    });
+    if (!response?.ok) return [];
+
+    const body = await response.json();
+    return normalizeGeocoderResults(body)
+      .map((item) => {
+        const timezone = lookupTimezone(item.latitude, item.longitude);
+        if (!timezone) return null;
+        return {
+          label: item.label,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          timezone,
+          timezoneOffsetMinutes: null,
+          source: "geocoder"
+        };
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function buildGeocoderUrl(baseUrl, query, limit = 1) {
   const url = new URL(baseUrl);
+  if (isGeoapifyGeocoderUrl(url)) {
+    if (!url.searchParams.has("text")) {
+      url.searchParams.set("text", query);
+    }
+    if (!url.searchParams.has("format")) {
+      url.searchParams.set("format", "json");
+    }
+    if (!url.searchParams.has("limit")) {
+      url.searchParams.set("limit", String(limit));
+    }
+    return url;
+  }
+
   if (!url.searchParams.has("q")) {
     url.searchParams.set("q", query);
   }
@@ -119,12 +189,16 @@ function buildGeocoderUrl(baseUrl, query) {
     url.searchParams.set("format", "jsonv2");
   }
   if (!url.searchParams.has("limit")) {
-    url.searchParams.set("limit", "1");
+    url.searchParams.set("limit", String(limit));
   }
   return url;
 }
 
-function normalizeGeocoderResult(body) {
+function isGeoapifyGeocoderUrl(url) {
+  return url.hostname === "api.geoapify.com" && url.pathname.startsWith("/v1/geocode/");
+}
+
+function normalizeGeocoderResults(body) {
   const candidates = Array.isArray(body)
     ? body
     : Array.isArray(body?.results)
@@ -135,12 +209,13 @@ function normalizeGeocoderResult(body) {
           ? [body]
           : [];
 
+  const results = [];
   for (const item of candidates) {
     const normalized = normalizeGeocoderItem(item);
-    if (normalized) return normalized;
+    if (normalized) results.push(normalized);
   }
 
-  return null;
+  return results;
 }
 
 function normalizeGeocoderItem(first) {
@@ -207,6 +282,26 @@ function sanitizeGeocoderLabel(value) {
     .trim();
   if (isPlaceholderValue(label) || label.length < MIN_GEOCODER_LABEL_LENGTH) return "";
   return label;
+}
+
+function dedupePlaceSuggestions(items) {
+  const suggestions = [];
+  const seen = new Set();
+  for (const item of items) {
+    if (!item?.label || !isValidCoordinatePair(item.latitude, item.longitude)) continue;
+    const key = `${normalizeSuggestionLabel(item.label)}|${Number(item.latitude).toFixed(4)}|${Number(item.longitude).toFixed(4)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    suggestions.push(item);
+  }
+  return suggestions;
+}
+
+function normalizeSuggestionLabel(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function isValidCoordinatePair(latitude, longitude) {

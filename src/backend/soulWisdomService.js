@@ -105,13 +105,15 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     const client = makeOpenAIClient(apiKey, env);
     const contractContext = {
       ...astrologyContext,
-      paragraphArchitecture: buildParagraphArchitecture(user, astrologyContext, payload.today || date)
+      paragraphArchitecture: buildParagraphArchitecture(user, astrologyContext, payload.today || date),
+      priorReadings: payload.priorReadings || []
     };
     const promptInput = buildSoulWisdomInput({
       user,
       context: astrologyContext,
       today: payload.today || date,
-      memoryContext
+      memoryContext,
+      priorReadings: payload.priorReadings || []
     });
     let outputText = await requestSoulWisdom(client, model, promptInput, env);
     let qualityAttempts = 1;
@@ -135,6 +137,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
           context: astrologyContext,
           today: payload.today || date,
           memoryContext,
+          priorReadings: payload.priorReadings || [],
           rejectedWisdom: normalizeWisdomPayload(outputText, createFallbackReading("")).wisdom,
           rejectionReason: candidateIssues.join("; ")
         }),
@@ -474,11 +477,95 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}) {
   if (mentionsAstrology(text)) {
     issues.push("mentioned astrology or chart terminology");
   }
+  issues.push(...getPriorReadingRepeatIssues(text, context.priorReadings || []));
   const openingSeed = context.openingScene || context.dailyScene || "";
   if (openingSeed && !openingUsesSeed(firstSentence(text), openingSeed)) {
     issues.push(`opening did not use seeded scene "${openingSeed}"`);
   }
   return issues;
+}
+
+function getPriorReadingRepeatIssues(text, priorReadings = []) {
+  const current = normalizeComparableWisdom(text);
+  if (!current) return [];
+
+  const issues = [];
+  const currentOpening = normalizeComparableWisdom(firstSentence(text));
+  for (const prior of Array.isArray(priorReadings) ? priorReadings : []) {
+    const priorText = typeof prior === "string" ? prior : prior?.wisdom;
+    const priorComparable = normalizeComparableWisdom(priorText);
+    if (!priorComparable) continue;
+
+    if (current === priorComparable) {
+      issues.push("repeated a previous Soul Guru reading exactly");
+      break;
+    }
+
+    const score = wordSetSimilarity(current, priorComparable);
+    if (score >= 0.58) {
+      issues.push(`too similar to a previous Soul Guru reading (${score.toFixed(2)} overlap)`);
+      break;
+    }
+
+    const priorOpening = normalizeComparableWisdom(firstSentence(priorText));
+    if (currentOpening && priorOpening && currentOpening === priorOpening) {
+      issues.push("reused the opening sentence from a previous Soul Guru reading");
+      break;
+    }
+  }
+
+  return issues;
+}
+
+function normalizeComparableWisdom(text) {
+  return comparableTokens(text).join(" ");
+}
+
+function wordSetSimilarity(first, second) {
+  const firstTokens = new Set(comparableTokens(first));
+  const secondTokens = new Set(comparableTokens(second));
+  if (!firstTokens.size || !secondTokens.size) return 0;
+  let overlap = 0;
+  for (const token of firstTokens) {
+    if (secondTokens.has(token)) overlap += 1;
+  }
+  return overlap / Math.min(firstTokens.size, secondTokens.size);
+}
+
+function comparableTokens(text) {
+  const stopWords = new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "before",
+    "but",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "is",
+    "it",
+    "of",
+    "one",
+    "or",
+    "that",
+    "the",
+    "then",
+    "this",
+    "to",
+    "with",
+    "your"
+  ]);
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !stopWords.has(token));
 }
 
 function sentenceOpeningBucket(sentence) {

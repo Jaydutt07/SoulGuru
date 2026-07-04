@@ -58,6 +58,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/place-suggestions",
+      "destination": "/api/user-profile?action=place-suggestions"
+    },
+    {
       "source": "/api/create-razorpay-order",
       "destination": "/api/payments?action=create-razorpay-order"
     },

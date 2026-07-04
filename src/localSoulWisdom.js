@@ -3,7 +3,6 @@ import {
   buildParagraphArchitecture,
   cleanWisdomText,
   firstName,
-  getSoulWisdomReadingLane,
   getSoulWisdomSpecificityIssues,
   isLowQualityWisdom
 } from "./soulGuruPrompt.js";
@@ -11,8 +10,7 @@ import {
 export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birthTimezone || undefined), architectureKey = dateKey) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
-  const readingLane = getSoulWisdomReadingLane(architectureKey || dateKey);
-  const wisdom = buildConciseDailyWisdom(user, context, seed, readingLane);
+  const wisdom = buildConciseDailyWisdom(user, context, seed + stableHash(architectureKey || dateKey));
 
   return {
     wisdom: normalizeLocalWisdom(polishLocalWisdom(wisdom)),
@@ -22,10 +20,7 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
   };
 }
 
-function buildConciseDailyWisdom(user, context, seed, readingLane = getSoulWisdomReadingLane()) {
-  const laneWisdom = buildLaneWisdom(context, seed, readingLane);
-  if (laneWisdom) return laneWisdom;
-
+function buildConciseDailyWisdom(user, context, seed) {
   const name = firstName(user.name);
   const action = conciseAction(context, seed, name);
   const close = conciseClose(context, seed + 17, name);
@@ -339,7 +334,7 @@ function conciseSceneAction(context, seed = 0, name = "") {
   }
   if (/\blist\b|\bitem\b|\bunnamed\b/.test(scene)) {
     return pickLine([
-      "Write the unnamed item on the list before the whole plan grows",
+      "Mark the unnamed item on the list before the whole plan grows",
       "Mark one list item before the day turns into a bigger promise",
       "Finish one listed task before adding another possible version"
     ], seed, name, scene, area, gate);
@@ -395,9 +390,9 @@ function conciseSceneAction(context, seed = 0, name = "") {
   }
   if (/\bunsent\b|\bdid not send\b/.test(scene)) {
     return pickLine([
-      "Leave the unfinished line on the page and close the notebook",
-      "Keep the quiet room clear and stop editing the sentence",
-      "Leave the sentence aside for this hour"
+      "Name the sentence you did not send, then close the notebook",
+      "Keep the quiet room clear and stop editing the held-back words",
+      "Leave the unsent sentence aside until the next hour"
     ], seed, name, scene, area, gate);
   }
   if (/\b(message|reply|conversation|call)\b/.test(scene)) {
@@ -534,9 +529,9 @@ function conciseClose(context, seed = 0, name = "") {
   }
   if (/\bunsent\b|\bdid not send\b/.test(scene)) {
     return pickLine([
-      "the quiet room can hold that sentence for one more hour",
-      "silence stays kinder when the sentence is already set aside",
-      "the notebook can close before the answer asks for another edit"
+      "one held sentence is enough for this hour",
+      "silence stays kinder when the answer is already set aside",
+      "the page can close before the answer asks for another edit"
     ], seed, name, scene, area, gate);
   }
   if (/\b(pen|page|notebook|sentence|draft|unsent)\b/.test(scene)) {

@@ -7,6 +7,7 @@ const checks = [];
 await checkAllowsMissingEnvOnlyWhenExplicit();
 await checkStrictMissingEnvFails();
 await checkFixtureReportSummarizesPromptTuningSignals();
+await checkFixtureReportKeepsPromptStableBelowTwoPercent();
 await checkJsonSamplesAreRedacted();
 
 const failed = checks.filter((check) => !check.passed);
@@ -43,10 +44,23 @@ async function checkFixtureReportSummarizesPromptTuningSignals() {
     result.stdout.includes("SoulGuru feedback report: pass"),
     result.stdout.includes("rows=5"),
     result.stdout.includes("accurate=3; missed=2; missRate=40.0%"),
+    result.stdout.includes("Miss-rate target: <2.0% hallucination/personal-accuracy misses; status=above target"),
     result.stdout.includes(SOUL_WISDOM_PROMPT_VERSION),
     result.stdout.includes("too generic or repeated: 1"),
     result.stdout.includes("not personally accurate: 1"),
-    result.stdout.includes("Review missed readings before the next prompt version")
+    result.stdout.includes("Review missed readings before the next prompt version"),
+    result.stdout.includes("2% hallucination/miss-rate target")
+  ].every(Boolean));
+}
+
+async function checkFixtureReportKeepsPromptStableBelowTwoPercent() {
+  const result = await runReport([`--fixture-json=${JSON.stringify(lowMissFixture())}`], emptySupabaseEnv());
+  pushCheck("Soul Guru feedback report keeps stable prompt below 2% miss target", [
+    result.status === 0,
+    result.stdout.includes("rows=100"),
+    result.stdout.includes("accurate=99; missed=1; missRate=1.0%"),
+    result.stdout.includes("Miss-rate target: <2.0% hallucination/personal-accuracy misses; status=below target"),
+    result.stdout.includes("Keep the current prompt stable; miss rate is below the 2% hallucination/miss-rate target.")
   ].every(Boolean));
 }
 
@@ -66,6 +80,8 @@ async function checkJsonSamplesAreRedacted() {
   pushCheck("Soul Guru feedback report JSON redacts optional missed samples", [
     result.status === 0,
     parsed?.ok === true,
+    parsed?.maxMissRate === 0.02,
+    parsed?.withinMissRateTarget === false,
     parsed?.totals?.missed === 2,
     parsed?.sanitizedMissedSamples?.some((sample) => sample.includes("[redacted-email]")),
     parsed?.sanitizedMissedSamples?.some((sample) => sample.includes("[redacted-phone]")),
@@ -116,6 +132,16 @@ function feedbackFixture() {
       reading_hash: "swr_22222222222222222222222222222222"
     }
   ];
+}
+
+function lowMissFixture() {
+  return Array.from({ length: 100 }, (_, index) => ({
+    prompt_version: SOUL_WISDOM_PROMPT_VERSION,
+    rating: index === 0 ? "missed" : "accurate",
+    reason: index === 0 ? "invented an unsupported detail" : "accurate",
+    reading_date: "2026-06-26",
+    created_at: `2026-06-26T00:${String(index % 60).padStart(2, "0")}:00.000Z`
+  }));
 }
 
 function emptySupabaseEnv() {

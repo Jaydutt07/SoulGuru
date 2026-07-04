@@ -8,6 +8,7 @@ const manifest = readJson("public/manifest.webmanifest");
 const viteConfig = readFile("vite.config.js");
 const astrologyEngine = readFile("src/astrologyEngine.js");
 const astronomyAdapter = readFile("src/vendor/astronomy-engine.cjs");
+const astronomyBrowserAdapter = readFile("src/vendor/astronomy-engine.browser.js");
 const requestHelper = readFile("src/backend/request.js");
 
 checkVercelBuildConfig();
@@ -71,9 +72,13 @@ function checkVercelAstronomyRuntimeAdapter() {
   pushCheck("Vercel API uses CommonJS astronomy runtime adapter", [
     astrologyEngine.includes("import Astronomy from \"./vendor/astronomy-engine.cjs\";"),
     astronomyAdapter.includes("astronomy-engine/astronomy.js"),
+    astronomyBrowserAdapter.includes("astronomy-engine/esm/astronomy.js"),
+    astronomyBrowserAdapter.includes("export default Astronomy"),
+    viteConfig.includes("ASTRONOMY_BROWSER_ADAPTER"),
+    viteConfig.includes("\"./vendor/astronomy-engine.cjs\": ASTRONOMY_BROWSER_ADAPTER"),
     !astrologyEngine.includes("from \"astronomy-engine\"")
   ].every(Boolean), [
-    "Expected server-shared astrology code to avoid astronomy-engine's ESM export path, which Vercel loads as CommonJS."
+    "Expected server-shared astrology code to avoid astronomy-engine's ESM export path, while Vite aliases the adapter for browser dev/build."
   ]);
 }
 

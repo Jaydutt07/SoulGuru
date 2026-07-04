@@ -81,12 +81,14 @@ export function resolveBirthPlace(input, user = {}) {
   const existingLongitude = nullableNumber(user.birthLongitude);
   const existingOffset = nullableNumber(user.birthTimezoneOffsetMinutes);
   if (existingLatitude !== null && existingLongitude !== null) {
+    const timezone = user.birthTimezone || DEFAULT_PLACE.timezone;
+    const timezoneOffsetMinutes = existingOffset ?? getBirthTimezoneOffsetMinutes(user, timezone);
     return {
       label: String(user.birthPlaceResolvedLabel || user.birthPlace || input || "Known birth place").trim(),
       latitude: existingLatitude,
       longitude: existingLongitude,
-      timezone: user.birthTimezone || DEFAULT_PLACE.timezone,
-      timezoneOffsetMinutes: existingOffset ?? DEFAULT_PLACE.timezoneOffsetMinutes,
+      timezone,
+      timezoneOffsetMinutes: timezoneOffsetMinutes ?? DEFAULT_PLACE.timezoneOffsetMinutes,
       source: user.birthPlaceResolutionSource || "profile"
     };
   }
@@ -108,6 +110,47 @@ export function resolveBirthPlace(input, user = {}) {
     timezoneOffsetMinutes: existingOffset ?? DEFAULT_PLACE.timezoneOffsetMinutes,
     source: "default"
   };
+}
+
+export function suggestCatalogBirthPlaces(input, limit = 6) {
+  const normalized = normalizePlace(input);
+  const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
+  if (normalized.length < 2) return [];
+
+  const scored = PLACE_CATALOG
+    .map((place, index) => {
+      const normalizedLabel = normalizePlace(place.label);
+      const exact = normalized === place.key || normalized === normalizedLabel;
+      const starts = place.key.startsWith(normalized) || normalizedLabel.startsWith(normalized);
+      const includes = place.key.includes(normalized) || normalizedLabel.includes(normalized) || normalized.includes(place.key);
+      if (!exact && !starts && !includes) return null;
+      return {
+        place,
+        index,
+        score: exact ? 0 : starts ? 1 : 2
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score || a.index - b.index);
+
+  const suggestions = [];
+  const seen = new Set();
+  for (const { place } of scored) {
+    const key = `${place.label}|${place.latitude}|${place.longitude}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    suggestions.push({
+      label: place.label,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      timezone: place.timezone,
+      timezoneOffsetMinutes: place.timezoneOffsetMinutes,
+      source: "catalog"
+    });
+    if (suggestions.length >= safeLimit) break;
+  }
+
+  return suggestions;
 }
 
 export function enrichUserWithPlace(user = {}) {
@@ -136,4 +179,44 @@ function nullableNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function getBirthTimezoneOffsetMinutes(user, timezone) {
+  if (!timezone) return null;
+  const date = user.birthDate || new Date().toISOString().slice(0, 10);
+  const time = normalizeTime(user.birthTime || "12:00");
+  const probe = new Date(`${date}T${time}:00Z`);
+  return getTimeZoneOffsetMinutes(probe, timezone);
+}
+
+function getTimeZoneOffsetMinutes(date, timeZone) {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    });
+    const parts = Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+    const zoneTimeAsUtc = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second)
+    );
+    return Math.round((zoneTimeAsUtc - date.getTime()) / 60000);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTime(value) {
+  const [hour = "12", minute = "00"] = String(value || "12:00").split(":");
+  return `${hour.padStart(2, "0").slice(0, 2)}:${minute.padStart(2, "0").slice(0, 2)}`;
 }

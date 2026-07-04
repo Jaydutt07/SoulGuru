@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 import { applyVerifiedIdentity } from "./src/backend/auth.js";
 import { createAstroSolve } from "./src/backend/astroSolveService.js";
 import { createMoreGuidanceReading, getMoreGuidanceDashboard, saveGuidance } from "./src/backend/guidanceService.js";
@@ -16,8 +17,11 @@ import { buildDeploymentReadiness } from "./src/backend/readinessService.js";
 import { createPanditGuidance, getShaniDashboard } from "./src/backend/shaniService.js";
 import { submitSoulWisdomFeedback } from "./src/backend/soulWisdomFeedbackService.js";
 import { createDailySoulWisdom } from "./src/backend/soulWisdomService.js";
+import { suggestBirthPlaces } from "./src/backend/placeResolutionService.js";
 import { buildRateLimitKey, checkRateLimit } from "./src/backend/rateLimit.js";
 import { handleCorsPreflight, parseJsonRequest, sendErrorJson, sendJson } from "./src/backend/request.js";
+
+const ASTRONOMY_BROWSER_ADAPTER = fileURLToPath(new URL("./src/vendor/astronomy-engine.browser.js", import.meta.url));
 
 function soulGuruApiPlugin() {
   return {
@@ -50,6 +54,42 @@ function soulGuruApiPlugin() {
         };
         const readiness = buildDeploymentReadiness(runtimeEnv);
         sendJson(res, readiness.ok ? 200 : 503, readiness);
+      });
+
+      server.middlewares.use("/api/place-suggestions", async (req, res) => {
+        if (req.method !== "GET" && req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const runtimeEnv = {
+            ...process.env,
+            ...env
+          };
+          const payload = req.method === "POST" ? await parseJsonRequest(req, 5000) : {};
+          const requestUrl = new URL(req.url || "", "http://localhost");
+          const query = req.method === "GET"
+            ? String(requestUrl.searchParams.get("q") || requestUrl.searchParams.get("query") || "").trim()
+            : String(payload.q || payload.query || payload.birthPlace || "").trim();
+          const rate = await checkRateLimit({
+            env: runtimeEnv,
+            key: buildRateLimitKey(req),
+            route: "place-suggestions",
+            limit: Number(runtimeEnv.PLACE_SUGGESTIONS_RATE_LIMIT || 120),
+            windowSeconds: 60 * 60
+          });
+
+          if (!rate.allowed) {
+            sendJson(res, 429, { error: "Too many place searches. Try again later.", rate });
+            return;
+          }
+
+          const suggestions = await suggestBirthPlaces(query, runtimeEnv);
+          sendJson(res, 200, { suggestions, rate });
+        } catch (error) {
+          await sendErrorJson(req, res, error, { route: "place-suggestions", fallbackMessage: "Unable to search birth places" });
+        }
       });
 
       server.middlewares.use("/api/soul-wisdom-feedback", async (req, res) => {
@@ -417,17 +457,59 @@ function soulGuruApiPlugin() {
       });
 
       server.middlewares.use("/api/user-profile", async (req, res) => {
+        const runtimeEnv = {
+          ...process.env,
+          ...env
+        };
+
+        if (req.method === "GET") {
+          const requestUrl = new URL(req.url || "", "http://localhost");
+          if (requestUrl.searchParams.get("action") === "place-suggestions") {
+            const rate = await checkRateLimit({
+              env: runtimeEnv,
+              key: buildRateLimitKey(req),
+              route: "place-suggestions",
+              limit: Number(runtimeEnv.PLACE_SUGGESTIONS_RATE_LIMIT || 120),
+              windowSeconds: 60 * 60
+            });
+
+            if (!rate.allowed) {
+              sendJson(res, 429, { error: "Too many place searches. Try again later.", rate });
+              return;
+            }
+
+            const suggestions = await suggestBirthPlaces(requestUrl.searchParams.get("q") || requestUrl.searchParams.get("query"), runtimeEnv);
+            sendJson(res, 200, { suggestions, rate });
+            return;
+          }
+        }
+
         if (req.method !== "POST") {
           sendJson(res, 405, { error: "Method not allowed" });
           return;
         }
 
         try {
-          const runtimeEnv = {
-            ...process.env,
-            ...env
-          };
           const parsedPayload = await parseJsonRequest(req);
+          if (parsedPayload.action === "place-suggestions") {
+            const rate = await checkRateLimit({
+              env: runtimeEnv,
+              key: buildRateLimitKey(req),
+              route: "place-suggestions",
+              limit: Number(runtimeEnv.PLACE_SUGGESTIONS_RATE_LIMIT || 120),
+              windowSeconds: 60 * 60
+            });
+
+            if (!rate.allowed) {
+              sendJson(res, 429, { error: "Too many place searches. Try again later.", rate });
+              return;
+            }
+
+            const suggestions = await suggestBirthPlaces(parsedPayload.q || parsedPayload.query || parsedPayload.birthPlace, runtimeEnv);
+            sendJson(res, 200, { suggestions, rate });
+            return;
+          }
+
           const { payload, auth } = await applyVerifiedIdentity(req, parsedPayload, runtimeEnv);
           const rate = await checkRateLimit({
             env: runtimeEnv,
@@ -488,6 +570,11 @@ function soulGuruApiPlugin() {
 
 export default defineConfig({
   plugins: [react(), soulGuruApiPlugin()],
+  resolve: {
+    alias: {
+      "./vendor/astronomy-engine.cjs": ASTRONOMY_BROWSER_ADAPTER
+    }
+  },
   build: {
     rollupOptions: {
       output: {

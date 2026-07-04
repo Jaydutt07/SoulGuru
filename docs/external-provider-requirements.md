@@ -98,12 +98,12 @@ npm run supabase:schema:check
 Needed for accurate birth-place resolution before chart/transit calculations.
 
 Env vars:
-- `PLACE_GEOCODER_URL`: Nominatim-compatible geocoder endpoint.
+- `PLACE_GEOCODER_URL`: Geoapify autocomplete URL, e.g. `https://api.geoapify.com/v1/geocode/autocomplete?apiKey=...`.
 - `PLACE_GEOCODER_USER_AGENT`: identifiable user agent required by many geocoders.
 - `PLACE_GEOCODER_REQUIRE_RESOLUTION=true`: production guard that prevents silent default-coordinate fallback.
 
 Actions:
-- Choose a compliant Nominatim-compatible geocoder.
+- Create a Geoapify free-plan API key.
 - Configure rate limits/usage policy with the provider.
 - Verify:
 

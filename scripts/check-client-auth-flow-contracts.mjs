@@ -11,8 +11,8 @@ checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
 checkProductionDoesNotPersistLocalSessions();
-checkNativeDebugApkKeepsDemoOtpFallback();
-checkLoginAnalyticsDistinguishesOtpSource();
+checkNativeDebugApkKeepsLocalAuthFallback();
+checkLoginAnalyticsUsesDirectProfileSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
 checkProductionSoulGuruRetriesPendingBackendReading();
 checkProductionSoulGuruPrefetchesAndDedupesDailyReading();
@@ -67,7 +67,7 @@ function checkProductionCreateRequiresProfilePersistence() {
     source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {"),
     source.includes("const profile = await syncUserProfileToServer(account);"),
     source.includes("setError(\"Unable to save your account profile. Please try again shortly.\");"),
-    source.includes("onLogin(mergeAccountProfile(account, profile), buildLoginMeta(pendingOtp, \"create\"));")
+    source.includes("onLogin(mergeAccountProfile(account, profile), { flow: \"create\", method: \"direct_profile\" });")
   ].every(Boolean));
 }
 
@@ -80,8 +80,8 @@ function checkProductionDoesNotPersistLocalSessions() {
   ].every(Boolean));
 }
 
-function checkNativeDebugApkKeepsDemoOtpFallback() {
-  pushCheck("Native APK without backend URL keeps demo OTP unless explicitly disabled", [
+function checkNativeDebugApkKeepsLocalAuthFallback() {
+  pushCheck("Native APK without backend URL keeps local direct-auth fallback unless explicitly disabled", [
     source.includes("const LOCAL_AUTH_FALLBACK_SETTING = import.meta.env.VITE_LOCAL_AUTH_FALLBACK;"),
     source.includes("const IS_NATIVE_MOBILE_SHELL = detectNativeMobileShell();"),
     source.includes("const NATIVE_DEMO_AUTH_DEFAULT = IS_NATIVE_MOBILE_SHELL && !API_BASE_URL && LOCAL_AUTH_FALLBACK_SETTING !== \"false\";"),
@@ -92,16 +92,18 @@ function checkNativeDebugApkKeepsDemoOtpFallback() {
   ].every(Boolean));
 }
 
-function checkLoginAnalyticsDistinguishesOtpSource() {
-  pushCheck("Client login analytics distinguishes backend OTP from local demo fallback", [
+function checkLoginAnalyticsUsesDirectProfileSource() {
+  pushCheck("Client login analytics records direct profile entry without OTP layer", [
     source.includes("function handleLogin(account, loginMeta = {}) {"),
-    source.includes("method: loginMeta.method || (LOCAL_AUTH_FALLBACK_ENABLED ? \"local_demo_otp\" : \"backend_otp\")"),
+    source.includes("method: loginMeta.method || \"direct_profile\""),
     source.includes("server_backed: Boolean(loginMeta.serverBacked)"),
-    source.includes("function buildLoginMeta(pendingOtp, flow) {"),
-    source.includes("method: serverBacked ? \"backend_otp\" : \"local_demo_otp\""),
-    source.includes("onLogin(account, buildLoginMeta(pendingOtp, \"existing\"));"),
-    source.includes("onLogin(mergeAccountProfile(account, profile), buildLoginMeta(pendingOtp, \"create\"));"),
-    source.includes("onLogin(account, buildLoginMeta(pendingOtp, \"create\"));"),
+    source.includes("onLogin(account, { flow: \"existing\", method: \"direct_profile\" });"),
+    source.includes("onLogin(mergeAccountProfile(account, profile), { flow: \"create\", method: \"direct_profile\" });"),
+    source.includes("onLogin(account, { flow: \"create\", method: \"direct_profile\" });"),
+    source.includes("Continue to Soul Guru"),
+    !source.includes("function buildLoginMeta(pendingOtp, flow) {"),
+    !source.includes("requestOtpFromServer"),
+    !source.includes("verifyOtpWithServer"),
     !source.includes("trackEvent(\"login_completed\", { mode: \"otp_demo\" });")
   ].every(Boolean));
 }

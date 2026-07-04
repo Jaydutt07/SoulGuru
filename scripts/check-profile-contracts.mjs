@@ -1,4 +1,5 @@
 import { handleUserProfile, lookupUserProfile, upsertUserProfile, upsertUserProfileId } from "../src/backend/profileService.js";
+import { suggestBirthPlaces } from "../src/backend/placeResolutionService.js";
 
 const checks = [];
 
@@ -6,6 +7,7 @@ await checkLocalFallbackContract();
 await checkLookupContract();
 await checkPhoneProfileCreationContract();
 await checkGeocodedBirthPlaceProfileContract();
+await checkBirthPlaceSuggestionsContract();
 await checkGeocoderValidationContract();
 await checkStrictPlaceResolutionContract();
 await checkAuthenticatedPhoneMergeContract();
@@ -151,6 +153,94 @@ async function checkGeocodedBirthPlaceProfileContract() {
     result.profile?.birthPlaceResolutionSource === "geocoder",
     row.birth_timezone === "Europe/Paris",
     row.birth_place_resolution_source === "geocoder"
+  ].every(Boolean));
+}
+
+async function checkBirthPlaceSuggestionsContract() {
+  const geocoderRequests = [];
+  const suggestions = await suggestBirthPlaces("Pari", {
+    PLACE_GEOCODER_URL: "https://geocoder.example/search",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Test"
+  }, {
+    fetch: async (url, options) => {
+      geocoderRequests.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return [
+            {
+              display_name: "Impossible place",
+              lat: "999",
+              lon: "999"
+            },
+            {
+              display_name: "Paris, Ile-de-France, France",
+              lat: "48.8566",
+              lon: "2.3522"
+            }
+          ];
+        }
+      };
+    }
+  });
+  const requestUrl = new URL(geocoderRequests[0]?.url || "https://missing.example");
+  const geoapifyRequests = [];
+  const geoapifySuggestions = await suggestBirthPlaces("Pari", {
+    PLACE_GEOCODER_URL: "https://api.geoapify.com/v1/geocode/autocomplete?apiKey=geoapify-contract-key",
+    PLACE_GEOCODER_USER_AGENT: "SoulGuru Contract Test"
+  }, {
+    fetch: async (url, options) => {
+      geoapifyRequests.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return {
+            results: [
+              {
+                formatted: "Paris, Ile-de-France, France",
+                lat: 48.8566,
+                lon: 2.3522
+              }
+            ]
+          };
+        }
+      };
+    }
+  });
+  const geoapifyUrl = new URL(geoapifyRequests[0]?.url || "https://missing.example");
+  const catalogSuggestions = await suggestBirthPlaces("mum", {}, { fetch: async () => ({ ok: false }) });
+
+  pushCheck("Birth place suggestions use the configured geocoder provider", [
+    geocoderRequests.length === 1,
+    requestUrl.origin === "https://geocoder.example",
+    requestUrl.searchParams.get("q") === "Pari",
+    requestUrl.searchParams.get("format") === "jsonv2",
+    requestUrl.searchParams.get("limit") === "6",
+    geocoderRequests[0].options.headers["User-Agent"] === "SoulGuru Contract Test",
+    suggestions.length === 1,
+    suggestions[0].label === "Paris, Ile-de-France, France",
+    suggestions[0].source === "geocoder",
+    suggestions[0].timezone === "Europe/Paris"
+  ].every(Boolean));
+  pushCheck("Birth place suggestions support Geoapify autocomplete URLs", [
+    geoapifyRequests.length === 1,
+    geoapifyUrl.origin === "https://api.geoapify.com",
+    geoapifyUrl.pathname === "/v1/geocode/autocomplete",
+    geoapifyUrl.searchParams.get("apiKey") === "geoapify-contract-key",
+    geoapifyUrl.searchParams.get("text") === "Pari",
+    geoapifyUrl.searchParams.get("format") === "json",
+    geoapifyUrl.searchParams.get("limit") === "6",
+    geoapifyRequests[0].options.headers["User-Agent"] === "SoulGuru Contract Test",
+    geoapifySuggestions.length === 1,
+    geoapifySuggestions[0].label === "Paris, Ile-de-France, France",
+    geoapifySuggestions[0].source === "geocoder",
+    geoapifySuggestions[0].timezone === "Europe/Paris"
+  ].every(Boolean));
+  pushCheck("Birth place suggestions fall back to the local catalog when provider config is absent", [
+    catalogSuggestions.length >= 1,
+    catalogSuggestions[0].label === "Mumbai, India",
+    catalogSuggestions[0].source === "catalog",
+    catalogSuggestions[0].timezone === "Asia/Kolkata"
   ].every(Boolean));
 }
 

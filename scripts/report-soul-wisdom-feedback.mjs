@@ -9,6 +9,7 @@ const mode = getArgValue("--mode") || process.env.NODE_ENV || "production";
 const days = clampNumber(getArgValue("--days"), 1, 365, 30);
 const limit = clampNumber(getArgValue("--limit"), 1, 1000, 250);
 const fixtureJson = getArgValue("--fixture-json");
+const SOUL_WISDOM_MAX_MISS_RATE = 0.02;
 const env = {
   ...loadEnv(mode, process.cwd(), ""),
   ...process.env
@@ -78,6 +79,8 @@ function buildFeedbackReport(rows, options) {
     source: options.source,
     windowDays: options.days,
     limit: options.limit,
+    maxMissRate: SOUL_WISDOM_MAX_MISS_RATE,
+    withinMissRateTarget: totals.total ? totals.missRate < SOUL_WISDOM_MAX_MISS_RATE : null,
     totals,
     promptVersions: versions,
     missedReasonThemes: reasonThemes,
@@ -133,6 +136,9 @@ function classifyReason(reason) {
   if (/\b(generic|vague|same|repeat|repeated|template|copy|could apply|basic)\b/.test(value)) {
     return "too generic or repeated";
   }
+  if (/\b(hallucinat|made up|invented|fabricated|fake|false|not true|unsupported|never happened|imagined|dreamed up)\b/.test(value)) {
+    return "invented or unsupported detail";
+  }
   if (/\b(wrong|inaccurate|not accurate|missed|doesn't fit|does not fit|unrelatable|not me|profile|birth)\b/.test(value)) {
     return "not personally accurate";
   }
@@ -154,10 +160,10 @@ function buildNextFocus({ totals, reasonThemes }) {
   }
 
   const focus = [];
-  if (totals.missRate >= 0.2) {
-    focus.push("Review missed readings before the next prompt version; miss rate is above the 20% tuning threshold.");
+  if (totals.missRate >= SOUL_WISDOM_MAX_MISS_RATE) {
+    focus.push("Review missed readings before the next prompt version; miss rate is above the 2% hallucination/miss-rate target.");
   } else {
-    focus.push("Keep the current prompt stable; miss rate is below the 20% tuning threshold.");
+    focus.push("Keep the current prompt stable; miss rate is below the 2% hallucination/miss-rate target.");
   }
 
   const topTheme = reasonThemes[0]?.theme || "";
@@ -165,6 +171,8 @@ function buildNextFocus({ totals, reasonThemes }) {
     focus.push("Tighten the prompt against reusable openings, shared sentence rhythm, and house phrases.");
   } else if (topTheme === "not personally accurate") {
     focus.push("Audit birth-place resolution, daily transit context, and the private reading fingerprint for missed cases.");
+  } else if (topTheme === "invented or unsupported detail") {
+    focus.push("Inspect hallucination-like misses and tighten any prompt wording that lets the model claim facts not present in the profile or daily signals.");
   } else if (topTheme === "daily timing mismatch") {
     focus.push("Check timezone, reading date, and daily cache boundaries before changing wording.");
   } else if (topTheme === "needs clearer action") {
@@ -253,6 +261,7 @@ function printReport(report) {
 
   console.log("SoulGuru feedback report: pass");
   console.log(`Window: last ${report.windowDays} days; source=${report.source}; rows=${report.totals.total}`);
+  console.log(`Miss-rate target: <${formatPercent(report.maxMissRate)} hallucination/personal-accuracy misses; status=${formatMissRateStatus(report)}`);
   console.log(`Ratings: accurate=${report.totals.accurate}; missed=${report.totals.missed}; missRate=${formatPercent(report.totals.missRate)}`);
   console.log("Prompt versions:");
   for (const version of report.promptVersions) {
@@ -294,6 +303,11 @@ function printSkip(reason) {
 
 function formatPercent(value) {
   return `${(Number(value || 0) * 100).toFixed(1)}%`;
+}
+
+function formatMissRateStatus(report) {
+  if (report.withinMissRateTarget === null) return "awaiting feedback";
+  return report.withinMissRateTarget ? "below target" : "above target";
 }
 
 function fail(message) {
