@@ -10,7 +10,7 @@ checkFrontendClerkBridge();
 checkProductionExistingLoginPrefersServerProfile();
 checkProductionCreateIgnoresLocalDuplicateCache();
 checkProductionCreateRequiresProfilePersistence();
-checkProductionDoesNotPersistLocalSessions();
+checkProductionPersistsRestorableSession();
 checkNativeDebugApkKeepsLocalAuthFallback();
 checkLoginAnalyticsUsesDirectProfileSource();
 checkProductionSoulGuruRequiresStoredBackendReading();
@@ -71,12 +71,18 @@ function checkProductionCreateRequiresProfilePersistence() {
   ].every(Boolean));
 }
 
-function checkProductionDoesNotPersistLocalSessions() {
-  pushCheck("Production login does not persist or restore local account sessions", [
-    source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n      window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);"),
-    source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n        window.localStorage.setItem(SESSION_KEY, next.phone);"),
-    source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n    return enrichedAccount;\n  }"),
-    source.includes("function getSessionUser() {\n  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;")
+function checkProductionPersistsRestorableSession() {
+  pushCheck("Production login persists a restorable profile session until explicit logout", [
+    source.includes("writeSessionUser(enrichedAccount);"),
+    source.includes("writeSessionUser(syncedAccount);"),
+    source.includes("writeSessionUser(next);"),
+    source.includes("function writeSessionUser(account) {"),
+    source.includes("window.localStorage.setItem(SESSION_KEY, account.phone);"),
+    source.includes("function getSessionUser() {\n  if (typeof window === \"undefined\") return null;"),
+    source.includes("return readAccounts()[phone] || null;"),
+    source.includes("window.localStorage.removeItem(SESSION_KEY);"),
+    !source.includes("function getSessionUser() {\n  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;"),
+    !source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n    return enrichedAccount;\n  }")
   ].every(Boolean));
 }
 
@@ -111,10 +117,12 @@ function checkLoginAnalyticsUsesDirectProfileSource() {
 function checkProductionSoulGuruRequiresStoredBackendReading() {
   pushCheck("Production Soul Guru does not show or cache unstored local fallback readings", [
     source.includes("const [reading, setReading] = useState(LOCAL_READING_FALLBACK_ENABLED ? fallbackReading : null);"),
-    source.includes("if (data.stored === false && !LOCAL_READING_FALLBACK_ENABLED) {"),
+    source.includes("getServerSoulReadingIssue(data, fallbackReading)"),
+    source.includes("data.promptVersion !== SOUL_READING_CACHE_VERSION"),
+    source.includes("fallback_reading"),
     source.includes("if (data.stored !== false || LOCAL_READING_FALLBACK_ENABLED) {"),
     source.includes("cached.stored === false || cached.source === \"local-fallback\""),
-    source.includes("disabled={isSavingAdvice || !reading}")
+    source.includes("disabled={!reading}")
   ].every(Boolean));
 }
 
@@ -195,10 +203,10 @@ function checkProductionMoreGuidanceRequiresStoredBackendAnswer() {
 
 function checkProductionSaveAdviceRequiresStoredBackendAnswer() {
   pushCheck("Production Save Advice waits for backend persistence", [
-    source.includes("const result = await saveGuidanceToServer(user, reading, savedItem.id);"),
+    source.includes("const result = await saveGuidanceToServer(user, {"),
     source.includes("if (!data.saved && !LOCAL_PAID_FALLBACK_ENABLED) {"),
-    source.includes("setSaveStatus(\"Advice could not sync. Please try again shortly.\");"),
-    source.includes("trackEvent(\"guidance_save_failed\");")
+    source.includes("setDeepSaveStatus(\"Deeper advice could not sync. Please try again shortly.\");"),
+    source.includes("trackEvent(\"more_guidance_save_failed\");")
   ].every(Boolean));
 }
 

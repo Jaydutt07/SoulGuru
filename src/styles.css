@@ -7275,3 +7275,236 @@ body {
     animation: none;
   }
 }
+
+/* Soul Guru illuminated reading surface. */
+.soul-section .wisdom-panel {
+  position: relative;
+  min-height: 20.75rem;
+  align-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(248, 211, 132, 0.5);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 228, 149, 0.42), transparent 7.2rem),
+    radial-gradient(circle at 8% 26%, rgba(83, 218, 207, 0.18), transparent 7.8rem),
+    radial-gradient(circle at 91% 16%, rgba(180, 112, 201, 0.17), transparent 8rem),
+    radial-gradient(circle at 50% 101%, rgba(240, 185, 91, 0.16), transparent 7.8rem),
+    radial-gradient(circle at 18% 12%, rgba(255, 249, 219, 0.9) 0 1px, transparent 1.45px),
+    radial-gradient(circle at 78% 22%, rgba(101, 226, 213, 0.7) 0 1px, transparent 1.35px),
+    radial-gradient(circle at 37% 72%, rgba(255, 231, 162, 0.62) 0 1px, transparent 1.45px),
+    linear-gradient(155deg, #120d19 0%, #171224 39%, #251631 71%, #0d1720 100%);
+  background-size:
+    auto,
+    auto,
+    auto,
+    auto,
+    4.5rem 4.5rem,
+    5.8rem 5.8rem,
+    6.4rem 6.4rem,
+    auto;
+  padding: 1.38rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 220, 0.12),
+    inset 0 0 2.6rem rgba(255, 220, 138, 0.12),
+    inset 0 -3.8rem 5rem rgba(4, 7, 13, 0.5),
+    0 0 0 1px rgba(255, 232, 167, 0.12),
+    0 0 1.55rem rgba(240, 185, 91, 0.22),
+    0 22px 42px rgba(9, 9, 18, 0.28);
+}
+
+.soul-section .wisdom-panel::before {
+  position: absolute;
+  inset: 0.74rem;
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(255, 217, 136, 0.72);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 240, 184, 0.82) 0 0.16rem, transparent 0.18rem),
+    radial-gradient(circle at 50% 100%, rgba(255, 240, 184, 0.82) 0 0.16rem, transparent 0.18rem),
+    linear-gradient(90deg, transparent, rgba(255, 225, 151, 0.08), transparent);
+  -webkit-mask-image: none;
+  mask-image: none;
+  opacity: 1;
+  animation: none;
+  content: "";
+  pointer-events: none;
+}
+
+.soul-section .wisdom-panel::after {
+  position: absolute;
+  inset: 0.18rem;
+  background:
+    conic-gradient(from 45deg at 1.52rem 1.52rem, transparent 0 73deg, rgba(255, 220, 139, 0.78) 74deg 91deg, transparent 92deg),
+    conic-gradient(from 135deg at calc(100% - 1.52rem) 1.52rem, transparent 0 73deg, rgba(255, 220, 139, 0.78) 74deg 91deg, transparent 92deg),
+    conic-gradient(from 315deg at 1.52rem calc(100% - 1.52rem), transparent 0 73deg, rgba(255, 220, 139, 0.78) 74deg 91deg, transparent 92deg),
+    conic-gradient(from 225deg at calc(100% - 1.52rem) calc(100% - 1.52rem), transparent 0 73deg, rgba(255, 220, 139, 0.78) 74deg 91deg, transparent 92deg),
+    linear-gradient(90deg, transparent, rgba(255, 225, 151, 0.16), transparent),
+    linear-gradient(180deg, transparent, rgba(86, 224, 211, 0.08), transparent);
+  opacity: 0.92;
+  content: "";
+  pointer-events: none;
+}
+
+.soul-section .soul-note-frame {
+  display: grid;
+  position: relative;
+  z-index: 1;
+  gap: 0.9rem;
+  justify-items: center;
+  min-height: 16rem;
+  align-content: center;
+  padding: 1.34rem 0.95rem;
+  text-align: center;
+}
+
+.soul-section .soul-note-frame::before,
+.soul-section .soul-note-frame::after {
+  display: block;
+  width: min(15.5rem, 86%);
+  height: 0.72rem;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 240, 184, 0.95) 0 0.16rem, transparent 0.18rem),
+    linear-gradient(90deg, transparent, rgba(255, 218, 137, 0.9) 18%, rgba(255, 247, 212, 0.92) 50%, rgba(255, 218, 137, 0.9) 82%, transparent);
+  content: "";
+  filter: drop-shadow(0 0 0.42rem rgba(245, 200, 106, 0.44));
+}
+
+.soul-section .prophecy-divider {
+  display: block;
+  width: min(13.5rem, 72%);
+  height: 0.12rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 221, 142, 0.76) 20%, #fff3c4 50%, rgba(103, 225, 212, 0.64) 78%, transparent);
+  box-shadow: 0 0 1rem rgba(255, 218, 137, 0.36);
+}
+
+.soul-section .wisdom-headline {
+  max-width: 24rem;
+  color: #fff0bc;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.5rem, 6.3vw, 2.02rem);
+  font-weight: 780;
+  line-height: 1.08;
+  text-shadow:
+    0 0 0.9rem rgba(255, 215, 127, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.32);
+  text-wrap: balance;
+}
+
+.soul-section .wisdom-panel .wisdom-body,
+.soul-section .wisdom-panel p.wisdom-body:not(.editorial-kicker):not(.wisdom-status),
+.soul-section .wisdom-panel .wisdom-status {
+  max-width: 25.5rem;
+  color: rgba(255, 249, 231, 0.95);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.96rem, 3.8vw, 1.08rem);
+  font-weight: 560;
+  line-height: 1.5;
+  text-shadow:
+    0 0 0.62rem rgba(255, 232, 167, 0.2),
+    0 1px 0 rgba(0, 0, 0, 0.42);
+  text-wrap: pretty;
+}
+
+.soul-section .mentor-cues {
+  gap: 0.72rem;
+}
+
+.soul-section .mentor-cues div {
+  position: relative;
+  min-height: 6.55rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 218, 137, 0.34);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 222, 143, 0.26), transparent 5.2rem),
+    radial-gradient(circle at 13% 18%, rgba(99, 224, 212, 0.18), transparent 4.8rem),
+    linear-gradient(145deg, rgba(19, 15, 29, 0.98), rgba(28, 22, 42, 0.96) 52%, rgba(13, 33, 40, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 220, 0.08),
+    inset 0 -1.8rem 2.4rem rgba(4, 7, 13, 0.34),
+    0 15px 28px rgba(8, 10, 19, 0.2);
+}
+
+.soul-section .mentor-cues div:nth-child(2) {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 222, 143, 0.24), transparent 5.2rem),
+    radial-gradient(circle at 88% 18%, rgba(182, 112, 201, 0.2), transparent 4.8rem),
+    linear-gradient(145deg, rgba(19, 15, 29, 0.98), rgba(42, 22, 42, 0.96) 52%, rgba(15, 25, 39, 0.98));
+}
+
+.soul-section .mentor-cues div::before {
+  position: absolute;
+  inset: 0.46rem;
+  border: 1px solid rgba(255, 222, 143, 0.26);
+  border-radius: 8px;
+  content: "";
+  pointer-events: none;
+}
+
+.soul-section .mentor-cues div::after {
+  display: block;
+  opacity: 0.6;
+}
+
+.soul-section .mentor-cues span {
+  color: #f5cf7a;
+}
+
+.soul-section .mentor-cues strong {
+  color: #fff8e8;
+}
+
+.soul-section .wisdom-feedback button,
+.soul-section .guidance-actions button {
+  border: 1px solid rgba(255, 218, 137, 0.32);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 225, 151, 0.18), transparent 3.6rem),
+    rgba(19, 15, 29, 0.92);
+  color: #fff1bd;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 220, 0.06),
+    0 10px 20px rgba(8, 10, 19, 0.16);
+}
+
+.soul-section .wisdom-feedback button.active,
+.soul-section .guidance-actions .primary-action {
+  border-color: rgba(255, 231, 164, 0.62);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 236, 176, 0.28), transparent 4.4rem),
+    linear-gradient(135deg, #5b3518, #1b1730 56%, #0f3d45);
+  color: #fff8e7;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 220, 0.12),
+    0 0 1rem rgba(244, 200, 106, 0.24),
+    0 14px 24px rgba(8, 10, 19, 0.18);
+}
+
+.soul-section .wisdom-feedback button svg,
+.soul-section .guidance-actions button svg {
+  color: #67e1d4;
+}
+
+@media (max-width: 24rem) {
+  .soul-section .wisdom-panel {
+    min-height: 18.5rem;
+    padding: 1rem;
+  }
+
+  .soul-section .soul-note-frame {
+    min-height: 14.9rem;
+    padding: 1.05rem 0.56rem;
+  }
+
+  .soul-section .wisdom-headline {
+    font-size: 1.48rem;
+  }
+
+  .soul-section .wisdom-panel .wisdom-body,
+  .soul-section .wisdom-panel .wisdom-status {
+    font-size: 0.98rem;
+  }
+}

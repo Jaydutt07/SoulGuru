@@ -61,7 +61,7 @@ This project is being built toward the stack shown in the product planning image
 - Server-backed More Guidance dashboard and saved advice persistence
 - Offline More Guidance subscription, daily-cache, and paid-memory contract checker
 - Production-gated local OTP fallback so demo login cannot silently replace backend OTP in release builds
-- Production-gated local account/session persistence so stored browser records cannot replace backend OTP/profile identity
+- Restorable APK/browser profile session that keeps users logged in until sign-out while refreshing from backend profile lookup when available
 - Production-gated local paid fallback so More Guidance unlocks from server payment/subscription state
 - Paid More Guidance deep reading generation with daily Supabase caching
 - Backend-connected APK guardrail that validates `VITE_API_BASE_URL` before mobile builds
@@ -107,7 +107,7 @@ This project is being built toward the stack shown in the product planning image
 - Runtime birth-place geocoder validation for HTTPS provider config, real user agents, valid coordinate ranges, and usable place labels
 - Operator birth-place geocoder smoke test for configured provider resolution, coordinate validation, timezone derivation, and secret-safe output
 - Runtime transactional email validation for safe recipients, subjects, and normalized Resend tags
-- Soul Guru v26 daily wisdom prompt with 18-34 word shared bounds, private reading fingerprints, chart-derived daily scene grounding, shared client/backend cache versioning, hard machine-readable output contracts, surface-rhythm repair checks, assembled-phrase and grammar rejection, concise-action specificity gates, whole-sentence cache refreshes, stricter structure-similarity gates, extra house-phrase rejection, anti-template mentor wording, and real lunar mansion/tithi timing
+- Soul Guru v30 divine prophecy prompt with 44-72 word shared bounds, strength-plus-shadow diagnosis, sacred verdict openings, one practical cheat-code correction, anti-wellness filler rules, shared client/backend cache versioning, hard machine-readable output contracts, whole-sentence cache refreshes, stricter structure-similarity gates, prophecy-tablet cadence, and real lunar mansion/tithi timing
 - Same-user Soul Guru daily-variation gate so one profile receives distinct date-specific guidance as transit Moon, lunar mansion, tithi, and daily area change
 - More Guidance v5 paid-reading map with shared backend/local fallback, private paid fingerprints, and stale-template regression coverage
 - Astro Solves v2 answer prompt with chart-specific root-cause analysis, practical remedies, safety-sensitive support wording, stored prompt metadata, and extended 20-case answer diversity coverage
@@ -166,7 +166,7 @@ This project is being built toward the stack shown in the product planning image
 19. Run `npm run production:env:checklist`, `npm run production:env:template`, `npm run production:providers`, `npm run production:actions`, `npm run production:audit`, `npm run production:launch-plan`, and `npm run production:launch-pack` while configuring Vercel, Cloudflare, and provider dashboards.
 20. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` for accurate uncatalogued birth-place coordinates and timezones.
 21. Run `npm run place:geocoder:smoke -- --place="Paris, France"` against the configured geocoder.
-22. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+22. Deploy to Vercel with `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_MS`, `OPENAI_MAX_RETRIES`, `SOUL_WISDOM_MAX_OUTPUT_TOKENS=1200`, `SOUL_WISDOM_REASONING_EFFORT=low`, `ASTRO_SOLVE_MODEL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 23. Attach the Namecheap production domain through Cloudflare DNS, set `PRODUCTION_DOMAIN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_DNS_READY=true`, and point `VITE_API_BASE_URL` at that HTTPS domain.
 24. Configure MSG91 phone OTP delivery through `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID`, and set `RESEND_API_KEY` plus a valid `RESEND_FROM_EMAIL` for transactional membership emails.
 25. Run `npm run production:check` and confirm deployed `/api/readiness` returns `ready`.

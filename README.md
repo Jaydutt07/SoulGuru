@@ -523,7 +523,7 @@ The production client only displays and locally caches Soul Guru readings that c
 Creates, updates, or looks up a user profile in Supabase using the backend service role. The app uses this after OTP login and account creation so birth details are persisted server-side instead of only in local storage. Configure `PLACE_GEOCODER_URL` and `PLACE_GEOCODER_USER_AGENT` so uncatalogued birth places are resolved server-side through a Nominatim-compatible geocoder, enriched with latitude/longitude, an IANA timezone, and the birth-date-specific timezone offset before chart calculations use the profile. Runtime geocoding only calls HTTPS provider URLs with a real user agent, skips impossible coordinates, and stores the first valid resolved place.
 Use `npm run place:geocoder:smoke -- --place="Paris, France"` after provider setup to confirm the configured geocoder returns usable coordinates and timezone without printing provider URL or user-agent values.
 
-In production builds, local account/session storage is disabled for login restore. Users enter through backend OTP/profile lookup, and local account persistence is kept only for development fallback mode.
+Production and APK builds keep the last verified profile in local storage so the app restores the session until the user signs out. Backend profile lookup remains the preferred source whenever reachable, so restored sessions refresh from Supabase instead of replacing server identity.
 
 When `VITE_CLERK_PUBLISHABLE_KEY` is configured, the frontend dynamically initializes ClerkJS from the Clerk frontend API domain and `authFetch` attaches the active Clerk session token as a Bearer header for protected backend routes. No Clerk secret is bundled into the web app or APK.
 

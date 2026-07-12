@@ -178,7 +178,10 @@ function checkSoulWisdomUsesLatencyControls() {
   pushCheck("Soul Guru daily readings keep model, output, and memory latency configurable", [
     soulWisdomSource.includes("const model = env.SOUL_WISDOM_MODEL || env.OPENAI_MODEL || \"gpt-5.5\";"),
     soulWisdomSource.includes("max_output_tokens: getSoulWisdomMaxOutputTokens(env)"),
-    soulWisdomSource.includes("return parseBoundedInteger(env.SOUL_WISDOM_MAX_OUTPUT_TOKENS, 220, 120, 600);"),
+    soulWisdomSource.includes("return parseBoundedInteger(env.SOUL_WISDOM_MAX_OUTPUT_TOKENS, 1200, 180, 2400);"),
+    soulWisdomSource.includes("reasoning: {"),
+    soulWisdomSource.includes("effort: getSoulWisdomReasoningEffort(env)"),
+    soulWisdomSource.includes("type: \"json_schema\""),
     soulWisdomSource.includes("scheduleMemoryUpsert(upsertMemory, {"),
     soulWisdomSource.includes(".then(() => upsertMemory(payload, env))")
   ].every(Boolean));

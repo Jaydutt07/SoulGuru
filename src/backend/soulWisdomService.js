@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { getDailyWisdom } from "../localSoulWisdom.js";
 import {
   buildParagraphArchitecture,
   buildSoulWisdomInput,
@@ -127,7 +126,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
       issues: candidateIssues
     }];
 
-    const fallback = payload.fallback || getDailyWisdom(user, date, payload.today || date);
+    const fallback = createFallbackReading("");
     while (candidateIssues.length && qualityAttempts < 3) {
       outputText = await requestSoulWisdom(
         client,
@@ -158,7 +157,7 @@ export async function createDailySoulWisdom(payload, env = process.env, deps = {
     let reading = normalizeWisdomPayload(outputText, fallback);
     const finalIssues = getSoulWisdomContractIssues(reading.wisdom, user, contractContext);
     if (finalIssues.length) {
-      reading = fallback;
+      throwHttpError("OpenAI Soul Guru reading did not pass quality. Please try again shortly.", 502);
     }
     const passedQuality = !getSoulWisdomContractIssues(reading.wisdom, user, contractContext).length;
     const result = {
@@ -233,13 +232,52 @@ async function requestSoulWisdom(client, model, input, env = process.env) {
     model,
     instructions: SOUL_WISDOM_SYSTEM_PROMPT,
     input,
-    max_output_tokens: getSoulWisdomMaxOutputTokens(env)
+    max_output_tokens: getSoulWisdomMaxOutputTokens(env),
+    reasoning: {
+      effort: getSoulWisdomReasoningEffort(env)
+    },
+    text: {
+      verbosity: "low",
+      format: {
+        type: "json_schema",
+        name: "soul_wisdom_reading",
+        strict: true,
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          required: ["wisdom", "innerWeather", "todayMove", "release"],
+          properties: {
+            wisdom: { type: "string" },
+            innerWeather: { type: "string" },
+            todayMove: { type: "string" },
+            release: { type: "string" }
+          }
+        }
+      }
+    }
   }, env);
-  return response.output_text;
+  return extractOpenAIResponseText(response);
 }
 
 function getSoulWisdomMaxOutputTokens(env = process.env) {
-  return parseBoundedInteger(env.SOUL_WISDOM_MAX_OUTPUT_TOKENS, 220, 120, 600);
+  return parseBoundedInteger(env.SOUL_WISDOM_MAX_OUTPUT_TOKENS, 1200, 180, 2400);
+}
+
+function getSoulWisdomReasoningEffort(env = process.env) {
+  const value = String(env.SOUL_WISDOM_REASONING_EFFORT || "low").trim().toLowerCase();
+  return ["none", "minimal", "low", "medium", "high", "xhigh"].includes(value) ? value : "low";
+}
+
+function extractOpenAIResponseText(response) {
+  const direct = String(response?.output_text || "").trim();
+  if (direct) return direct;
+
+  return (Array.isArray(response?.output) ? response.output : [])
+    .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
+    .map((content) => content?.text || content?.output_text || "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 }
 
 function scheduleMemoryUpsert(upsertMemory, payload, env) {
@@ -457,8 +495,8 @@ function getSoulWisdomContractIssues(wisdom, user, context = {}) {
   if (wordCount < SOUL_WISDOM_MIN_WORDS || wordCount > SOUL_WISDOM_MAX_WORDS) {
     issues.push(`expected ${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS} words, got ${wordCount}`);
   }
-  if (sentences.length < 1 || sentences.length > 2) {
-    issues.push(`expected one or two sentences, got ${sentences.length}`);
+  if (sentences.length < 2 || sentences.length > 3) {
+    issues.push(`expected two or three sentences, got ${sentences.length}`);
   }
   const nameCount = countWord(text, firstName(user.name));
   if (nameCount > 1) {

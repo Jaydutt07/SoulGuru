@@ -116,6 +116,23 @@ function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user?.phone || !API_BASE_URL) return undefined;
+    let cancelled = false;
+
+    lookupAccountFromServer(user.phone).then((serverAccount) => {
+      if (cancelled || !serverAccount) return;
+      const syncedAccount = mergeAccountProfile(user, serverAccount);
+      saveAccount(syncedAccount);
+      writeSessionUser(syncedAccount);
+      setUser((current) => current?.phone === syncedAccount.phone ? mergeAccountProfile(current, serverAccount) : current);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.phone]);
+
+  useEffect(() => {
     if (!user || LOCAL_READING_FALLBACK_ENABLED) return;
     const todayKey = getTodayKey(new Date(), user.birthTimezone || undefined);
     if (readDailyReadingCache(user, todayKey)?.reading) return;
@@ -124,7 +141,7 @@ function App() {
     const payload = buildDailyReadingPayload(user, todayKey, fallbackReading);
     requestDailyReadingFromServer(user, todayKey, payload)
       .then(({ ok, data }) => {
-        if (!ok || !(data?.reading || data?.wisdom) || data.stored === false) return;
+        if (!ok || !(data?.reading || data?.wisdom) || getServerSoulReadingIssue(data, fallbackReading)) return;
         const nextReading = normalizeWisdomPayload(data.reading || data.wisdom, fallbackReading);
         writeDailyReadingCache(user, todayKey, nextReading, {
           cached: Boolean(data.cached),
@@ -144,15 +161,14 @@ function App() {
 
   function handleLogin(account, loginMeta = {}) {
     const enrichedAccount = saveAccount(account);
-    if (LOCAL_AUTH_FALLBACK_ENABLED) {
-      window.localStorage.setItem(SESSION_KEY, enrichedAccount.phone);
-    }
+    writeSessionUser(enrichedAccount);
     setUser(enrichedAccount);
     setActiveTab("soul");
     syncUserProfileToServer(enrichedAccount).then((profile) => {
       if (!profile) return;
       const syncedAccount = mergeAccountProfile(enrichedAccount, profile);
       saveAccount(syncedAccount);
+      writeSessionUser(syncedAccount);
       setUser((current) => current?.phone === syncedAccount.phone ? mergeAccountProfile(current, profile) : current);
     });
     trackEvent("login_completed", {
@@ -166,9 +182,7 @@ function App() {
     setUser((current) => {
       const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
       const next = saveAccount(nextRaw);
-      if (LOCAL_AUTH_FALLBACK_ENABLED) {
-        window.localStorage.setItem(SESSION_KEY, next.phone);
-      }
+      writeSessionUser(next);
       if (hasProfileChanged(current, next)) {
         syncUserProfileToServer(next);
       }
@@ -702,10 +716,11 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
           if (cancelled) return;
 
           if (ok && (data?.reading || data?.wisdom)) {
-            if (data.stored === false && !LOCAL_READING_FALLBACK_ENABLED) {
+            const serverReadingIssue = getServerSoulReadingIssue(data, fallbackReading);
+            if (serverReadingIssue && !LOCAL_READING_FALLBACK_ENABLED) {
               setReading(null);
-              setReadingStatus("Today's guidance could not be saved. Please try again shortly.");
-              trackEvent("soul_wisdom_failed", { reason: "not_stored" });
+              setReadingStatus(getServerSoulReadingIssueMessage(serverReadingIssue));
+              trackEvent("soul_wisdom_failed", { reason: serverReadingIssue });
               return;
             }
 
@@ -830,6 +845,7 @@ function SoulGuruTab({ user, updateUser, onMoreGuidance }) {
       <article className="wisdom-panel">
         {reading ? (
           <div className="soul-note-frame">
+            <span className="prophecy-divider" aria-hidden="true" />
             <h3 className="wisdom-headline">{wisdomEditorial.headline}</h3>
             {wisdomEditorial.body && <p className="wisdom-body">{wisdomEditorial.body}</p>}
           </div>
@@ -2479,6 +2495,7 @@ function getBackendTargetLabel() {
 }
 
 function readAccounts() {
+  if (typeof window === "undefined") return {};
   try {
     return JSON.parse(window.localStorage.getItem(ACCOUNT_DB_KEY) || "{}");
   } catch {
@@ -2488,13 +2505,18 @@ function readAccounts() {
 
 function saveAccount(account) {
   const enrichedAccount = enrichUserWithPlace(account);
-  if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+  if (typeof window === "undefined" || !enrichedAccount.phone) {
     return enrichedAccount;
   }
   const accounts = readAccounts();
   accounts[enrichedAccount.phone] = enrichedAccount;
   window.localStorage.setItem(ACCOUNT_DB_KEY, JSON.stringify(accounts));
   return enrichedAccount;
+}
+
+function writeSessionUser(account) {
+  if (typeof window === "undefined" || !account?.phone) return;
+  window.localStorage.setItem(SESSION_KEY, account.phone);
 }
 
 async function lookupAccountFromServer(phone) {
@@ -2671,7 +2693,7 @@ function hasProfileChanged(previous, next) {
 }
 
 function getSessionUser() {
-  if (!LOCAL_AUTH_FALLBACK_ENABLED) return null;
+  if (typeof window === "undefined") return null;
   const phone = window.localStorage.getItem(SESSION_KEY);
   if (!phone) return null;
   return readAccounts()[phone] || null;
@@ -2711,7 +2733,7 @@ function buildDailyReadingPayload(user, todayKey, fallbackReading) {
       dateKey: item.dateKey || "",
       wisdom: item.reading.wisdom
     }));
-  return {
+  const payload = {
     user: {
       id: user.id,
       name: user.name,
@@ -2736,9 +2758,12 @@ function buildDailyReadingPayload(user, todayKey, fallbackReading) {
       day: "numeric",
       year: "numeric"
     }),
-    priorReadings,
-    fallback: fallbackReading
+    priorReadings
   };
+  if (LOCAL_READING_FALLBACK_ENABLED) {
+    payload.fallback = fallbackReading;
+  }
+  return payload;
 }
 
 function requestDailyReadingFromServer(user, todayKey, payload) {
@@ -2762,6 +2787,32 @@ function requestDailyReadingFromServer(user, todayKey, payload) {
 
   SOUL_READING_REQUESTS.set(requestKey, request);
   return request;
+}
+
+function getServerSoulReadingIssue(data, fallbackReading) {
+  if (LOCAL_READING_FALLBACK_ENABLED) return "";
+  if (!data?.reading && !data?.wisdom) return "missing_reading";
+  if (data.stored === false) return "not_stored";
+  if (data.promptVersion !== SOUL_READING_CACHE_VERSION) return "stale_prompt";
+  const wisdom = String(data.reading?.wisdom || data.wisdom || "");
+  if (isSameWisdomText(wisdom, fallbackReading?.wisdom)) return "fallback_reading";
+  return "";
+}
+
+function getServerSoulReadingIssueMessage(reason) {
+  if (reason === "not_stored") return "Today's guidance could not be saved. Please try again shortly.";
+  if (reason === "stale_prompt") return "Soul Guru is updating today's guidance. Please try again shortly.";
+  if (reason === "fallback_reading") return "Soul Guru is preparing an OpenAI reading. Please try again shortly.";
+  return "Soul Guru is unavailable. Please try again shortly.";
+}
+
+function isSameWisdomText(first, second) {
+  const normalize = (value) => String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const normalizedFirst = normalize(first);
+  return normalizedFirst && normalizedFirst === normalize(second);
 }
 
 async function openRazorpayCheckout({ order, user, description = "Soul Guru + Astro Solve", notes = {}, onSuccess, onFailure }) {

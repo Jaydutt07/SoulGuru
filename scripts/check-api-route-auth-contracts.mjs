@@ -129,7 +129,7 @@ function checkProtectedRoute(route) {
   );
   requireCondition(
     details,
-    /getHttpMethod\(req\)\s*!==\s*"POST"/.test(text),
+    /getHttpMethod\(req\)\s*!==\s*"POST"/.test(text) || /method\s*!==\s*"POST"/.test(text),
     "protected route is not POST-only"
   );
   requireCondition(
@@ -192,7 +192,7 @@ function checkOtpRoute(text, details) {
 }
 
 function checkHealthRoute(text, details) {
-  requireCondition(details, text.includes("res.status(200).json"), "health route must return HTTP 200");
+  requireCondition(details, text.includes("res.status(200).json") || text.includes("sendJson(res, 200"), "health route must return HTTP 200");
   requireCondition(details, text.includes("ok: true"), "health route must return ok: true");
   requireCondition(details, !text.includes("parseJsonRequest"), "health route should not parse request bodies");
 }

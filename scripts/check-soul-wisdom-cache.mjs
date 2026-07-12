@@ -299,7 +299,7 @@ async function checkCacheMissWritesAndSecondReadUsesCache() {
 
   pushCheck("Cache miss calls backend OpenAI once", [
     openAiRequests.length === 1,
-    openAiRequests[0].max_output_tokens === 220,
+    openAiRequests[0].max_output_tokens === 1200,
     first.cached === false,
     first.stored === true,
     first.model === "gpt-contract",
@@ -768,6 +768,66 @@ async function checkCacheWriteFailureDoesNotReturnReading() {
   ].every(Boolean));
 }
 
+async function checkRejectedOpenAiDraftDoesNotCacheClientFallback() {
+  const user = soulUser("rejected-openai");
+  const date = "2026-06-24";
+  const weakWisdomJson = JSON.stringify({
+    wisdom: "You may feel steady today.",
+    innerWeather: "Generic calm",
+    todayMove: "Take one small step",
+    release: "Let worry go"
+  });
+  const clientFallback = {
+    wisdom: "This local fallback must never be cached as a backend OpenAI reading.",
+    innerWeather: "Fallback check",
+    todayMove: "Detect fallback",
+    release: "Do not cache"
+  };
+  const supabase = createFakeSupabase();
+  const openAiRequests = [];
+  const memoryUpserts = [];
+  let error = null;
+
+  try {
+    await createDailySoulWisdom({
+      user,
+      date,
+      fallback: clientFallback
+    }, {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-contract"
+    }, {
+      supabase,
+      searchGuidanceMemory: async () => ({ configured: false, matches: [] }),
+      upsertGuidanceMemory: async (payload) => {
+        memoryUpserts.push(payload);
+        return { configured: false, upserted: false };
+      },
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: weakWisdomJson };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  pushCheck("Rejected OpenAI drafts do not cache client fallback as Soul Guru output", [
+    error?.statusCode === 502,
+    /did not pass quality/.test(error?.message || ""),
+    openAiRequests.length === 3,
+    memoryUpserts.length === 0,
+    supabase.state.calls.filter((call) => call.table === "daily_soul_readings" && call.operation === "upsert").length === 0,
+    supabase.state.dailyReadings.size === 0
+  ].every(Boolean));
+}
+
 function createFakeSupabase({
   dailyReadings = [],
   generationLocks = [],
@@ -1037,10 +1097,10 @@ function buildContractReading(user, date) {
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, date));
   const scene = sentenceCase(context.openingScene || context.dailyScene || "the desk detail that keeps returning");
   const name = firstName(user.name);
-  const nameClause = name ? `, ${name}` : "";
+  const nameLead = name ? `${name}, ` : "";
 
   return {
-    wisdom: `${scene} can stay small${nameClause}; finish one task by lunchtime today before making the story louder.`,
+    wisdom: `${scene} is the sign that one clear duty wants proof before pressure grows. ${nameLead}finish one task by lunchtime today, with no extra explanation around it. That done piece can steady the evening better than another private review.`,
     innerWeather: "Focused under visible pressure",
     todayMove: "Finish one task before lunchtime",
     release: "Stop making the story louder"
@@ -1083,6 +1143,7 @@ async function main() {
   await checkMechanicalDirectAddressRepairsBeforeCaching();
   await checkAwkwardTemplateJoinRepairsBeforeCaching();
   await checkCacheWriteFailureDoesNotReturnReading();
+  await checkRejectedOpenAiDraftDoesNotCacheClientFallback();
 
   const failed = checks.filter((check) => !check.passed);
   printReport();

@@ -129,8 +129,8 @@ function evaluateReading({ user, source, result }) {
   if (wordCount < minWords || wordCount > maxWords) {
     failures.push(`expected ${minWords}-${maxWords} words, got ${wordCount}.`);
   }
-  if (sentences.length < 1 || sentences.length > 2) {
-    failures.push(`expected 1-2 sentences, got ${sentences.length}.`);
+  if (sentences.length < 2 || sentences.length > 3) {
+    failures.push(`expected 2-3 sentences, got ${sentences.length}.`);
   }
   if (hasGenericShortWisdom(wisdom)) {
     failures.push("matched generic or multi-direction short-reading phrasing.");

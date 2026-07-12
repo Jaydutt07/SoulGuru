@@ -149,8 +149,8 @@ function evaluateDailyReading({ user, date, result }) {
   if (wordCount < SOUL_WISDOM_MIN_WORDS || wordCount > SOUL_WISDOM_MAX_WORDS) {
     failures.push(`expected ${SOUL_WISDOM_MIN_WORDS}-${SOUL_WISDOM_MAX_WORDS} words, got ${wordCount}.`);
   }
-  if (sentences.length < 1 || sentences.length > 2) {
-    failures.push(`expected 1-2 sentences, got ${sentences.length}.`);
+  if (sentences.length < 2 || sentences.length > 3) {
+    failures.push(`expected 2-3 sentences, got ${sentences.length}.`);
   }
   if (countWord(wisdom, name) > 1) {
     failures.push(`expected first name at most once, got ${countWord(wisdom, name)}.`);
