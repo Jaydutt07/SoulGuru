@@ -173,9 +173,10 @@ function checkSoulGuruCacheUsesCurrentPromptVersion() {
 
 function checkProductionAstroSolvesRequiresStoredBackendAnswer() {
   pushCheck("Production Astro Solves does not use local fallback for failed or unstored answers", [
-    source.includes("if (!response.ok && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
-    source.includes("if (response.ok && data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {"),
-    source.includes("if (!LOCAL_AUTH_FALLBACK_ENABLED) {\n        setSolveStatus(\"Astro Solves is unavailable. Please try again shortly.\");"),
+    source.includes("const LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_ASTRO_SOLVE_FALLBACK === \"true\";"),
+    source.includes("if (!response.ok && !LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {"),
+    source.includes("if (response.ok && data.stored === false && data.generationSource !== \"openai\" && !LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {"),
+    source.includes("if (!LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {\n        setSolveStatus(\"Astro Solves is unavailable. Please try again shortly.\");"),
     source.includes("trackEvent(\"astro_solve_failed\", { reason: \"not_stored\" });")
   ].every(Boolean));
 }
@@ -185,7 +186,7 @@ function checkProductionAstroSolvesSyncsBackendAllowance() {
     source.includes("const [serverAllowance, setServerAllowance] = useState(null);"),
     source.includes("const allowance = serverAllowance?.limit ?? localAllowance;"),
     source.includes("const remaining = Number.isFinite(serverAllowance?.remaining)"),
-    source.includes("if (LOCAL_AUTH_FALLBACK_ENABLED) {\n        setServerAllowance(null);"),
+    source.includes("if (LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {\n        setServerAllowance(null);"),
     source.includes("action: \"allowance\","),
     source.includes("user: buildAstroSolveUserPayload(user)"),
     source.includes("setServerAllowance(response.ok && data.allowance ? data.allowance : null);"),

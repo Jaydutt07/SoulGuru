@@ -19,7 +19,8 @@ const requiredMigrationFiles = [
   "014_soul_wisdom_generation_locks.sql",
   "015_more_guidance_generation_locks.sql",
   "016_soul_wisdom_feedback.sql",
-  "017_service_role_grants.sql"
+  "017_service_role_grants.sql",
+  "018_shani_remedy_notifications.sql"
 ];
 
 const hashedUserKeyTables = [
@@ -32,6 +33,7 @@ const hashedUserKeyTables = [
   "more_guidance_readings",
   "shani_remedy_memberships",
   "shani_pandit_messages",
+  "shani_remedy_notifications",
   "soul_wisdom_feedback"
 ];
 
@@ -218,6 +220,24 @@ const schemaContract = [
     ]
   },
   {
+    table: "shani_remedy_notifications",
+    columns: [
+      "id",
+      "membership_id",
+      "user_key",
+      "channel",
+      "notification_type",
+      "remedy_date",
+      "title",
+      "body",
+      "payload",
+      "status",
+      "sent_at",
+      "error",
+      "created_at"
+    ]
+  },
+  {
     table: "soul_wisdom_feedback",
     columns: [
       "id",
@@ -258,6 +278,9 @@ const requiredIndexes = [
   "shani_memberships_provider_subscription_unique_idx",
   "shani_pandit_messages_user_created_idx",
   "shani_pandit_messages_membership_created_idx",
+  "shani_remedy_notifications_once_idx",
+  "shani_remedy_notifications_user_created_idx",
+  "shani_remedy_notifications_status_created_idx",
   "soul_wisdom_feedback_user_date_idx",
   "soul_wisdom_feedback_rating_created_idx"
 ];
@@ -346,6 +369,10 @@ function checkIndexesAndIdempotency() {
     contains("create unique index if not exists shani_memberships_provider_subscription_unique_idx"),
     contains("where provider_payment_id is not null"),
     contains("where provider_subscription_id is not null")
+  ].every(Boolean));
+  pushCheck("Shani remedy notifications are idempotent per membership and remedy date", [
+    contains("create unique index if not exists shani_remedy_notifications_once_idx"),
+    contains("on public.shani_remedy_notifications(membership_id, channel, notification_type, remedy_date)")
   ].every(Boolean));
   pushCheck("Soul Guru feedback stores bounded ratings and reading hashes", [
     contains("constraint soul_wisdom_feedback_rating_chk check (rating in ('accurate', 'missed'))"),

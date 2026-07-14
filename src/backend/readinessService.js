@@ -201,7 +201,11 @@ function checkMoreGuidance(env) {
 
 function checkShani(env) {
   const localAccessEnabled = String(env.SHANI_ALLOW_LOCAL_ACCESS || "false").toLowerCase() === "true";
+  const localNotificationsEnabled = String(env.SHANI_NOTIFICATIONS_ALLOW_LOCAL || "false").toLowerCase() === "true";
   const missingEnv = localAccessEnabled ? ["SHANI_ALLOW_LOCAL_ACCESS=false"] : [];
+  if (localNotificationsEnabled) {
+    missingEnv.push("SHANI_NOTIFICATIONS_ALLOW_LOCAL=false");
+  }
   const priceKeys = [
     "SHANI_PLAN_3M_PRICE_PAISE",
     "SHANI_PLAN_6M_PRICE_PAISE",
@@ -215,16 +219,24 @@ function checkShani(env) {
       missingEnv.push(`${key}=positive integer`);
     }
   }
+  if (!hasEnv(env, "CRON_SECRET") && !hasEnv(env, "SHANI_NOTIFICATION_CRON_SECRET")) {
+    missingEnv.push("CRON_SECRET or SHANI_NOTIFICATION_CRON_SECRET");
+  }
 
   return {
     id: "shaniMembershipAccess",
     label: "Shani remedy membership persistence",
     severity: "critical",
     status: missingEnv.length ? "fail" : "pass",
-    requiredEnv: ["SHANI_ALLOW_LOCAL_ACCESS=false", ...priceKeys],
+    requiredEnv: [
+      "SHANI_ALLOW_LOCAL_ACCESS=false",
+      "SHANI_NOTIFICATIONS_ALLOW_LOCAL=false",
+      ...priceKeys,
+      "CRON_SECRET or SHANI_NOTIFICATION_CRON_SECRET"
+    ],
     missingEnv,
     advice: missingEnv.length
-      ? "Disable local Shani access and configure server-owned Shani plan prices before selling remedy memberships."
+      ? "Disable local Shani access, configure server-owned Shani plan prices, and protect the Shani notification cron before selling remedy memberships."
       : ""
   };
 }

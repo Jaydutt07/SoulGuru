@@ -59,11 +59,6 @@ const publicRoutes = [
     check: checkOtpRoute
   },
   {
-    file: "health.js",
-    label: "Health probe",
-    check: checkHealthRoute
-  },
-  {
     file: "razorpay-webhook.js",
     label: "Razorpay signed webhook",
     check: checkRazorpayWebhookRoute
@@ -72,6 +67,11 @@ const publicRoutes = [
     file: "readiness.js",
     label: "Readiness probe",
     check: checkReadinessRoute
+  },
+  {
+    file: "shani-notifications.js",
+    label: "Shani notification cron",
+    check: checkShaniNotificationsRoute
   }
 ];
 
@@ -213,9 +213,25 @@ function checkRazorpayWebhookRoute(text, details) {
 
 function checkReadinessRoute(text, details) {
   requireCondition(details, /getHttpMethod\(req\)\s*!==\s*"GET"/.test(text), "readiness route must be GET-only");
+  checkHealthRoute(text, details);
+  requireCondition(details, text.includes("isHealthProbe(req)"), "readiness route must serve the rewritten health probe");
   requireCondition(details, text.includes("buildDeploymentReadiness(process.env)"), "readiness route must use deployment readiness service");
   requireCondition(details, text.includes("readiness.ok ? 200 : 503"), "readiness route must return 503 when not ready");
   requireCondition(details, !text.includes("parseJsonRequest"), "readiness route should not parse request bodies");
+}
+
+function checkShaniNotificationsRoute(text, details) {
+  const methodIndex = text.indexOf("const method = getHttpMethod(req)");
+  const authIndex = text.indexOf("isShaniNotificationRequestAuthorized(req, process.env)");
+  const parseIndex = text.indexOf("parseJsonRequest(req)");
+  const dispatchIndex = indexOfAwaitedCall(text, "dispatchDueShaniNotifications");
+
+  requireCondition(details, text.includes('import { getHttpMethod, handleCorsPreflight, parseJsonRequest, sendErrorJson, sendJson }'), "cron route must use shared request helpers");
+  requireCondition(details, text.includes("method !== \"GET\" && method !== \"POST\""), "cron route must be GET/POST-only");
+  requireCondition(details, authIndex > methodIndex, "cron authorization must run after method validation");
+  requireCondition(details, text.includes("sendJson(res, 401"), "unauthorized cron requests must return 401");
+  requireCondition(details, dispatchIndex > authIndex, "notification dispatch must run after cron authorization");
+  requireCondition(details, parseIndex > authIndex, "POST body parsing must run after cron authorization");
 }
 
 function readRoute(file) {

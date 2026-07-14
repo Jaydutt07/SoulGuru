@@ -76,21 +76,14 @@ Potential future pricing:
 
 ## Shani Subscription Positioning
 
-Current configured Shani prices:
+Configured Shagun Shani prices:
 
-- 3 months: INR 299
-- 6 months: INR 549
-- 1 year: INR 999
-- Remaining timeline: INR 1499
+- Shani Aarambh, 3 month: Shagun ke Rs 251
+- Shani Dhairya, 6 month: Shagun ke Rs 501
+- Shani Niyam, 1 year: Shagun ke Rs 1001
+- Shani Sampoorna, remaining period of Saade Sati: Shagun ke Rs 1111
 
-Recommended stronger pricing after content is upgraded:
-
-- 3 months: INR 399
-- 6 months: INR 699
-- 1 year: INR 1199
-- Remaining timeline: INR 1799
-
-Keep the current lower prices for launch if we want faster early adoption. Shani should become the main revenue stream only after the member area feels alive enough to justify renewal.
+Keep the Shagun wording visible in the Shani tab and payment confirmation. The price should feel like a devotional offering for guidance, not a hard subscription fee.
 
 ## Shani Timeline Content
 
@@ -116,7 +109,7 @@ Setting phase, Saturn 2nd from Moon:
 
 ## Shani Plan Depth
 
-3-month Shani plan:
+3 month Shani plan:
 
 - 12-week discipline track.
 - Weekly remedy and Saturday practice.
@@ -124,21 +117,21 @@ Setting phase, Saturn 2nd from Moon:
 - Moon-sign remedy theme.
 - Pandit chat for member questions.
 
-6-month Shani plan:
+6 month Shani plan:
 
 - Everything in 3 months.
 - Monthly Shani review.
 - Habit tracker for speech, debt, sleep, duty, and seva.
 - Family/work/money pressure mapping.
 
-1-year Shani plan:
+1 year Shani plan:
 
 - Everything in 6 months.
 - Full annual Shani calendar.
 - Monthly "what Saturn is teaching now" report.
 - Quarterly release ritual and progress reflection.
 
-Remaining timeline plan:
+Remaining period of Saade Sati plan:
 
 - Full Saade Sati map until completion.
 - Entry, peak, and release phase timeline.

@@ -1,6 +1,5 @@
 import {
   buildAstroSolveFingerprint,
-  buildFallbackAstroSolveInsight,
   getAstroSolveContractIssues
 } from "../astroSolveGuidance.js";
 import { buildServerAstrologyContext } from "./astrologyContextService.js";
@@ -13,6 +12,30 @@ import { buildBackendUserKey } from "./userIdentity.js";
 export const ASTRO_SOLVE_PROMPT_VERSION = "astro-solve-v2";
 export const ASTRO_SOLVE_FREE_ALLOWANCE = 3;
 export const ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE = 15;
+export const ASTRO_SOLVE_RESPONSE_FORMAT = Object.freeze({
+  type: "json_schema",
+  name: "astro_solve_answer",
+  strict: true,
+  schema: Object.freeze({
+    type: "object",
+    additionalProperties: false,
+    required: ["root", "astrology", "solution"],
+    properties: Object.freeze({
+      root: Object.freeze({
+        type: "string",
+        description: "A grounded explanation of the emotional or behavioral root beneath the user's exact question."
+      }),
+      astrology: Object.freeze({
+        type: "string",
+        description: "The chart and transit interpretation connecting the user's context to the problem."
+      }),
+      solution: Object.freeze({
+        type: "string",
+        description: "A practical seven-day plan plus one simple spiritual or remedy-style practice."
+      })
+    })
+  })
+});
 
 export const ASTRO_SOLVE_SYSTEM_PROMPT = `
 You are SoulGuru's Astro Solves mentor.
@@ -78,13 +101,6 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
   const serverContext = await buildServerAstrologyContext({ ...payload, user, date }, env, deps);
   user = serverContext.user;
   const astrologyContext = serverContext.astrologyContext;
-  const fallback = normalizeAstroSolveAnswer(buildFallbackAstroSolveInsight(
-    question,
-    user,
-    astrologyContext,
-    Number(payload.priorCount || 0),
-    date
-  ));
   const client = makeOpenAIClient(apiKey, env);
   let attempts = 1;
   let responseText = await requestAstroSolve(client, model, buildAstroSolveInput({
@@ -93,7 +109,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     context: astrologyContext,
     today: payload.today || date
   }), env);
-  let answer = normalizeAstroSolveAnswer(responseText, fallback);
+  let answer = normalizeAstroSolveAnswer(responseText);
   let answerIssues = getAstroSolveContractIssues(answer, {
     user,
     question,
@@ -110,7 +126,7 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
       rejectionReason: answerIssues.join("; ")
     }), env);
     attempts = 2;
-    answer = normalizeAstroSolveAnswer(responseText, fallback);
+    answer = normalizeAstroSolveAnswer(responseText);
     answerIssues = getAstroSolveContractIssues(answer, {
       user,
       question,
@@ -118,14 +134,9 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     });
   }
 
-  const fallbackUsed = answerIssues.length > 0;
-  if (fallbackUsed) {
-    answer = fallback;
-    answerIssues = getAstroSolveContractIssues(answer, {
-      user,
-      question,
-      context: astrologyContext
-    });
+  if (answerIssues.length > 0) {
+    console.warn("OpenAI Astro Solves answer failed quality review", answerIssues.join("; "));
+    throwHttpError("OpenAI Astro Solves answer failed quality review. Please try again.", 502);
   }
 
   const result = {
@@ -138,15 +149,15 @@ export async function createAstroSolve(payload, env = process.env, deps = {}) {
     answer,
     astrologyContext,
     source: allowance.isMember ? "member" : "free",
-    generationSource: fallbackUsed ? "quality-fallback" : "openai",
+    generationSource: "openai",
     stored: false,
     model,
     promptVersion: ASTRO_SOLVE_PROMPT_VERSION,
     quality: {
       attempts,
       repaired: attempts > 1,
-      passed: answerIssues.length === 0,
-      fallbackUsed
+      passed: true,
+      fallbackUsed: false
     },
     allowance: {
       ...allowance,
@@ -275,7 +286,10 @@ async function requestAstroSolve(client, model, input, env = process.env) {
   const response = await requestOpenAIResponse(client, {
     model,
     instructions: ASTRO_SOLVE_SYSTEM_PROMPT,
-    input
+    input,
+    text: {
+      format: ASTRO_SOLVE_RESPONSE_FORMAT
+    }
   }, env);
   return response.output_text;
 }
@@ -360,9 +374,9 @@ export function normalizeAstroSolveAnswer(raw, fallback = {}) {
   const parsed = parseAnswer(raw);
   const source = parsed || (typeof raw === "object" && raw ? raw : {});
   return {
-    root: cleanAnswerField(source.root, fallback.root || "The root pattern is a mix of pressure, expectation, and unclear next steps."),
-    astrology: cleanAnswerField(source.astrology, fallback.astrology || "The chart pattern points to timing pressure that can be handled through discipline and clearer choices."),
-    solution: cleanAnswerField(source.solution, fallback.solution || "For seven days, simplify the problem, take one practical action daily, and keep a short evening reflection.")
+    root: cleanAnswerField(source.root, fallback.root || ""),
+    astrology: cleanAnswerField(source.astrology, fallback.astrology || ""),
+    solution: cleanAnswerField(source.solution, fallback.solution || "")
   };
 }
 

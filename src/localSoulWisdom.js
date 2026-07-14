@@ -12,7 +12,7 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
   const context = buildAstrologyContext(user, buildTransitDateForUser(user, dateKey));
   const seed = stableHash(`${getSoulReadingUserKey(user)}-${dateKey}-${context.dailyArea}-${context.timingTone}`);
   const wisdom = buildConciseDailyWisdom(user, context, seed + stableHash(architectureKey || dateKey));
-  const pattern = divineLifePattern(context, seed + stableHash(architectureKey || dateKey) + 11);
+  const pattern = divineLifePattern(context, seed + stableHash(architectureKey || dateKey) + 11, firstName(user.name));
 
   return {
     wisdom: normalizeLocalWisdom(polishLocalWisdom(wisdom)),
@@ -25,41 +25,52 @@ export function getDailyWisdom(user, dateKey = getTodayKey(new Date(), user.birt
 function buildConciseDailyWisdom(user, context, seed) {
   const name = firstName(user.name);
   const scene = divineSceneOpening(context, seed + stableHash(name), name);
-  const pattern = divineLifePattern(context, seed + 11);
-  const action = divineCorrection(context, seed + 23, pattern);
-  const blessing = divineBlessing(context, seed + 37, pattern);
+  const pattern = divineLifePattern(context, seed + 11, name);
+  const action = divineCorrection(context, seed + 23, pattern, name);
+  const blessing = divineBlessing(context, seed + 37, pattern, name);
   return `${scene}. ${name}, ${pattern.strength}, but ${pattern.shadow}; ${action}. ${blessing}.`;
 }
 
 function divineSceneOpening(context, seed = 0, name = "") {
   const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const area = String(context.dailyArea || "").toLowerCase();
   if (/\b(wallet|receipt|payment|bill|amount|money)\b/.test(scene)) {
     return pickDivine([
       "The receipt is not a warning; it is the price of fear becoming visible",
       "The wallet is not judging you; it is asking which fear still gets paid",
-      "The payment line is not small; it is where self-respect asks for a throne"
-    ], seed, scene);
+      "The payment line is not small; it is where self-respect asks for a throne",
+      "The bill is not a verdict; it is a small place where dignity can stand"
+    ], seed, scene, area, name);
   }
   if (/\b(message|reply|conversation|call|sentence|unsent)\b/.test(scene)) {
-    return pickDivine([
-      "The unsent reply is not silence; it is self-respect asking for a crown",
+    const deviceSeed = /\b(message|reply|text|screen|notification|inbox)\b/.test(scene);
+    return pickDivine(deviceSeed ? [
+      "The unread message is not a verdict; it is a place for one honest line",
+      "The reply window is not a courtroom; it is a place for one clean answer",
+      "The phone is not asking for performance; it is asking for timing",
+      "The screen is not proof of love; it is a gate for measured words"
+    ] : [
+      "The unsent sentence is not silence; it is self-respect finding honest words",
       "The conversation is not a test of love; it is a gate for truth",
-      "The held-back sentence is not weakness; it is power waiting for clean words"
-    ], seed, scene);
+      "The held-back sentence is not weakness; it is power waiting for clean words",
+      "The call is not a courtroom; it is a place for one honest line"
+    ], seed, scene, area, name);
   }
   if (/\b(door|keys|bag|shoes|charger|errand)\b/.test(scene)) {
     return pickDivine([
       "The half-closed door is not rejection; it is a threshold asking who enters your peace",
       "The keys are not lost; your courage is deciding which life gets opened",
-      "The door is not closed; your doubt keeps rehearsing the threshold"
-    ], seed, scene);
+      "The doorway is not arguing with you; it is asking for one clean exit",
+      "The bag near the door is not pressure; it is a cue that movement can begin"
+    ], seed, scene, area, name);
   }
   if (/\b(notebook|page|pen|line|written|write|draft)\b/.test(scene)) {
     return pickDivine([
-      "The unfinished line is not empty; it is your courage waiting for a signature",
+      "The waiting page is not empty; it is courage asking for a signature",
       "The pen is not waiting for permission; it is waiting for your command",
-      "The page is not blank; it is a witness asking whether fear still edits you"
-    ], seed, scene);
+      "The page is not blank; it is a witness asking whether fear still edits you",
+      "The notebook margin is not a delay; it is one brave sentence asking to land"
+    ], seed, scene, area, name);
   }
   if (/\b(mirror)\b/.test(scene)) {
     const mirrorLines = [
@@ -76,58 +87,66 @@ function divineSceneOpening(context, seed = 0, name = "") {
       "The calendar is not chasing you; it is asking which promise deserves a throne",
       "The marked hour is not pressure; it is destiny testing your obedience",
       "The open slot is not empty; it is a gate waiting for one brave promise"
-    ], seed, scene);
+    ], seed, scene, area, name);
   }
   if (/\b(tab|mind|worry|thought)\b/.test(scene)) {
     return pickDivine([
       "The old tab in your mind is not prophecy; it is fear wearing a familiar crown",
       "The returning thought is not revelation; it is fear asking to rule again",
       "The worry is not wisdom; it is an old priest preaching from a broken altar"
-    ], seed, scene);
+    ], seed, scene, area, name);
+  }
+  if (/\bkitchen counter\b|\bcounter before\b/.test(scene)) {
+    return pickDivine([
+      "The kitchen counter is not asking for perfection; it is asking for one practical beginning",
+      "The counter before the first task is not disorder; it is a place for the day to choose one command",
+      "The kitchen counter is not a small scene; it is where the first honest action can land"
+    ], seed, scene, area, name);
   }
   if (/\b(list|item|task|work|promise)\b/.test(scene)) {
     return pickDivine([
       "The list is not heavy; it is destiny asking for obedience, not debate",
       "The unfinished task is not a burden; it is a gate disguised as duty",
       "The promise is not too large; your fear keeps making it wear a crown"
-    ], seed, scene);
+    ], seed, scene, area, name);
   }
   if (/\b(meal|food|breakfast|lunch|dinner|delayed|delay|recovery)\b/.test(scene)) {
     return pickLine([
       "The delayed thing before you is not denial; it is initiation wearing patience",
       "The delay is not a verdict; it is a threshold asking for allegiance",
       "The delayed hour is not punishment; it is where your next self gathers authority"
-    ], seed, scene);
+    ], seed, scene, area, name);
   }
   if (/\b(room|desk|workspace|drawer|chair|counter|floor|domestic)\b/.test(scene)) {
     return pickDivine([
       "The room is not chaos; it is a kingdom waiting for one command",
       "The desk is not accusing you; it is asking which version of you will lead",
       "The open drawer is not disorder; it is a small throne left unattended"
-    ], seed, scene);
+    ], seed, scene, area, name);
   }
   const anchor = divineSceneAnchor(scene);
   return pickDivine([
     `The ${anchor} before you is not small; it is a gate asking for courage`,
     `The ${anchor} is not random; it is where your old fear has been named`,
-    `The ${anchor} is not ordinary; it is where your next self asks to enter`
-  ], seed, scene, anchor);
+    `The ${anchor} is not ordinary; it is where your next self asks to enter`,
+    `The ${anchor} is not background; it is the first sign asking for a cleaner choice`
+  ], seed, scene, area, anchor, name);
 }
 
-function divineLifePattern(context, seed = 0) {
+function divineLifePattern(context, seed = 0, name = "") {
   const area = String(context.dailyArea || "").toLowerCase();
   const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
   const knot = String(context.emotionalKnot || context.innerWeather || "").toLowerCase();
 
-  if (isAmbitionArea(area)) return divineAmbitionPattern(seed, area, scene, knot);
-  if (isMoneyArea(area)) return divineMoneyPattern(seed, area, scene, knot);
-  if (isSelfArea(area)) return divineSelfPattern(seed, area, scene, knot);
-  if (isRelationshipArea(area)) return divineRelationshipPattern(seed, area, scene, knot);
+  if (isAmbitionArea(area)) return divineAmbitionPattern(seed, area, scene, knot, name);
+  if (isMoneyArea(area)) return divineMoneyPattern(seed, area, scene, knot, name);
+  if (isSelfArea(area)) return divineSelfPattern(seed, area, scene, knot, name);
+  if (isRelationshipArea(area)) return divineRelationshipPattern(seed, area, scene, knot, name);
 
-  if (/\b(wallet|receipt|payment|bill|amount|money)\b/.test(scene)) return divineMoneyPattern(seed, area, scene, knot);
-  if (/\b(page|pen|task|draft|work|list|notebook|line)\b/.test(scene)) return divineAmbitionPattern(seed, area, scene, knot);
-  if (/\b(room|desk|mirror|drawer|chair|counter|delay|delayed)\b/.test(scene)) return divineSelfPattern(seed, area, scene, knot);
-  if (/\b(reply|conversation|door|message|sentence|call|unsent)\b/.test(scene)) return divineRelationshipPattern(seed, area, scene, knot);
+  if (/\b(wallet|receipt|payment|bill|amount|money)\b/.test(scene)) return divineMoneyPattern(seed, area, scene, knot, name);
+  if (/\b(page|pen|task|draft|work|list|notebook|line)\b/.test(scene)) return divineAmbitionPattern(seed, area, scene, knot, name);
+  if (/\b(room|desk|mirror|drawer|chair|counter|delay|delayed)\b/.test(scene)) return divineSelfPattern(seed, area, scene, knot, name);
+  if (/\b(reply|conversation|door|message|sentence|call|unsent)\b/.test(scene)) return divineRelationshipPattern(seed, area, scene, knot, name);
 
   return pickLine([
     {
@@ -150,7 +169,7 @@ function divineLifePattern(context, seed = 0) {
       strength: "your discernment can hear the clean answer early",
       shadow: "it gets tired when every choice is forced to survive another trial"
     }
-  ], seed, area, scene, knot);
+  ], seed, area, scene, knot, name);
 }
 
 function isAmbitionArea(area) {
@@ -169,7 +188,7 @@ function isRelationshipArea(area) {
   return /relationship|friendship|belonging|family|social|love|conversation/.test(area);
 }
 
-function divineRelationshipPattern(seed, area, scene, knot) {
+function divineRelationshipPattern(seed, area, scene, knot, name = "") {
   return pickDivine([
     {
       lane: "relationship",
@@ -179,7 +198,7 @@ function divineRelationshipPattern(seed, area, scene, knot) {
     {
       lane: "relationship",
       strength: "your warmth is real and it knows how to protect others",
-      shadow: "it becomes self-abandonment when every request receives the whole kingdom"
+      shadow: "it becomes self-abandonment when every request receives more than the moment deserves"
     },
     {
       lane: "relationship",
@@ -196,10 +215,10 @@ function divineRelationshipPattern(seed, area, scene, knot) {
       strength: "your presence has the rare gift of making distance softer",
       shadow: "it loses its grace when you chase proof from people who already received enough"
     }
-  ], seed, area, scene, knot);
+  ], seed, area, scene, knot, name);
 }
 
-function divineMoneyPattern(seed, area, scene, knot) {
+function divineMoneyPattern(seed, area, scene, knot, name = "") {
   return pickDivine([
     {
       lane: "money",
@@ -226,15 +245,15 @@ function divineMoneyPattern(seed, area, scene, knot) {
       strength: "your patience can turn scarcity into strategy",
       shadow: "it hardens when fear is allowed to call itself wisdom"
     }
-  ], seed, area, scene, knot);
+  ], seed, area, scene, knot, name);
 }
 
-function divineAmbitionPattern(seed, area, scene, knot) {
+function divineAmbitionPattern(seed, area, scene, knot, name = "") {
   return pickDivine([
     {
       lane: "ambition",
       strength: "your ambition carries real fire",
-      shadow: "it keeps asking fear for permission before letting the work be seen"
+      shadow: ambitionPermissionShadow(seed, area, scene, name)
     },
     {
       lane: "ambition",
@@ -244,7 +263,7 @@ function divineAmbitionPattern(seed, area, scene, knot) {
     {
       lane: "ambition",
       strength: "your mind can turn raw material into something rare",
-      shadow: "it becomes a cage when every draft must defend your destiny"
+      shadow: ambitionDraftShadow(seed, area, scene, name)
     },
     {
       lane: "ambition",
@@ -254,27 +273,47 @@ function divineAmbitionPattern(seed, area, scene, knot) {
     {
       lane: "ambition",
       strength: "your calling is not weak just because it asks for repetition",
-      shadow: "it dims when you treat imperfect action like an insult to destiny"
+      shadow: "it dims when a rough first step is treated as a verdict"
     },
     {
       lane: "ambition",
       strength: "your focus can become a weapon of grace",
       shadow: "it scatters when every new doubt is welcomed as counsel"
     }
-  ], seed, area, scene, knot);
+  ], seed, area, scene, knot, name);
 }
 
-function divineSelfPattern(seed, area, scene, knot) {
+function ambitionPermissionShadow(seed, area, scene, name = "") {
+  return pickLine([
+    "it keeps handing fear the stamp before the work reaches daylight",
+    "it pauses at the threshold whenever doubt asks to inspect the work first",
+    "it lets hesitation review the doorway before the visible move begins",
+    "it gives old fear too much authority over the first public step",
+    "it waits for certainty to approve what practice has already earned"
+  ], seed, area, scene, name, "ambition-permission-shadow");
+}
+
+function ambitionDraftShadow(seed, area, scene, name = "") {
+  return pickLine([
+    "it tightens when one rough page is forced to audition for the whole future",
+    "it becomes cramped when the first version has to prove the entire path",
+    "it loses speed when a useful draft is treated like a final verdict",
+    "it turns sharp when early work is asked to justify the whole calling",
+    "it stalls when the page must carry more destiny than evidence"
+  ], seed, area, scene, name, "ambition-draft-shadow");
+}
+
+function divineSelfPattern(seed, area, scene, knot, name = "") {
   return pickDivine([
     {
       lane: "self",
-      strength: "your tenderness is sacred and it notices what others miss",
-      shadow: "it becomes a trap when agreement arrives before truth"
+      strength: selfTenderStrength(seed, area, scene, name),
+      shadow: selfAgreementShadow(seed, area, scene, name)
     },
     {
       lane: "self",
-      strength: "your private world has a holy intelligence",
-      shadow: "it turns against you when silence becomes avoidance instead of protection"
+      strength: selfPrivateStrength(seed, scene, name),
+      shadow: selfPrivateShadow(seed, scene, name)
     },
     {
       lane: "self",
@@ -288,99 +327,281 @@ function divineSelfPattern(seed, area, scene, knot) {
     },
     {
       lane: "self",
-      strength: "your inner life is deeper than the noise around it",
-      shadow: "it turns heavy when every delay is treated like a sentence from fate"
+      strength: selfInnerLifeStrength(seed, area, scene, name),
+      shadow: selfDelayShadow(seed, area, scene, name)
     }
-  ], seed, area, scene, knot);
+  ], seed, area, scene, knot, name);
 }
 
-function divineCorrection(context, seed = 0, pattern = {}) {
+function selfPrivateStrength(seed, scene, name = "") {
+  return pickLine([
+    "your inner room has a holy intelligence",
+    "your quiet life notices what the public day misses",
+    "your private rhythm knows when the answer has become too loud",
+    "your solitude can hear the honest answer early",
+    "your inward world can protect the truth before noise arrives"
+  ], seed, scene, name, "self-private-strength");
+}
+
+function selfPrivateShadow(seed, scene, name = "") {
+  return pickLine([
+    "it turns against you when silence becomes avoidance instead of protection",
+    "it gets heavy when quiet becomes a hiding place for the real answer",
+    "it loses wisdom when privacy is used to delay the clean response",
+    "it becomes tiring when retreat replaces the boundary that should be spoken",
+    "it starts costing peace when stillness turns into postponed truth"
+  ], seed, scene, name, "self-private-shadow");
+}
+
+function selfAgreementShadow(seed, area, scene, name = "") {
+  return pickLine([
+    "it gets tangled when agreement arrives before the honest answer",
+    "it becomes costly when yes appears before the truth has shoes on",
+    "it loses protection when peace is purchased before clarity arrives",
+    "it turns heavy when consent is offered before the inner voice speaks",
+    "it becomes tiring when harmony is chosen before the real answer lands"
+  ], seed, area, scene, name, "self-agreement-shadow");
+}
+
+function selfTenderStrength(seed, area, scene, name = "") {
+  return pickLine([
+    "your tenderness notices the small truth under the room's noise",
+    "your care can hear what the louder moment misses",
+    "your softness carries more intelligence than pressure admits",
+    "your inner gentleness sees where the day needs protection",
+    "your sensitivity can recognize the real need early"
+  ], seed, area, scene, name, "self-tender-strength");
+}
+
+function selfDelayShadow(seed, area, scene, name = "") {
+  return pickLine([
+    "it gets heavier when waiting is mistaken for a final answer",
+    "it loses room when delay is allowed to sound like destiny",
+    "it becomes burdened when a slow result is treated as judgment",
+    "it tires when postponed timing is asked to explain your worth",
+    "it contracts when patience starts sounding like rejection"
+  ], seed, area, scene, name, "self-delay-shadow");
+}
+
+function selfInnerLifeStrength(seed, area, scene, name = "") {
+  return pickLine([
+    "your inner life can hear the truth beneath the noise",
+    "your private depth notices what the louder day misses",
+    "your inward world keeps a wiser rhythm than the pressure",
+    "your quiet perception can sort signal from noise early",
+    "your hidden steadiness knows when the room has become too loud"
+  ], seed, area, scene, name, "self-inner-life-strength");
+}
+
+function divineCorrection(context, seed = 0, pattern = {}, name = "") {
   const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const area = String(context.dailyArea || "").toLowerCase();
   if (pattern.lane === "relationship") {
     return pickDivine([
       "answer the real request and protect the silence after it",
-      "choose the clean sentence and stop offering your whole kingdom as proof",
-      "send the truth without turning it into a confession"
-    ], seed, scene, pattern.lane);
+      "one clean sentence is enough; extra proof stays outside",
+      /\b(door|keys|bag|shoes|charger|errand)\b/.test(scene)
+        ? "send the truth at the threshold without adding a confession"
+        : "send the truth once and leave the confession outside",
+      "name the boundary once and leave affection free from performance",
+      "the real request gets one answer, and the rest can stay quiet"
+    ], seed, scene, area, pattern.lane, name);
   }
   if (pattern.lane === "money") {
     return pickDivine([
       "check the amount once and choose the expense your dignity can stand behind",
       "decide the number without letting panic sit on the throne",
       "close the money question before fear starts charging interest"
-    ], seed, scene, pattern.lane);
+    ], seed, scene, area, pattern.lane, name);
   }
   if (pattern.lane === "ambition") {
     return pickDivine([
-      "finish the visible piece and stop asking fear to bless the work",
+      ambitionPrimaryAction(seed, area, scene, name),
       "show the rough version before doubt crowns itself again",
-      "choose the path you already understand and let discipline become the key"
-    ], seed, scene, pattern.lane);
+      ambitionPathAction(seed, area, scene, name),
+      "put one finished mark on the work before doubt opens another review",
+      ambitionFinishAction(seed, area, scene, name)
+    ], seed, scene, area, pattern.lane, name);
   }
   if (pattern.lane === "self") {
     return pickDivine([
-      "choose the plain no and protect it from apology",
+      "choose the quiet no and let apology wait outside",
       "close the old performance and keep the truth you heard first",
-      "protect the private answer before the room teaches you to abandon it"
-    ], seed, scene, pattern.lane);
+      /\bkitchen|counter|room\b/.test(scene)
+        ? "put the first answer on one clean surface before the room votes"
+        : selfFirstTruthAction(seed, area, scene, name),
+      "say the necessary no once and keep the answer intact",
+      selfTruthApologyAction(seed, area, scene, name),
+      "let the no stay simple enough to keep after the mood changes",
+      selfAnswerBoundaryAction(seed, area, scene, name)
+    ], seed, scene, area, pattern.lane, name);
   }
   return pickDivine([
     "choose the path you already understand and stop asking doubt for a second prophecy",
     "finish the brave move before fear turns counsel into delay",
     "close the old argument and let one obedient action open the gate"
-  ], seed, scene, pattern.lane);
+  ], seed, scene, area, pattern.lane, name);
 }
 
-function divineBlessing(context, seed = 0, pattern = {}) {
+function ambitionPathAction(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "finish the next familiar step before doubt asks for a new map",
+    "show one known step before doubt reopens the case",
+    "put the clearest step on the page before certainty asks for another sign",
+    "submit the useful piece before doubt demands a different doorway",
+    "mark the first disciplined step before the plan grows again"
+  ], seed, area, scene, name, "ambition-path-action");
+}
+
+function ambitionPrimaryAction(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "finish the visible piece before fear asks to bless the work",
+    "show one usable section before doubt asks for ceremony",
+    "put the work in daylight before fear starts requesting proof",
+    "mark the practical finish before the private review expands",
+    "submit the useful part before hesitation crowns itself"
+  ], seed, area, scene, name, "ambition-primary-action");
+}
+
+function ambitionFinishAction(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "finish the visible piece before fear asks for another blessing",
+    "show the useful draft before doubt turns the doorway into a trial",
+    "mark one completed piece before the private verdict grows louder",
+    "submit the workable part before certainty asks for another sign",
+    "close the first useful section before doubt starts reviewing the whole path"
+  ], seed, area, scene, name, "ambition-finish-action");
+}
+
+function selfPrivatePeaceBlessing(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "Peace returns when the private answer is allowed to stay whole",
+    "The next gate respects the self that keeps its quiet truth intact",
+    "Relief arrives when the inner answer no longer has to bargain",
+    "The private truth keeps its strength when the room asks it to shrink",
+    "Calm becomes real when the private answer keeps its edge"
+  ], seed, area, scene, name, "self-private-peace-blessing");
+}
+
+function selfFirstTruthAction(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "protect the first truth before the day trains you to trade it away",
+    "keep the first answer intact before apology starts negotiating",
+    "hold the quiet truth before the old performance asks to manage it",
+    "name the clean response before the mood turns it into a debate",
+    "place the first truth where guilt cannot rewrite it"
+  ], seed, area, scene, name, "self-first-truth-action");
+}
+
+function selfTruthApologyAction(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "keep the first answer honest before apology tries to arrange the room",
+    "keep the clean truth standing before guilt begins managing the mood",
+    "protect the necessary line before apology turns it into a performance",
+    "protect the quiet answer before guilt asks to soften every edge",
+    "keep the answer plain before old guilt starts rearranging the room"
+  ], seed, area, scene, name, "self-truth-apology-action");
+}
+
+function selfAnswerBoundaryAction(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "give the first answer a clean edge before the room can vote",
+    "protect the first answer before the mood asks for revisions",
+    "keep the answer small before the room turns it into a trial",
+    "place one boundary around the answer before guilt edits it",
+    "name the answer's edge before old peacekeeping takes over"
+  ], seed, area, scene, name, "self-answer-boundary-action");
+}
+
+function divineBlessing(context, seed = 0, pattern = {}, name = "") {
   const scene = String(context.openingScene || context.dailyScene || "").toLowerCase();
+  const area = String(context.dailyArea || "").toLowerCase();
   if (pattern.lane === "relationship") {
     return pickDivine([
       "The blessing belongs to the version of you that stops auditioning for the love already meant to recognize you",
-      "The right connection meets the clearer you, not the exhausted one performing endless proof",
+      "The right connection meets the steadier you, not the overextended one proving every feeling",
       "Peace enters faster when your heart stops confusing access with devotion",
-      "The heart rises when love no longer has to survive an examination"
-    ], seed, pattern.lane, scene);
+      "The heart rises when love no longer has to survive an examination",
+      "Closeness becomes cleaner when care arrives with timing, not performance",
+      "Love feels safer when your answer has an edge it can actually keep",
+      "The right bond respects the version of you that no longer overpays for proof",
+      "Warmth becomes trustworthy when it stops carrying the whole room"
+    ], seed, pattern.lane, scene, area, name);
   }
   if (pattern.lane === "money") {
     return pickDivine([
       "Dignity returns when fear no longer holds the pen over your future",
       "The blessing follows the hand that can decide without begging panic for approval",
       "Provision respects the hand that can decide without worshipping the number"
-    ], seed, pattern.lane, scene);
+    ], seed, pattern.lane, scene, area, name);
   }
   if (pattern.lane === "ambition") {
     return pickDivine([
-      "The path opens for the one who lets action speak before fear can preach",
+      ambitionBlessingLine(seed, area, scene, name),
       "Your rise begins where the explanation ends and the work finally stands in light",
-      "The crown comes closer when discipline stops waiting to feel chosen"
-    ], seed, pattern.lane, scene);
+      ambitionDisciplineBlessing(seed, area, scene, name),
+      "Recognition has more room when the work receives one finished mark",
+      "The next door opens when practice becomes visible before approval arrives",
+      "The work steadies when one completed piece is allowed to be enough for tonight"
+    ], seed, pattern.lane, scene, area, name);
   }
   if (pattern.lane === "self") {
     if (/\b(page|pen|line|notebook|draft)\b/.test(scene)) {
       return pickDivine([
         "Your light returns when the page receives truth instead of another disguise",
         "The next gate opens when the written thing stops asking fear to supervise it",
-        "The blessing stays with the truth you stop editing to please the past"
-      ], seed, pattern.lane, scene);
+        selfPageTruthBlessing(seed, area, scene, name)
+      ], seed, pattern.lane, scene, area, name);
     }
     if (/\b(promise|list|task|work|item)\b/.test(scene)) {
       return pickDivine([
         "The promise becomes lighter when it no longer has to carry your whole worth",
         "The blessing stays with the self that stops turning duty into a verdict",
         "The next gate opens when one task stops pretending to be your entire destiny"
-      ], seed, pattern.lane, scene);
+      ], seed, pattern.lane, scene, area, name);
     }
     return pickDivine([
       "The blessing stays with the self you stop abandoning to keep the room peaceful",
       "Your light returns when loyalty to yourself becomes the first offering",
-      "The next gate opens for the version of you that no longer mistakes surrender for kindness"
-    ], seed, pattern.lane, scene);
+      "The next gate opens for the version of you that no longer mistakes surrender for kindness",
+      selfPrivatePeaceBlessing(seed, area, scene, name)
+    ], seed, pattern.lane, scene, area, name);
   }
   return pickDivine([
     "The gate opens when obedience becomes louder than the old fear",
     "The blessing moves toward the self that stops mistaking delay for denial",
     "Your path grows brighter when courage receives the first vote"
-  ], seed, pattern.lane, scene);
+  ], seed, pattern.lane, scene, area, name);
+}
+
+function ambitionBlessingLine(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "The path opens when action speaks before fear starts preaching",
+    "The next opening arrives when the work answers before doubt performs",
+    "Momentum returns when action carries the proof fear wanted to explain",
+    "The gate loosens when effort becomes visible before the old sermon starts",
+    "Progress comes closer when the finished piece speaks first"
+  ], seed, area, scene, name, "ambition-blessing");
+}
+
+function selfPageTruthBlessing(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "The page keeps its power when the truth stops editing itself for the past",
+    "Written truth becomes lighter when fear is no longer supervising it",
+    "The next page opens when the honest line is allowed to stay simple",
+    "Truth returns through the sentence that no longer performs for old approval",
+    "The written answer steadies when it stops asking the past for permission"
+  ], seed, area, scene, name, "self-page-truth-blessing");
+}
+
+function ambitionDisciplineBlessing(seed = 0, area = "", scene = "", name = "") {
+  return pickLine([
+    "Discipline starts looking like favor when one finished mark arrives on time",
+    "The next opening respects the work that shows up before approval",
+    "Progress gets nearer when practice leaves a visible mark first",
+    "Recognition has a doorway when discipline stops bargaining with mood",
+    "The path steadies when effort becomes visible before praise appears"
+  ], seed, area, scene, name, "ambition-discipline-blessing");
 }
 
 function divineInnerCue(pattern = {}, seed = 0) {

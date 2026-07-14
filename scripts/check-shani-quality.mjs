@@ -206,7 +206,7 @@ function getShaniQualityCases() {
       user: shaniUser("Vikram Rao", "1984-05-30", "22:05", "Hyderabad"),
       question: "A property court conflict is draining me. What conduct will keep Shani support clean?",
       report: shaniReport({ phaseIndex: 2, phaseTitle: "Peak phase", moonSign: "Pisces", saturnSign: "Pisces", active: true }),
-      membership: membership("full", "Remaining timeline")
+      membership: membership("full", "Remaining period of Saade Sati")
     }
   ];
 }

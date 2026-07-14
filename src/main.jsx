@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowLeft,
@@ -13,6 +13,8 @@ import {
   LogIn,
   LogOut,
   MessageCircle,
+  Pause,
+  Play,
   RefreshCw,
   Send,
   Settings,
@@ -62,6 +64,7 @@ const NATIVE_DEMO_AUTH_DEFAULT = IS_NATIVE_MOBILE_SHELL && !API_BASE_URL && LOCA
 const LOCAL_AUTH_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_SETTING === "true" || import.meta.env.MODE !== "production" || NATIVE_DEMO_AUTH_DEFAULT;
 const LOCAL_READING_FALLBACK_ENABLED = LOCAL_AUTH_FALLBACK_ENABLED && !API_BASE_URL;
 const LOCAL_PAID_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_PAID_FALLBACK === "true" || import.meta.env.MODE !== "production";
+const LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED = import.meta.env.VITE_LOCAL_ASTRO_SOLVE_FALLBACK === "true";
 const DEMO_PAYMENTS_ENABLED = import.meta.env.VITE_DEMO_PAYMENTS === "true" || import.meta.env.MODE !== "production";
 const PLACE_SUGGESTION_MIN_CHARS = 2;
 const PLACE_SUGGESTION_LIMIT = 6;
@@ -78,11 +81,20 @@ const TABS = [
 ];
 
 const MEMBERSHIP_PLANS = [
-  { id: "3m", name: "3 months", price: "Starter guidance" },
-  { id: "6m", name: "6 months", price: "Steady remedies" },
-  { id: "1y", name: "1 year", price: "Full-year map" },
-  { id: "full", name: "Remaining timeline", price: "Complete guide map" }
+  { id: "3m", name: "Shani Aarambh", price: "Shagun ke Rs 251", detail: "3 month" },
+  { id: "6m", name: "Shani Dhairya", price: "Shagun ke Rs 501", detail: "6 month" },
+  { id: "1y", name: "Shani Niyam", price: "Shagun ke Rs 1001", detail: "1 year" },
+  { id: "full", name: "Shani Sampoorna", price: "Shagun ke Rs 1111", detail: "Remaining period of Saade Sati" }
 ];
+
+const FREE_SHANI_RESOURCES = {
+  hanumanChalisa: {
+    title: "Hanuman Chalisa",
+    audioUrl: "/assets/hanuman-chalisa-user-upload.mp3",
+    imageUrl: "/assets/hanuman-meditating-symbol.jpeg",
+    attribution: "User-provided audio."
+  }
+};
 
 const ASTRO_PROMPTS = [
   "Why does this keep returning to me?",
@@ -1002,7 +1014,7 @@ function AstroSolvesTab({ user, updateUser }) {
     let cancelled = false;
 
     async function syncAstroAllowance() {
-      if (LOCAL_AUTH_FALLBACK_ENABLED) {
+      if (LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {
         setServerAllowance(null);
         return;
       }
@@ -1089,13 +1101,13 @@ function AstroSolvesTab({ user, updateUser }) {
         return;
       }
 
-      if (!response.ok && !LOCAL_AUTH_FALLBACK_ENABLED) {
+      if (!response.ok && !LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {
         setSolveStatus(data.error || "Astro Solves is unavailable. Please try again shortly.");
         trackEvent("astro_solve_failed", { status: response.status });
         return;
       }
 
-      if (response.ok && data.stored === false && !LOCAL_AUTH_FALLBACK_ENABLED) {
+      if (response.ok && data.stored === false && data.generationSource !== "openai" && !LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {
         setSolveStatus("Analysis could not be saved. Please try again shortly.");
         trackEvent("astro_solve_failed", { reason: "not_stored" });
         return;
@@ -1115,7 +1127,7 @@ function AstroSolvesTab({ user, updateUser }) {
       setSolveStatus("A pattern has opened.");
       trackEvent("astro_solve_completed", { source: insight.source || "api" });
     } catch {
-      if (!LOCAL_AUTH_FALLBACK_ENABLED) {
+      if (!LOCAL_ASTRO_SOLVE_FALLBACK_ENABLED) {
         setSolveStatus("Astro Solves is unavailable. Please try again shortly.");
         trackEvent("astro_solve_failed", { reason: "request_error" });
         return;
@@ -1710,6 +1722,11 @@ function ShaniTab({ user, updateUser }) {
   const countdown = useMemo(() => getCountdown(report.endDate, now), [report.endDate, now]);
   const verifiedMoonSign = normalizeSiderealSign(user.vedicMoonSignOverride);
   const serverMembership = serverDashboard?.membership?.active ? serverDashboard.membership : null;
+  const shaniPlans = normalizeShaniPlans(serverDashboard?.plans);
+  const freeShaniResources = {
+    ...FREE_SHANI_RESOURCES,
+    ...(serverDashboard?.freeResources || {})
+  };
   const localMemberPlanId = LOCAL_PAID_FALLBACK_ENABLED ? user.memberPlan : "";
   const effectiveMemberPlanId = serverMembership?.planId || localMemberPlanId;
   const memberPlan = serverMembership
@@ -1718,7 +1735,7 @@ function ShaniTab({ user, updateUser }) {
         name: serverMembership.planName,
         price: serverMembership.endsAt ? `Active until ${formatDate(serverMembership.endsAt)}` : "Synced membership"
       }
-    : MEMBERSHIP_PLANS.find((plan) => plan.id === effectiveMemberPlanId);
+    : shaniPlans.find((plan) => plan.id === effectiveMemberPlanId);
   const panditMembership = serverMembership || (LOCAL_PAID_FALLBACK_ENABLED && memberPlan ? {
     active: true,
     planId: memberPlan.id,
@@ -1948,13 +1965,15 @@ function ShaniTab({ user, updateUser }) {
         ))}
       </div>
 
+      <ShaniFreeAudio resource={freeShaniResources.hanumanChalisa} />
+
       <div className="membership-block shani-vow-panel">
         <div className="section-heading-row">
           <h3>Remedy membership</h3>
           {memberPlan && <span className="member-badge"><Check size={14} aria-hidden="true" /> {memberPlan.name}</span>}
         </div>
         <div className="plan-grid">
-          {MEMBERSHIP_PLANS.map((plan) => (
+          {shaniPlans.map((plan) => (
             <button
               type="button"
               key={plan.id}
@@ -1964,6 +1983,7 @@ function ShaniTab({ user, updateUser }) {
             >
               <strong>{plan.name}</strong>
               <span>{activatingPlanId === plan.id ? "Opening checkout" : plan.price}</span>
+              {plan.detail && <small>{plan.detail}</small>}
             </button>
           ))}
         </div>
@@ -2000,41 +2020,116 @@ function ShaniTab({ user, updateUser }) {
   );
 }
 
-function ShaniRemedyMap({ map }) {
+function ShaniFreeAudio({ resource }) {
+  const audioRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  if (!resource?.audioUrl) return null;
+
+  const toggleAudio = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      try {
+        await audio.play();
+      } catch {
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    audio.pause();
+  };
+
+  const updateProgress = () => {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    setProgress(Math.min(100, Math.max(0, (audio.currentTime / audio.duration) * 100)));
+  };
+
+  const restartProgress = () => {
+    setIsPlaying(false);
+    setProgress(0);
+  };
+
   return (
-    <article className="remedy-map">
+    <article className="shani-audio-panel" aria-label={resource.title || "Hanuman Chalisa audio"}>
+      <div className="shani-audio-heading">
+        <HanumanDhyanSymbol src={resource.imageUrl} />
+        <strong>{resource.title || "Hanuman Chalisa"}</strong>
+      </div>
+      <div className="shani-audio-player">
+        <button type="button" className="shani-audio-toggle" onClick={toggleAudio} aria-label={isPlaying ? "Pause Hanuman Chalisa" : "Play Hanuman Chalisa"}>
+          {isPlaying ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
+        </button>
+        <div className="shani-audio-wave" aria-hidden="true">
+          <span className={isPlaying ? "active" : ""} />
+          <span className={isPlaying ? "active" : ""} />
+          <span className={isPlaying ? "active" : ""} />
+          <span className={isPlaying ? "active" : ""} />
+        </div>
+        <div className="shani-audio-progress" aria-hidden="true">
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <audio
+          ref={audioRef}
+          preload="none"
+          src={resource.audioUrl}
+          onEnded={restartProgress}
+          onPause={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          onTimeUpdate={updateProgress}
+          className="shani-audio-element"
+        >
+          Your browser does not support audio playback.
+        </audio>
+      </div>
+    </article>
+  );
+}
+
+function HanumanDhyanSymbol({ src }) {
+  return (
+    <img className="hanuman-dhyan-symbol" src={src || "/assets/hanuman-meditating-symbol.jpeg"} alt="" aria-hidden="true" loading="lazy" />
+  );
+}
+
+function ShaniRemedyMap({ map }) {
+  const pointers = map.memberGuide?.pointers || [];
+
+  return (
+    <article className="remedy-map member-guide-map">
       <div className="section-heading-row">
         <h3>Member guide map</h3>
-        <span className="member-badge">{map.renewal?.daysLeft ?? 0} days left</span>
+        <span className="member-badge">{map.plan?.displayDuration || map.plan?.duration || map.planName}</span>
       </div>
-      <div className="remedy-phase">
-        <span>{map.phase?.title}</span>
-        <p>{map.phase?.summary}</p>
-        <p>{map.phase?.pressure}</p>
+      <div className="member-guide-intro">
+        <span>{map.plan?.name || map.planName}</span>
+        <p>{map.memberGuide?.intro || "Your Shani membership gives you a structured remedy path, reminders, and member-only guidance."}</p>
       </div>
-      <div className="remedy-grid">
-        <div>
-          <span>Next 7 days</span>
-          <strong>{map.nextSevenDays?.focus}</strong>
-          <p>{map.nextSevenDays?.action}</p>
-        </div>
-        <div>
-          <span>This month</span>
-          <strong>{map.nextMonth?.focus}</strong>
-          <p>{map.nextMonth?.action}</p>
-        </div>
-      </div>
-      <div className="practice-list">
-        {(map.dailyPractices || []).map((practice) => (
-          <div key={practice.title}>
+      <div className="member-guide-pointers">
+        {pointers.map((pointer) => (
+          <div key={pointer.title}>
             <Check size={15} aria-hidden="true" />
-            <p><strong>{practice.title}</strong> {practice.text}</p>
+            <p><strong>{pointer.title}</strong> {pointer.text}</p>
           </div>
         ))}
       </div>
-      {map.nextSevenDays?.caution && <p className="fine-print">{map.nextSevenDays.caution}</p>}
+      <p className="fine-print">Detailed remedies open inside member guidance and weekly reminders after activation.</p>
     </article>
   );
+}
+
+function normalizeShaniPlans(serverPlans) {
+  if (!Array.isArray(serverPlans) || !serverPlans.length) return MEMBERSHIP_PLANS;
+  return serverPlans.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    price: plan.shagunLabel || plan.price || "Shagun",
+    detail: plan.displayDuration || plan.duration || ""
+  })).filter((plan) => plan.id && plan.name);
 }
 
 function PanditChat({ user, report, membership, useLocalPandit, onClose }) {
@@ -3234,17 +3329,31 @@ function buildPanditReply(text, user, report) {
 
 function buildLocalShaniRemedyMap(report, membership = {}, now = new Date()) {
   const endDate = membership.endsAt ? parseDate(membership.endsAt) : addMonths(now, 3);
-  const phaseLine = report.active
-    ? `Saturn in ${report.saturnSign} is pressing the ${report.phaseTitle.toLowerCase()} toward cleaner responsibility.`
-    : "Saade Sati is not active now, so the work is to strengthen discipline before pressure arrives.";
+  const plan = MEMBERSHIP_PLANS.find((item) => item.id === membership.planId) || MEMBERSHIP_PLANS[0];
 
   return {
-    planName: membership.planName || "Local Shani preview",
+    planName: membership.planName || plan.name || "Local Shani preview",
+    plan: {
+      id: plan.id,
+      name: membership.planName || plan.name,
+      displayDuration: plan.detail,
+      duration: plan.detail
+    },
+    memberGuide: {
+      intro: `${membership.planName || plan.name} gives a ${plan.detail} Shani support map shaped around your Moon-sign guidance.`,
+      pointers: [
+        { title: "Personal Shani map", text: "A chart-based direction for the pressure points most active in your path." },
+        { title: "Weekly guidance rhythm", text: "Timely reminders so the remedy journey stays simple and consistent." },
+        { title: "Daan and seva direction", text: "Offering categories matched to your membership path without overwhelming detail upfront." },
+        { title: "Devotional support", text: "Hanuman Chalisa remains available freely whenever the user needs calm." },
+        { title: "Pandit clarity", text: "Member-only interpretation when a personal situation needs a calmer reading." }
+      ]
+    },
     generatedAt: now.toISOString(),
     phase: {
       title: report.phaseTitle,
-      summary: report.active ? "Keep duties visible, speech measured, and promises smaller than your pride." : "Use this calmer window to prepare routine, repayment, and service.",
-      pressure: phaseLine
+      summary: "Your membership keeps Shani support organized through guidance, reminders, and member-only interpretation.",
+      pressure: "Detailed remedies open inside member guidance and weekly reminders after activation."
     },
     nextSevenDays: {
       focus: report.active ? "Complete one delayed duty" : "Make Saturday a reset",

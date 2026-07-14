@@ -7,6 +7,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/shani-notifications",
+      "schedule": "30 2 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -76,6 +82,10 @@
     {
       "source": "/api/verify-shani-payment",
       "destination": "/api/payments?action=verify-shani-payment"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/readiness?action=health"
     },
     {
       "source": "/:path((?!api/).*)",

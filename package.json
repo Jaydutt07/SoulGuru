@@ -58,7 +58,7 @@
     "readiness:check": "node scripts/check-readiness-contracts.mjs",
     "request:check": "node scripts/check-request-contracts.mjs",
     "security:check": "npm run public-env:check && node scripts/check-release-secrets.mjs",
-    "shani:check": "node scripts/check-shani-contracts.mjs",
+    "shani:check": "node scripts/check-shani-contracts.mjs && node scripts/check-shani-remedy-contracts.mjs",
     "shani:quality": "node scripts/check-shani-quality.mjs",
     "shani:quality:ai": "node scripts/check-shani-quality.mjs --include-ai",
     "soul:cache:check": "node scripts/check-soul-wisdom-cache.mjs",

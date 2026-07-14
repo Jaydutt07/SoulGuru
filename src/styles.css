@@ -4827,6 +4827,15 @@ body {
   font-size: 0.76rem;
 }
 
+.shani-section .plan-card small {
+  display: block;
+  margin-top: 0.45rem;
+  color: rgba(217, 179, 95, 0.72);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
 .shani-section .plan-card.active {
   border-color: rgba(217, 179, 95, 0.46);
   background:
@@ -4837,6 +4846,136 @@ body {
 
 .shani-section .checkout-note {
   color: rgba(248, 240, 223, 0.68);
+}
+
+.shani-audio-panel {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(217, 179, 95, 0.28);
+  border-bottom: 1px solid rgba(248, 240, 223, 0.08);
+  padding: 1rem 0 1.1rem;
+}
+
+.shani-audio-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.shani-audio-heading strong {
+  display: block;
+  color: #f8f0df;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.28rem;
+  line-height: 1.1;
+}
+
+.hanuman-dhyan-symbol {
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 1px solid rgba(217, 179, 95, 0.45);
+  object-fit: cover;
+  object-position: center 42%;
+  box-shadow: 0 0 0 0.18rem rgba(217, 179, 95, 0.08), 0 0.7rem 1.4rem rgba(0, 0, 0, 0.28);
+}
+
+.shani-audio-player {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(248, 240, 223, 0.1);
+  background:
+    linear-gradient(135deg, rgba(217, 179, 95, 0.13), rgba(154, 168, 193, 0.04));
+  padding: 0.72rem;
+}
+
+.shani-audio-toggle {
+  display: inline-grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 1px solid rgba(217, 179, 95, 0.38);
+  border-radius: 50%;
+  background: rgba(248, 240, 223, 0.08);
+  color: #f8f0df;
+}
+
+.shani-audio-toggle:hover {
+  border-color: rgba(217, 179, 95, 0.72);
+  background: rgba(217, 179, 95, 0.14);
+}
+
+.shani-audio-wave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.16rem;
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.shani-audio-wave span {
+  width: 0.14rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: rgba(217, 179, 95, 0.62);
+}
+
+.shani-audio-wave span.active {
+  animation: shaniAudioBars 1.35s ease-in-out infinite;
+}
+
+.shani-audio-wave span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.shani-audio-wave span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.shani-audio-wave span:nth-child(4) {
+  animation-delay: 0.48s;
+}
+
+.shani-audio-progress {
+  position: relative;
+  height: 0.42rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(248, 240, 223, 0.12);
+}
+
+.shani-audio-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d9b35f, #f8f0df);
+}
+
+.shani-audio-element {
+  display: none;
+}
+
+.shani-audio-panel audio {
+  width: 100%;
+  max-width: 100%;
+  height: 2.4rem;
+  color-scheme: dark;
+}
+
+@keyframes shaniAudioBars {
+  0%, 100% {
+    transform: scaleY(0.45);
+    opacity: 0.62;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
 }
 
 .shani-section .remedy-map {
@@ -4861,8 +5000,14 @@ body {
   padding-left: 0.85rem;
 }
 
+.member-guide-intro {
+  border-left: 1px solid rgba(217, 179, 95, 0.38);
+  padding-left: 0.85rem;
+}
+
 .shani-section .remedy-phase span,
-.shani-section .remedy-grid span {
+.shani-section .remedy-grid span,
+.member-guide-intro span {
   color: #d9b35f;
 }
 
@@ -4874,6 +5019,31 @@ body {
 
 .shani-section .remedy-grid strong {
   color: #f8f0df;
+}
+
+.member-guide-pointers {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.member-guide-pointers div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.5rem;
+  border: 1px solid rgba(248, 240, 223, 0.1);
+  border-radius: 0;
+  background: rgba(248, 240, 223, 0.045);
+  padding: 0.72rem;
+}
+
+.member-guide-pointers svg {
+  color: #d9b35f;
+  margin-top: 0.1rem;
+}
+
+.member-guide-pointers p {
+  margin: 0;
 }
 
 @media (max-width: 24rem) {

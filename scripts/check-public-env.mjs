@@ -113,9 +113,13 @@ function checkSupabaseAnonKey() {
 }
 
 function checkDemoFlags() {
+  const localAstroSolveFallback = String(env.VITE_LOCAL_ASTRO_SOLVE_FALLBACK || "false").toLowerCase() === "true";
   const localAuthFallback = String(env.VITE_LOCAL_AUTH_FALLBACK || "false").toLowerCase() === "true";
   const localPaidFallback = String(env.VITE_LOCAL_PAID_FALLBACK || "false").toLowerCase() === "true";
   const demoPayments = String(env.VITE_DEMO_PAYMENTS || "false").toLowerCase() === "true";
+  if (strict && localAstroSolveFallback) {
+    findings.push("VITE_LOCAL_ASTRO_SOLVE_FALLBACK: local Astro Solve fallback must be false for production/release builds.");
+  }
   if (strict && localAuthFallback) {
     findings.push("VITE_LOCAL_AUTH_FALLBACK: local OTP fallback must be false for production/release builds.");
   }

@@ -3,6 +3,7 @@ import {
   ASTRO_SOLVE_FREE_ALLOWANCE,
   ASTRO_SOLVE_MEMBER_BONUS_ALLOWANCE,
   ASTRO_SOLVE_PROMPT_VERSION,
+  ASTRO_SOLVE_RESPONSE_FORMAT,
   ASTRO_SOLVE_SYSTEM_PROMPT,
   createAstroSolve,
   getAstroSolveAllowanceStatus,
@@ -62,6 +63,19 @@ function checkPromptRequiresSafetySupportForSleepAnxiety() {
   ].every(Boolean));
 }
 
+function checkOpenAIResponseFormatRequiresRootAstrologySolution() {
+  pushCheck("Astro Solves OpenAI request uses strict root/astrology/solution schema", [
+    ASTRO_SOLVE_RESPONSE_FORMAT.type === "json_schema",
+    ASTRO_SOLVE_RESPONSE_FORMAT.name === "astro_solve_answer",
+    ASTRO_SOLVE_RESPONSE_FORMAT.strict === true,
+    ASTRO_SOLVE_RESPONSE_FORMAT.schema?.additionalProperties === false,
+    ASTRO_SOLVE_RESPONSE_FORMAT.schema?.required?.join(",") === "root,astrology,solution",
+    ASTRO_SOLVE_RESPONSE_FORMAT.schema?.properties?.root?.type === "string",
+    ASTRO_SOLVE_RESPONSE_FORMAT.schema?.properties?.astrology?.type === "string",
+    ASTRO_SOLVE_RESPONSE_FORMAT.schema?.properties?.solution?.type === "string"
+  ].every(Boolean));
+}
+
 function checkPromptRepairKeepsProfessionalHelpDirect() {
   const source = fs.readFileSync("src/backend/astroSolveService.js", "utf8");
   pushCheck("Astro Solves repair prompt keeps professional-help fixes direct", [
@@ -106,6 +120,8 @@ async function checkExplicitLocalQuotaModeReturnsUnstoredAnswer() {
     result.allowance?.remaining === ASTRO_SOLVE_FREE_ALLOWANCE - 1,
     result.generationSource === "openai",
     result.quality?.passed === true,
+    openAiRequests[0]?.text?.format?.name === "astro_solve_answer",
+    openAiRequests[0]?.text?.format?.strict === true,
     openAiRequests.length === 1
   ].every(Boolean));
 }
@@ -304,6 +320,8 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
     result.allowance?.remaining === 0,
     result.promptVersion === ASTRO_SOLVE_PROMPT_VERSION,
     result.model === "gpt-astro-contract",
+    openAiRequests[0]?.text?.format?.name === "astro_solve_answer",
+    openAiRequests[0]?.text?.format?.schema?.required?.includes("solution"),
     openAiRequests.length === 1
   ].every(Boolean));
   pushCheck("Astro Solves answer is stored with profile and prompt metadata", [
@@ -327,6 +345,56 @@ async function checkPersistedMemberGetsBonusAndStoresAnswer() {
     memoryUpserts[0].metadata?.source === "member",
     memoryUpserts[0].metadata?.model === "gpt-astro-contract",
     /Problem:/.test(memoryUpserts[0].text || "")
+  ].every(Boolean));
+}
+
+async function checkRejectedOpenAIAnswerDoesNotReturnFallback() {
+  const user = astroUser("rejected-openai-answer");
+  const supabase = createFakeSupabase({
+    subscriptions: [activeSubscription(user.id)]
+  });
+  const openAiRequests = [];
+  const memoryUpserts = [];
+  const originalWarn = console.warn;
+  let error = null;
+
+  try {
+    console.warn = () => {};
+    await createAstroSolve({
+      user,
+      question: "Why do I feel anxious before every work presentation?"
+    }, {
+      OPENAI_API_KEY: "test-openai-key"
+    }, {
+      supabase,
+      upsertGuidanceMemory: async (payload) => {
+        memoryUpserts.push(payload);
+        return { configured: true, upserted: true };
+      },
+      createOpenAIClient() {
+        return {
+          responses: {
+            create: async (request) => {
+              openAiRequests.push(request);
+              return { output_text: "{}" };
+            }
+          }
+        };
+      }
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  pushCheck("Invalid OpenAI Astro Solves output errors instead of using local fallback", [
+    error?.statusCode === 502,
+    /OpenAI Astro Solves answer failed quality review/.test(error?.message || ""),
+    openAiRequests.length === 2,
+    openAiRequests.every((request) => request.text?.format?.name === "astro_solve_answer"),
+    memoryUpserts.length === 0,
+    supabase.state.calls.filter((call) => call.table === "astro_solve_questions" && call.operation === "insert").length === 0
   ].every(Boolean));
 }
 
@@ -721,6 +789,7 @@ function printReport() {
 
 async function main() {
   checkPromptRequiresSafetySupportForSleepAnxiety();
+  checkOpenAIResponseFormatRequiresRootAstrologySolution();
   checkPromptRepairKeepsProfessionalHelpDirect();
   await checkLocalQuotaModeRequiresExplicitFlag();
   await checkExplicitLocalQuotaModeReturnsUnstoredAnswer();
@@ -729,6 +798,7 @@ async function main() {
   await checkExpiredSubscriptionDoesNotExtendAllowance();
   await checkClientOnlySubscriptionDoesNotExtendSupabaseQuota();
   await checkPersistedMemberGetsBonusAndStoresAnswer();
+  await checkRejectedOpenAIAnswerDoesNotReturnFallback();
   await checkSubscriptionReadFailureDoesNotCallOpenAI();
   await checkQuestionCountFailureDoesNotCallOpenAI();
   await checkStorageFailureDoesNotReturnAnswer();

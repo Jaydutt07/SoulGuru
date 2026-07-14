@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 import { buildMembershipEmail, buildShaniMembershipEmail, sendEmail } from "./emailService.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
 import { buildShaniReport } from "./shaniService.js";
+import {
+  SHANI_PLAN_DEFINITIONS,
+  normalizeShaniPlanId as normalizeCatalogShaniPlanId
+} from "./shaniRemedyCatalog.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 import {
   buildBackendUserKey,
@@ -16,36 +20,6 @@ const SUBSCRIPTION_SELECT = "id, plan_name, status, starts_at, ends_at, astro_bo
 const SHANI_CURRENCY = "INR";
 const SHANI_PRODUCT_KEY = "shani_remedy";
 const SHANI_MEMBERSHIP_SELECT = "id, plan_id, plan_name, status, starts_at, ends_at, provider, provider_payment_id, provider_subscription_id, metadata, created_at";
-const SHANI_PLAN_DEFINITIONS = Object.freeze({
-  "3m": {
-    id: "3m",
-    name: "3 months",
-    duration: "3 months",
-    envKey: "SHANI_PLAN_3M_PRICE_PAISE",
-    months: 3
-  },
-  "6m": {
-    id: "6m",
-    name: "6 months",
-    duration: "6 months",
-    envKey: "SHANI_PLAN_6M_PRICE_PAISE",
-    months: 6
-  },
-  "1y": {
-    id: "1y",
-    name: "1 year",
-    duration: "1 year",
-    envKey: "SHANI_PLAN_1Y_PRICE_PAISE",
-    months: 12
-  },
-  full: {
-    id: "full",
-    name: "Remaining timeline",
-    duration: "Remaining timeline",
-    envKey: "SHANI_PLAN_FULL_PRICE_PAISE",
-    fullTimeline: true
-  }
-});
 
 export async function createRazorpayOrder({ user = {} }, env = process.env, deps = {}) {
   const keyId = env.RAZORPAY_KEY_ID;
@@ -566,13 +540,7 @@ async function activateShaniRemedyMembership(supabase, {
       provider: "razorpay",
       provider_payment_id: paymentId || null,
       provider_subscription_id: providerSubscriptionId || null,
-      metadata: {
-        order_id: orderId || null,
-        duration: plan.duration,
-        email: user.email || null,
-        phone: user.phone || null,
-        product: SHANI_PRODUCT_KEY
-      }
+      metadata: buildShaniMembershipMetadata({ user, orderId, plan })
     })
     .select(SHANI_MEMBERSHIP_SELECT)
     .single();
@@ -693,6 +661,30 @@ function buildShaniMembershipPayload({ startsAt, endsAt, userKey, paymentId, ord
       user_key: userKey,
       product: SHANI_PRODUCT_KEY
     }
+  };
+}
+
+function buildShaniMembershipMetadata({ user = {}, orderId, plan }) {
+  return {
+    order_id: orderId || null,
+    duration: plan.duration,
+    shagun_label: plan.shagunLabel || null,
+    price_rupees: plan.priceRupees || null,
+    email: user.email || null,
+    phone: user.phone || null,
+    name: user.name || null,
+    user_id: user.id || user.user_id || user.userId || null,
+    birth_date: user.birthDate || user.birth_date || null,
+    birth_time: user.birthTime || user.birth_time || null,
+    birth_place: user.birthPlace || user.birth_place || null,
+    birth_latitude: normalizeNullableNumber(user.birthLatitude || user.birth_latitude),
+    birth_longitude: normalizeNullableNumber(user.birthLongitude || user.birth_longitude),
+    birth_timezone: user.birthTimezone || user.birth_timezone || null,
+    birth_timezone_offset_minutes: normalizeNullableNumber(user.birthTimezoneOffsetMinutes || user.birth_timezone_offset_minutes),
+    birth_place_resolved_label: user.birthPlaceResolvedLabel || user.birth_place_resolved_label || null,
+    birth_place_resolution_source: user.birthPlaceResolutionSource || user.birth_place_resolution_source || null,
+    vedic_moon_sign_override: user.vedicMoonSignOverride || user.vedic_moon_sign_override || null,
+    product: SHANI_PRODUCT_KEY
   };
 }
 
@@ -957,12 +949,7 @@ function getPositiveIntegerEnv(env, key) {
 }
 
 function normalizeShaniPlanId(planId) {
-  const value = String(planId || "").toLowerCase().trim();
-  if (value === "three-months" || value === "3-months" || value === "3months") return "3m";
-  if (value === "six-months" || value === "6-months" || value === "6months") return "6m";
-  if (value === "year" || value === "one-year" || value === "1-year") return "1y";
-  if (value === "remaining" || value === "timeline") return "full";
-  return value || "3m";
+  return normalizeCatalogShaniPlanId(planId);
 }
 
 function buildShaniPlanKey(planId) {
@@ -1042,6 +1029,12 @@ function addYears(date, years) {
   const next = new Date(date);
   next.setFullYear(next.getFullYear() + years);
   return next;
+}
+
+function normalizeNullableNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function hashPayload(rawBody) {

@@ -128,9 +128,9 @@ const rateLimitedRoutes = [
 ];
 
 const intentionallyUnmeteredRoutes = [
-  "health.js",
   "razorpay-webhook.js",
-  "readiness.js"
+  "readiness.js",
+  "shani-notifications.js"
 ];
 
 checkRouteCoverage();

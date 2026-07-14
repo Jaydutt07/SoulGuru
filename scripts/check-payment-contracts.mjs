@@ -189,17 +189,17 @@ async function checkShaniOrderCreationContract() {
     }, {
       RAZORPAY_KEY_ID: "rzp_test_contract",
       RAZORPAY_KEY_SECRET: "contract-secret",
-      SHANI_PLAN_6M_PRICE_PAISE: "54900"
+      SHANI_PLAN_6M_PRICE_PAISE: "50100"
     });
 
     const expectedAuth = `Basic ${Buffer.from("rzp_test_contract:contract-secret").toString("base64")}`;
     const expectedUserKey = buildBackendUserKey(user);
-    const expectedOrderToken = hmac(`order_shani_contract_123|${expectedUserKey}|54900|INR|shani_remedy_6m`, "contract-secret");
+    const expectedOrderToken = hmac(`order_shani_contract_123|${expectedUserKey}|50100|INR|shani_remedy_6m`, "contract-secret");
     pushCheck("Shani Razorpay order request", [
       seen.url === "https://api.razorpay.com/v1/orders",
       seen.method === "POST",
       seen.authorization === expectedAuth,
-      seen.body.amount === 54900,
+      seen.body.amount === 50100,
       seen.body.currency === "INR",
       seen.body.notes?.soulguru_plan === "shani_remedy_6m",
       seen.body.notes?.soulguru_product === "shani_remedy",
@@ -211,8 +211,8 @@ async function checkShaniOrderCreationContract() {
       order.provider === "razorpay",
       order.orderId === "order_shani_contract_123",
       order.planId === "6m",
-      order.planName === "6 months",
-      order.amount === 54900,
+      order.planName === "Shani Dhairya",
+      order.amount === 50100,
       order.currency === "INR",
       order.userKey === expectedUserKey,
       order.orderToken === expectedOrderToken
@@ -476,7 +476,7 @@ async function checkShaniCheckoutVerificationContract() {
   const orderId = "order_shani_checkout";
   const paymentId = "pay_shani_checkout";
   const signature = hmac(`${orderId}|${paymentId}`, secret);
-  const amount = 29900;
+  const amount = 25100;
   const currency = "INR";
   const checkoutUser = {
     id: "shani-checkout-user",
@@ -518,7 +518,7 @@ async function checkShaniCheckoutVerificationContract() {
   }, {
     RAZORPAY_KEY_SECRET: secret,
     PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
-    SHANI_PLAN_3M_PRICE_PAISE: "29900"
+    SHANI_PLAN_3M_PRICE_PAISE: "25100"
   });
 
   pushCheck("Shani checkout verification returns local membership only when explicitly allowed", [
@@ -526,7 +526,7 @@ async function checkShaniCheckoutVerificationContract() {
     result.stored === false,
     result.membership?.active === true,
     result.membership?.planId === "3m",
-    result.membership?.planName === "3 months",
+    result.membership?.planName === "Shani Aarambh",
     result.membership?.provider === "razorpay",
     result.membership?.providerPaymentId === paymentId,
     result.membership?.metadata?.order_id === orderId,
@@ -549,7 +549,7 @@ async function checkShaniCheckoutVerificationContract() {
       signature
     }, {
       RAZORPAY_KEY_SECRET: secret,
-      SHANI_PLAN_3M_PRICE_PAISE: "29900"
+      SHANI_PLAN_3M_PRICE_PAISE: "25100"
     }),
     /Supabase is required/i
   );
@@ -560,7 +560,7 @@ async function checkShaniCheckoutVerificationContract() {
       user: { id: "shani-checkout-user" },
       planId: "6m",
       orderId,
-      amount: 54900,
+      amount: 50100,
       currency,
       orderToken,
       paymentId,
@@ -568,7 +568,7 @@ async function checkShaniCheckoutVerificationContract() {
     }, {
       RAZORPAY_KEY_SECRET: secret,
       PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
-      SHANI_PLAN_6M_PRICE_PAISE: "54900"
+      SHANI_PLAN_6M_PRICE_PAISE: "50100"
     }),
     /could not be matched/i,
     401
@@ -588,7 +588,7 @@ async function checkShaniCheckoutVerificationContract() {
     }, {
       RAZORPAY_KEY_SECRET: secret,
       PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true",
-      SHANI_PLAN_3M_PRICE_PAISE: "29900"
+      SHANI_PLAN_3M_PRICE_PAISE: "25100"
     }),
     /amount does not match/i,
     400
@@ -665,7 +665,7 @@ async function checkShaniCheckoutConfirmationEmailContract() {
   const secret = "checkout-secret";
   const orderId = "order_shani_email";
   const paymentId = "pay_shani_email";
-  const amount = 54900;
+  const amount = 50100;
   const currency = "INR";
   const signature = hmac(`${orderId}|${paymentId}`, secret);
   const user = {
@@ -704,7 +704,7 @@ async function checkShaniCheckoutConfirmationEmailContract() {
       signature
     }, {
       RAZORPAY_KEY_SECRET: secret,
-      SHANI_PLAN_6M_PRICE_PAISE: "54900",
+      SHANI_PLAN_6M_PRICE_PAISE: "50100",
       RESEND_API_KEY: "resend-shani-checkout",
       RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
     }, { supabase });
@@ -722,7 +722,7 @@ async function checkShaniCheckoutConfirmationEmailContract() {
       fetchCalls[0].options.headers.Authorization === "Bearer resend-shani-checkout",
       emailBody.to?.[0] === "rohan@soulguru.local",
       emailBody.subject === "Your Shani remedy guidance is active",
-      emailBody.text.includes("6 months Shani remedy guidance is active"),
+      emailBody.text.includes("Shani Dhairya Shani remedy guidance is active"),
       emailBody.text.includes("Pandit support"),
       emailBody.tags?.[0]?.name === "event",
       emailBody.tags?.[0]?.value === "shani_remedy_activated"
@@ -775,7 +775,7 @@ async function checkShaniCheckoutMembershipRaceContract() {
   const secret = "checkout-secret";
   const orderId = "order_shani_race";
   const paymentId = "pay_shani_race";
-  const amount = 29900;
+  const amount = 25100;
   const currency = "INR";
   const signature = hmac(`${orderId}|${paymentId}`, secret);
   const raceUser = {
@@ -796,7 +796,7 @@ async function checkShaniCheckoutMembershipRaceContract() {
     signature
   }, {
     RAZORPAY_KEY_SECRET: secret,
-    SHANI_PLAN_3M_PRICE_PAISE: "29900"
+    SHANI_PLAN_3M_PRICE_PAISE: "25100"
   }, { supabase });
 
   pushCheck("Shani checkout activation treats unique membership race as existing membership", [
@@ -905,7 +905,7 @@ async function checkShaniWebhookActivationContract() {
     orderId: "order_shani_webhook",
     planId: "1y"
   })), {
-    SHANI_PLAN_1Y_PRICE_PAISE: "99900"
+    SHANI_PLAN_1Y_PRICE_PAISE: "100100"
   }, { supabase });
   const duplicate = await processRazorpayWebhook(JSON.stringify(shaniWebhookPayload({
     id: "evt_shani_captured",
@@ -913,7 +913,7 @@ async function checkShaniWebhookActivationContract() {
     orderId: "order_shani_webhook",
     planId: "1y"
   })), {
-    SHANI_PLAN_1Y_PRICE_PAISE: "99900"
+    SHANI_PLAN_1Y_PRICE_PAISE: "100100"
   }, { supabase });
 
   pushCheck("Shani webhook activates one remedy membership by provider payment id", [
@@ -956,7 +956,7 @@ async function checkShaniWebhookConfirmationEmailContract() {
       planId: "3m",
       email: "shani-email@soulguru.local"
     })), {
-      SHANI_PLAN_3M_PRICE_PAISE: "29900",
+      SHANI_PLAN_3M_PRICE_PAISE: "25100",
       RESEND_API_KEY: "resend-shani-webhook",
       RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
     }, { supabase });
@@ -967,7 +967,7 @@ async function checkShaniWebhookConfirmationEmailContract() {
       planId: "3m",
       email: "shani-email@soulguru.local"
     })), {
-      SHANI_PLAN_3M_PRICE_PAISE: "29900",
+      SHANI_PLAN_3M_PRICE_PAISE: "25100",
       RESEND_API_KEY: "resend-shani-webhook",
       RESEND_FROM_EMAIL: "SoulGuru <hello@soulguru.app>"
     }, { supabase });
@@ -1060,10 +1060,10 @@ function checkRazorpayReadinessContract() {
     RAZORPAY_WEBHOOK_URL: "https://soulguru.app/api/razorpay-webhook",
     RAZORPAY_WEBHOOK_READY: "true",
     MORE_GUIDANCE_PRICE_PAISE: "49900",
-    SHANI_PLAN_3M_PRICE_PAISE: "29900",
-    SHANI_PLAN_6M_PRICE_PAISE: "54900",
-    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
-    SHANI_PLAN_FULL_PRICE_PAISE: "149900"
+    SHANI_PLAN_3M_PRICE_PAISE: "25100",
+    SHANI_PLAN_6M_PRICE_PAISE: "50100",
+    SHANI_PLAN_1Y_PRICE_PAISE: "100100",
+    SHANI_PLAN_FULL_PRICE_PAISE: "111100"
   });
   const localActivationReport = buildDeploymentReadiness({
     OPENAI_API_KEY: "sk-contract",
@@ -1079,10 +1079,10 @@ function checkRazorpayReadinessContract() {
     RAZORPAY_WEBHOOK_URL: "https://soulguru.app/api/razorpay-webhook",
     RAZORPAY_WEBHOOK_READY: "true",
     MORE_GUIDANCE_PRICE_PAISE: "49900",
-    SHANI_PLAN_3M_PRICE_PAISE: "29900",
-    SHANI_PLAN_6M_PRICE_PAISE: "54900",
-    SHANI_PLAN_1Y_PRICE_PAISE: "99900",
-    SHANI_PLAN_FULL_PRICE_PAISE: "149900",
+    SHANI_PLAN_3M_PRICE_PAISE: "25100",
+    SHANI_PLAN_6M_PRICE_PAISE: "50100",
+    SHANI_PLAN_1Y_PRICE_PAISE: "100100",
+    SHANI_PLAN_FULL_PRICE_PAISE: "111100",
     PAYMENTS_ALLOW_LOCAL_ACTIVATION: "true"
   });
   const readyRazorpay = readyReport.checks.find((check) => check.id === "razorpay");

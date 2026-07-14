@@ -9,9 +9,12 @@ const findings = [];
 
 const trackedFiles = getTrackedFiles();
 for (const file of trackedFiles) {
+  const absolutePath = path.join(root, file);
+  if (!fs.existsSync(absolutePath)) continue;
+
   checkForbiddenTrackedPath(file);
   if (isTextLike(file)) {
-    scanTextFile(file, readTextFile(path.join(root, file)), { mobileArtifact: false });
+    scanTextFile(file, readTextFile(absolutePath), { mobileArtifact: false });
   }
 }
 
@@ -101,6 +104,7 @@ function scanSensitiveAssignments(file, text) {
   while ((match = assignmentPattern.exec(text))) {
     const [, key, , rawValue] = match;
     const value = String(rawValue || "").trim();
+    if (isKnownNonSecretConfig(key)) continue;
     if (!isPlaceholderValue(value) && !isKnownPublicKey(key)) {
       findings.push(`${file}: ${key} appears to have a real value.`);
     }
@@ -191,6 +195,12 @@ function isKnownPublicKey(key) {
     "VITE_POSTHOG_KEY",
     "VITE_SENTRY_DSN",
     "RAZORPAY_KEY_ID"
+  ].includes(key);
+}
+
+function isKnownNonSecretConfig(key) {
+  return [
+    "SOUL_WISDOM_MAX_OUTPUT_TOKENS"
   ].includes(key);
 }
 

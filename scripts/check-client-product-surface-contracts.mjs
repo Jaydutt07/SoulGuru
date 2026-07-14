@@ -43,17 +43,19 @@ function checkWelcomeAndLoginSurface() {
     "Begin"
   ]));
 
-  pushCheck("Login keeps existing-account and new-account OTP flows", includesAll(blocks.auth, [
+  pushCheck("Login keeps direct existing-account and new-account flows", includesAll(blocks.auth, [
     "Already existing account",
     "Create new account",
     "Name",
     "Birth date",
     "Birth time",
-    "Birth place",
+    "BirthPlaceField",
     "Email",
     "Phone number",
-    "OTP sent",
-    "Verify and enter"
+    "lookupAccountFromServer(phone)",
+    "syncUserProfileToServer(account)",
+    "direct_profile",
+    "Continue to Soul Guru"
   ]));
 }
 
@@ -88,15 +90,16 @@ function checkPrimaryTabContract() {
 
 function checkSoulGuruSurface() {
   pushCheck("Soul Guru tab presents the Words of Wisdom reading surface", includesAll(blocks.soul, [
-    "<p className=\"eyebrow\">Soul Guru</p>",
+    "soul-guru-hero",
+    "soul-guru-daily",
     "<h2>Words of Wisdom</h2>",
     "wisdom-panel",
-    "Save Advice",
     "wisdom-feedback",
     "sendWisdomFeedback(\"accurate\")",
     "sendWisdomFeedback(\"missed\")",
     "Accurate",
     "Missed",
+    "guidance-actions",
     "More Guidance"
   ]));
 

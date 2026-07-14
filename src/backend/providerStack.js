@@ -76,6 +76,7 @@ export const PROVIDER_STACK = Object.freeze([
       "supabase/migrations/015_more_guidance_generation_locks.sql",
       "supabase/migrations/016_soul_wisdom_feedback.sql",
       "supabase/migrations/017_service_role_grants.sql",
+      "supabase/migrations/018_shani_remedy_notifications.sql",
       "src/backend/userIdentity.js",
       "scripts/generate-supabase-schema-bundle.mjs",
       "scripts/check-supabase-schema-bundle.mjs",

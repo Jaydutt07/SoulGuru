@@ -555,7 +555,7 @@ Set `RAZORPAY_WEBHOOK_URL` to the exact production HTTPS webhook URL and set `RA
 
 `POST /api/astro-solve`
 
-Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. Send `{"action":"allowance"}` to the same route to read the persisted quota without generating an answer or calling OpenAI; those reads use the separate `ASTRO_SOLVE_ALLOWANCE_RATE_LIMIT` default of 120/day so page loads do not consume the answer-generation limit. The backend uses a v2 quality guard that repairs generic answers once, then falls back to a chart-specific local answer rather than returning vague filler. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing.
+Creates a detailed Astro Solves answer using OpenAI, chart/transit context, and quota checks. Free users get 3 questions; More Guidance users get 15 additional questions. Send `{"action":"allowance"}` to the same route to read the persisted quota without generating an answer or calling OpenAI; those reads use the separate `ASTRO_SOLVE_ALLOWANCE_RATE_LIMIT` default of 120/day so page loads do not consume the answer-generation limit. The backend uses a strict `root` / `astrology` / `solution` JSON schema, repairs generic answers once, and then fails visibly instead of returning a local fallback as if it were OpenAI. Production requires Supabase-backed counting and storage in `astro_solve_questions`; if subscription or question-count checks fail, the route does not call OpenAI. `ASTRO_SOLVES_ALLOW_LOCAL_QUOTA=true` is only for isolated local testing. Client-side local Astro Solve fallback is disabled by default and requires `VITE_LOCAL_ASTRO_SOLVE_FALLBACK=true`.
 
 `POST /api/guidance-memory`
 
@@ -596,10 +596,10 @@ MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false
 MORE_GUIDANCE_PRICE_PAISE=49900
 SHANI_ALLOW_LOCAL_ACCESS=false
 SHANI_PANDIT_DISABLE_OPENAI=false
-SHANI_PLAN_3M_PRICE_PAISE=29900
-SHANI_PLAN_6M_PRICE_PAISE=54900
-SHANI_PLAN_1Y_PRICE_PAISE=99900
-SHANI_PLAN_FULL_PRICE_PAISE=149900
+SHANI_PLAN_3M_PRICE_PAISE=25100
+SHANI_PLAN_6M_PRICE_PAISE=50100
+SHANI_PLAN_1Y_PRICE_PAISE=100100
+SHANI_PLAN_FULL_PRICE_PAISE=111100
 ```
 
 Keep `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false`, `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false`, and `SHANI_ALLOW_LOCAL_ACCESS=false` outside isolated local testing. Real More Guidance and Shani purchases must be persisted in Supabase before the app unlocks paid guidance.

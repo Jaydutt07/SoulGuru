@@ -9,6 +9,11 @@ import { createOpenAIClient, requestOpenAIResponse } from "./openaiClient.js";
 import { upsertUserProfileId } from "./profileService.js";
 import { createSupabaseAdmin } from "./supabaseAdmin.js";
 import { buildBackendUserKey } from "./userIdentity.js";
+import {
+  SHANI_HANUMAN_CHALISA_AUDIO,
+  buildShaniMembershipPlanCatalog,
+  buildShaniRemedyPlanForMembership
+} from "./shaniRemedyCatalog.js";
 
 export const SHANI_PANDIT_PROMPT_VERSION = "shani-pandit-v2";
 
@@ -68,6 +73,8 @@ export async function getShaniDashboard(payload, env = process.env, deps = {}) {
     return {
       configured: false,
       report,
+      freeResources: buildFreeShaniResources(),
+      plans: buildShaniMembershipPlanCatalog(),
       membership: null,
       remedyMap: null,
       panditHistory: []
@@ -85,6 +92,8 @@ export async function getShaniDashboard(payload, env = process.env, deps = {}) {
   return {
     configured: true,
     report,
+    freeResources: buildFreeShaniResources(),
+    plans: buildShaniMembershipPlanCatalog(),
     membership,
     remedyMap,
     panditHistory
@@ -288,46 +297,61 @@ export function buildShaniReport(user, now = new Date()) {
 export function buildShaniRemedyMap({ user = {}, report = {}, membership = {}, now = new Date() } = {}) {
   const phase = getPhaseGuidance(report.phaseIndex);
   const pressure = getMemberPressure(report);
+  const catalogPlan = buildShaniRemedyPlanForMembership({ report, membership, now });
   const planName = membership.planName || membership.planId || "Shani remedy";
   const endsAt = parseDate(membership.endsAt || addMonths(now, 3));
   const generatedAt = parseDate(now).toISOString();
 
   return {
+    id: `${catalogPlan.plan.id}-${catalogPlan.rashi.sign}`,
+    planId: catalogPlan.plan.id,
     planName,
+    plan: catalogPlan.plan,
+    memberGuide: catalogPlan.memberGuide,
+    rashi: catalogPlan.rashi,
+    phaseRemedy: catalogPlan.phaseRemedy,
+    saturday: catalogPlan.saturday,
+    freeResources: buildFreeShaniResources(),
     generatedAt,
     phase: {
       title: report.phaseTitle || "Shani discipline window",
-      summary: phase.summary,
+      summary: `${phase.summary} ${catalogPlan.phaseRemedy.focus}`,
       pressure
     },
     nextSevenDays: {
-      focus: phase.weekFocus,
-      action: phase.weekAction,
-      caution: phase.weekCaution
+      focus: catalogPlan.saturday.focus,
+      action: `${catalogPlan.saturday.preparation} ${catalogPlan.saturday.remedy}`,
+      caution: catalogPlan.saturday.caution || phase.weekCaution
     },
     nextMonth: {
-      focus: phase.monthFocus,
-      action: phase.monthAction,
+      focus: catalogPlan.plan.focus?.[0] || phase.monthFocus,
+      action: `${phase.monthAction} Rotate daan as ${catalogPlan.rashi.daan}, seva as ${catalogPlan.rashi.seva}.`,
       marker: `Review this map again before ${formatDate(addDays(now, 30))}.`
     },
     dailyPractices: [
       {
-        title: "Morning duty",
-        text: "Finish one delayed responsibility before adding a new promise."
+        title: "Morning niyam",
+        text: catalogPlan.rashi.dailyNiyam
       },
       {
-        title: "Speech restraint",
-        text: "Keep replies slower, shorter, and free of punishment."
+        title: "Mantra",
+        text: catalogPlan.saturday.mantra
       },
       {
         title: "Saturday seva",
-        text: "Offer quiet service, clean one neglected space, and avoid public display."
+        text: catalogPlan.rashi.seva
       }
     ],
     renewal: {
       daysLeft: Math.max(0, Math.ceil((endsAt.getTime() - parseDate(now).getTime()) / 86400000)),
       endsAt: endsAt.toISOString()
     }
+  };
+}
+
+function buildFreeShaniResources() {
+  return {
+    hanumanChalisa: SHANI_HANUMAN_CHALISA_AUDIO
   };
 }
 

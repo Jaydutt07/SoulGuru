@@ -50,6 +50,7 @@ Env vars:
 - `OPENAI_TIMEOUT_MS`: request timeout.
 - `OPENAI_MAX_RETRIES`: retry count.
 - `ASTRO_SOLVE_MODEL`: Astro Solves model override.
+- `VITE_LOCAL_ASTRO_SOLVE_FALLBACK`: optional local client fallback for Astro Solves demos; keep `false` for production.
 - `MORE_GUIDANCE_MODEL`: More Guidance model override.
 - `SHANI_PANDIT_MODEL`: Shani Pandit model override.
 - `OPENAI_EMBEDDING_MODEL`: embedding model for long-term memory.
@@ -194,15 +195,20 @@ Env vars:
 - `SHANI_PLAN_6M_PRICE_PAISE`: Shani 6-month plan price.
 - `SHANI_PLAN_1Y_PRICE_PAISE`: Shani 1-year plan price.
 - `SHANI_PLAN_FULL_PRICE_PAISE`: Shani full remaining-period plan price.
+- `SHANI_NOTIFICATION_TIMEZONE=Asia/Kolkata`: timezone used for Friday/Saturday Shani reminders.
+- `SHANI_NOTIFICATION_BATCH_LIMIT`: max active Shani memberships processed per cron run.
+- `CRON_SECRET` or `SHANI_NOTIFICATION_CRON_SECRET`: bearer token required for the Shani notification cron route.
 - `PAYMENTS_ALLOW_LOCAL_ACTIVATION=false`: keep local activation disabled in production.
 - `MORE_GUIDANCE_ALLOW_LOCAL_ACCESS=false`: keep local paid fallback disabled in production.
 - `SHANI_ALLOW_LOCAL_ACCESS=false`: keep local Shani fallback disabled in production.
+- `SHANI_NOTIFICATIONS_ALLOW_LOCAL=false`: keep manual notification dispatch disabled in production.
 
 Actions:
 - Create Razorpay account.
 - Configure webhook to the deployed `/api/razorpay-webhook` URL.
 - Enable payment events required by the app.
 - Set prices in paise.
+- Configure the Vercel cron for `/api/shani-notifications` and set the cron secret before enabling member reminders.
 - Verify:
 
 ```bash
